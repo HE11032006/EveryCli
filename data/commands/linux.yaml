@@ -1,0 +1,5 @@
+﻿# Commandes Linux
+commands:
+  - name: "ls -la"
+    description: "Liste fichiers"
+    keywords: [ls, lister]

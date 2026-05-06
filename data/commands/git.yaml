@@ -1,0 +1,57 @@
+﻿- id: git_replace_in_commits
+  description: Remplacer un mot dans tous les messages de commits
+  tags: [git, commit, remplacer, historique, message, réécrire]
+  commands:
+    linux: "git filter-branch --msg-filter 'sed s/ancien/nouveau/g' -- --all"
+    windows: "git filter-branch --msg-filter \"sed 's/ancien/nouveau/g'\" -- --all"
+  explanation: Réécrit l'historique de tous tes commits. Un force push sera nécessaire.
+  warning: Modifie l'historique partagé — préviens ton équipe avant.
+  errors:
+    - trigger: "fatal: bad revision"
+      cause: Tu n'es pas dans un dépôt Git
+      fix: "Vérifie avec : git status"
+
+- id: git_amend_last_commit
+  description: Modifier le message de mon dernier commit
+  tags: [git, commit, modifier, message, amend, dernier]
+  commands:
+    linux: "git commit --amend -m 'nouveau message'"
+    windows: "git commit --amend -m 'nouveau message'"
+  explanation: Remplace le message du dernier commit. Ne fonctionne que s'il n'a pas été pushé.
+  warning: Si le commit a déjà été pushé, un force push sera nécessaire.
+  errors:
+    - trigger: "nothing to commit"
+      cause: Aucun changement en staging
+      fix: "Ajoute des fichiers avec : git add <fichier>"
+
+- id: git_undo_last_commit_keep_changes
+  description: Annuler mon dernier commit sans perdre mes changements
+  tags: [git, annuler, commit, reset, soft, garder, changements, défaire]
+  commands:
+    linux: "git reset --soft HEAD~1"
+    windows: "git reset --soft HEAD~1"
+  explanation: Retire le dernier commit mais garde tes fichiers modifiés en staging.
+  errors:
+    - trigger: "fatal: ambiguous argument"
+      cause: Il n'y a pas de commit précédent dans l'historique
+      fix: "Vérifie ton historique avec : git log --oneline"
+
+- id: git_stash_changes
+  description: Mettre mes changements de côté temporairement
+  tags: [git, stash, sauvegarder, temporaire, côté, mettre, suspendre]
+  commands:
+    linux: "git stash"
+    windows: "git stash"
+  explanation: Met tous tes changements non commités de côté. Tu peux les récupérer plus tard.
+
+- id: git_stash_pop
+  description: Récupérer mes changements mis de côté
+  tags: [git, stash, récupérer, restaurer, pop, reprendre]
+  commands:
+    linux: "git stash pop"
+    windows: "git stash pop"
+  explanation: Réapplique le dernier stash et le supprime de la liste.
+  errors:
+    - trigger: "No stash entries found"
+      cause: Tu n'as aucun stash sauvegardé
+      fix: "Liste tes stashs avec : git stash list"
