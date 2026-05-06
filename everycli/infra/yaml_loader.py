@@ -1,4 +1,4 @@
-﻿"""
+"""
 YAML-based scenario loader.
 Reads all .yaml files from a given directory and parses them into Scenario objects.
 """
@@ -21,9 +21,17 @@ class YamlLoader:
 
         for yaml_file in sorted(self._data_dir.glob("*.yaml")):
             raw = yaml_file.read_text(encoding="utf-8")
-            entries = yaml.safe_load(raw) or []
+            entries = yaml.safe_load(raw)
+            if not isinstance(entries, list):
+                continue
+
             for entry in entries:
-                scenarios.append(self._parse(entry))
+                if not isinstance(entry, dict):
+                    continue
+                try:
+                    scenarios.append(self._parse(entry))
+                except (KeyError, TypeError):
+                    continue
 
         return scenarios
 

@@ -1,5 +1,13 @@
-﻿# Commandes Linux
-commands:
-  - name: "ls -la"
-    description: "Liste fichiers"
-    keywords: [ls, lister]
+- id: linux_ls_la
+  description: Lister tous les fichiers avec détails et fichiers cachés
+  tags: [linux, ls, lister, fichiers, cachés, détails]
+  commands:
+    linux: "ls -la"
+  explanation: Affiche la liste détaillée (permissions, taille, date) de tous les fichiers, y compris ceux commençant par un point.
+
+- id: linux_pwd
+  description: Afficher le chemin du répertoire actuel
+  tags: [linux, pwd, répertoire, chemin, actuel, position]
+  commands:
+    linux: "pwd"
+  explanation: Affiche le chemin absolu du dossier dans lequel tu te trouves actuellement.
