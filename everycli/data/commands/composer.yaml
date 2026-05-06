@@ -1,0 +1,282 @@
+# Commandes Composer (YAML)
+composer_commands:
+
+  # ===== Installation et Mise à jour =====
+  installation:
+    - id: composer_install
+      description: Installer les dépendances du projet
+      tags: [composer, install, dépendances, vendor]
+      command: "composer install"
+      explanation: Installe toutes les dépendances listées dans le fichier `composer.json` et génère le dossier `vendor/`.
+      options:
+        - "--no-dev": "Installe uniquement les dépendances de production (pas celles en `require-dev`)."
+        - "--dry-run": "Simule l'installation sans modifier les fichiers."
+        - "--ignore-platform-reqs": "Ignore les exigences de plateforme (ex: PHP version)."
+
+    - id: composer_update
+      description: Mettre à jour les dépendances
+      tags: [composer, update, mise à jour, dépendances]
+      command: "composer update"
+      explanation: Met à jour toutes les dépendances vers leurs dernières versions compatibles avec `composer.json`.
+      warning: "Peut casser votre projet si les mises à jour introduisent des changements incompatibles."
+      options:
+        - "--no-dev": "Met à jour uniquement les dépendances de production."
+        - "--lock": "Met à jour uniquement le fichier `composer.lock` sans installer les dépendances."
+        - "nom_du_paquet": "Met à jour un paquet spécifique (ex: `composer update mon/logger`)."
+
+    - id: composer_require
+      description: Ajouter une nouvelle dépendance
+      tags: [composer, require, ajouter, dépendance, paquet]
+      command: "composer require nom_du_paquet"
+      explanation: Ajoute une dépendance au projet et l'installe immédiatement. Met à jour `composer.json` et `composer.lock`.
+      example: "composer require monolog/monolog:^2.0"
+      options:
+        - "--dev": "Ajoute la dépendance uniquement pour le développement (section `require-dev`)."
+        - "--no-update": "Ajoute la dépendance sans l'installer immédiatement."
+
+    - id: composer_remove
+      description: Supprimer une dépendance
+      tags: [composer, remove, supprimer, dépendance, paquet]
+      command: "composer remove nom_du_paquet"
+      explanation: Supprime une dépendance du projet et met à jour `composer.json` et `composer.lock`.
+
+    - id: composer_init
+      description: Initialiser un nouveau projet Composer
+      tags: [composer, init, projet, nouveau]
+      command: "composer init"
+      explanation: Crée un fichier `composer.json` interactivement pour un nouveau projet.
+      options:
+        - "--name": "Spécifie le nom du projet (ex: `composer init --name=mon/projet`)."
+        - "--type": "Spécifie le type de projet (ex: `library`, `project`)."
+
+    - id: composer_create_project
+      description: Créer un nouveau projet à partir d'un paquet existant
+      tags: [composer, create-project, projet, paquet]
+      command: "composer create-project nom_du_paquet nom_du_dossier"
+      explanation: Télécharge un paquet et ses dépendances dans un nouveau dossier.
+      example: "composer create-project laravel/laravel mon-projet"
+      options:
+        - "--prefer-dist": "Préfère télécharger une archive du paquet plutôt que de cloner le dépôt Git."
+        - "--remove-vcs": "Supprime le dossier `.git` du paquet téléchargé."
+
+  # ===== Autoload =====
+  autoload:
+    - id: composer_dump_autoload
+      description: Régénérer l'autoload des classes
+      tags: [composer, dump-autoload, autoload, classes]
+      command: "composer dump-autoload"
+      explanation: Régénère le fichier `vendor/autoload.php` en fonction des règles d'autoload définies dans `composer.json`.
+      options:
+        - "--optimize": "Optimise l'autoloader pour une meilleure performance (recommandé en production)."
+        - "--classmap-authoritative": "Force Composer à utiliser uniquement le classmap pour l'autoloading."
+
+    - id: composer_autoload_files
+      description: Définir des fichiers à charger automatiquement
+      tags: [composer, autoload, files, charger]
+      command: "composer config autoload.files []"
+      explanation: Permet de spécifier des fichiers PHP à charger automatiquement au démarrage.
+      example: |
+        {
+          "autoload": {
+            "files": ["src/Helper.php"]
+          }
+        }
+
+    - id: composer_autoload_psr4
+      description: Définir un autoload PSR-4
+      tags: [composer, autoload, PSR-4, namespace]
+      command: "composer config autoload.psr-4"
+      explanation: Configure l'autoloading selon la norme PSR-4 pour un namespace donné.
+      example: |
+        {
+          "autoload": {
+            "psr-4": {
+              "MonNamespace\\": "src/"
+            }
+          }
+        }
+
+  # ===== Configuration =====
+  configuration:
+    - id: composer_config
+      description: Modifier la configuration de Composer
+      tags: [composer, config, configuration, paramètre]
+      command: "composer config [options]"
+      explanation: Permet de configurer des paramètres globaux ou spécifiques au projet.
+      options:
+        - "platform.php": "Définir la version de PHP (ex: `composer config platform.php 8.1`)."
+        - "github-oauth": "Configurer un token OAuth pour GitHub (ex: `composer config github-oauth.github.com TOKEN`)."
+        - "process-timeout": "Définir le timeout pour les processus (en secondes)."
+      example: "composer config -g process-timeout 1800"
+
+    - id: composer_config_list
+      description: Lister la configuration actuelle
+      tags: [composer, config, liste, afficher]
+      command: "composer config --list"
+      explanation: Affiche tous les paramètres de configuration actuels (globaux et locaux).
+
+    - id: composer_config_global
+      description: Modifier la configuration globale de Composer
+      tags: [composer, config, global, utilisateur]
+      command: "composer config -g [option] [valeur]"
+      explanation: Modifie la configuration globale (pour tous les projets de l'utilisateur).
+      example: "composer config -g github-oauth.github.com TOKEN"
+
+  # ===== Cache et Optimisation =====
+  cache:
+    - id: composer_clear_cache
+      description: Vider le cache de Composer
+      tags: [composer, cache, clear, vider]
+      command: "composer clear-cache"
+      explanation: Supprime tous les fichiers mis en cache par Composer (paquets, métadonnées, etc.).
+
+    - id: composer_cache_dir
+      description: Voir le répertoire de cache de Composer
+      tags: [composer, cache, dir, répertoire]
+      command: "composer config cache-dir"
+      explanation: Affiche le chemin du répertoire où Composer stocke son cache.
+
+    - id: composer_validate
+      description: Valider le fichier composer.json
+      tags: [composer, validate, valider, composer.json]
+      command: "composer validate"
+      explanation: Vérifie que le fichier `composer.json` est valide et bien formaté.
+
+    - id: composer_optimize
+      description: Optimiser l'autoloader pour la production
+      tags: [composer, optimize, autoloader, production]
+      command: "composer dump-autoload --optimize --classmap-authoritative"
+      explanation: Optimise l'autoloader pour une meilleure performance en production.
+
+  # ===== Dépendances =====
+  dependencies:
+    - id: composer_show
+      description: Lister les dépendances installées
+      tags: [composer, show, dépendances, liste, paquets]
+      command: "composer show"
+      explanation: Affiche la liste des paquets installés, leurs versions et leurs dépendances.
+      options:
+        - "--tree": "Affiche les dépendances sous forme d'arborescence."
+        - "nom_du_paquet": "Affiche les informations pour un paquet spécifique (ex: `composer show monolog/monolog`)."
+
+    - id: composer_why
+      description: Savoir pourquoi une dépendance est installée
+      tags: [composer, why, dépendance, raison]
+      command: "composer why nom_du_paquet"
+      explanation: Explique pourquoi un paquet est installé (quelles autres dépendances l'exigent).
+      example: "composer why symfony/console"
+
+    - id: composer_depends
+      description: Voir les dépendances d'un paquet
+      tags: [composer, depends, dépendances, paquet]
+      command: "composer depends nom_du_paquet"
+      explanation: Affiche toutes les dépendances directes et indirectes d'un paquet.
+
+    - id: composer_prohibits
+      description: Voir les conflits entre paquets
+      tags: [composer, prohibits, conflits, incompatibilités]
+      command: "composer prohibits nom_du_paquet"
+      explanation: Affiche les paquets qui sont incompatibles avec le paquet spécifié.
+
+  # ===== Scripts =====
+  scripts:
+    - id: composer_run_script
+      description: Exécuter un script défini dans composer.json
+      tags: [composer, run, script, exécuter]
+      command: "composer run [nom_du_script] [-- [args]]"
+      explanation: Exécute un script défini dans la section `scripts` de `composer.json`.
+      example: |
+        {
+          "scripts": {
+            "test": "phpunit",
+            "build": "php build.php"
+          }
+        }
+        # Exécution : composer run test
+
+    - id: composer_list_scripts
+      description: Lister les scripts disponibles
+      tags: [composer, scripts, liste, afficher]
+      command: "composer run"
+      explanation: Affiche la liste des scripts définis dans `composer.json`.
+
+  # ===== Environnement =====
+  environment:
+    - id: composer_env
+      description: Utiliser des variables d'environnement
+      tags: [composer, env, variables, environnement]
+      command: "COMPOSER_MEMORY_LIMIT=-1 composer install"
+      explanation: Permet de définir des variables d'environnement pour une commande Composer.
+      options:
+        - "COMPOSER_MEMORY_LIMIT": "Limite de mémoire pour PHP (ex: `-1` pour illimité)."
+        - "COMPOSER_PROCESS_TIMEOUT": "Timeout pour les processus (en secondes)."
+        - "COMPOSER_HOME": "Chemin du répertoire de cache de Composer."
+
+    - id: composer_check_env
+      description: Vérifier les exigences système
+      tags: [composer, check, environnement, exigences]
+      command: "composer check-platform-reqs"
+      explanation: Vérifie que l'environnement (PHP, extensions, etc.) répond aux exigences des dépendances.
+
+  # ===== Publication =====
+  publish:
+    - id: composer_archive
+      description: Créer une archive du projet
+      tags: [composer, archive, projet, zip]
+      command: "composer archive --format=zip --file=nom_du_fichier.zip"
+      explanation: Crée une archive du projet (sans le dossier `vendor/` par défaut).
+      options:
+        - "--format": "Format de l'archive (`zip`, `tar`, `tar.gz`)."
+        - "--file": "Nom du fichier de sortie."
+
+    - id: composer_pack
+      description: Créer un paquet installable
+      tags: [composer, pack, paquet, installable]
+      command: "composer pack"
+      explanation: Crée un paquet `.phar` ou `.zip` installable via Composer.
+
+  # ===== Divers =====
+  misc:
+    - id: composer_self_update
+      description: Mettre à jour Composer lui-même
+      tags: [composer, self-update, mise à jour, version]
+      command: "composer self-update"
+      explanation: Met à jour Composer vers sa dernière version.
+      warning: "Nécessite des droits d'administration (`sudo`) si Composer est installé globalement."
+
+    - id: composer_version
+      description: Voir la version de Composer
+      tags: [composer, version, --version]
+      command: "composer --version"
+      explanation: Affiche la version actuelle de Composer.
+
+    - id: composer_help
+      description: Afficher l'aide pour une commande
+      tags: [composer, help, aide, manuel]
+      command: "composer help [commande]"
+      explanation: Affiche le manuel d'utilisation de Composer ou d'une commande spécifique.
+      example: "composer help install"
+
+    - id: composer_search
+      description: Rechercher un paquet sur Packagist
+      tags: [composer, search, rechercher, paquet, packagist]
+      command: "composer search nom_du_paquet"
+      explanation: Recherche des paquets sur [Packagist](https://packagist.org/) par nom ou mot-clé.
+
+    - id: composer_browse
+      description: Ouvrir la page Packagist d'un paquet
+      tags: [composer, browse, packagist, paquet]
+      command: "composer browse nom_du_paquet"
+      explanation: Ouvre la page du paquet sur Packagist dans le navigateur par défaut.
+
+    - id: composer_home
+      description: Ouvrir le répertoire de Composer
+      tags: [composer, home, répertoire, cache]
+      command: "composer home"
+      explanation: Ouvre le répertoire de cache de Composer (`~/.composer` par défaut) dans l'explorateur de fichiers.
+
+    - id: composer_license
+      description: Afficher la licence de Composer
+      tags: [composer, license, licence]
+      command: "composer license"
+      explanation: Affiche la licence sous laquelle Composer est distribué (MIT).
