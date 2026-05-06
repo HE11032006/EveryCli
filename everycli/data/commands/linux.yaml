@@ -1,13 +1,530 @@
-- id: linux_ls_la
-  description: Lister tous les fichiers avec détails et fichiers cachés
-  tags: [linux, ls, lister, fichiers, cachés, détails]
-  commands:
-    linux: "ls -la"
-  explanation: Affiche la liste détaillée (permissions, taille, date) de tous les fichiers, y compris ceux commençant par un point.
+# Commandes Linux courantes (YAML)
+linux_commands:
 
-- id: linux_pwd
-  description: Afficher le chemin du répertoire actuel
-  tags: [linux, pwd, répertoire, chemin, actuel, position]
-  commands:
-    linux: "pwd"
-  explanation: Affiche le chemin absolu du dossier dans lequel tu te trouves actuellement.
+  # ===== Système =====
+  system:
+    - id: system_reboot
+      description: Redémarrer le système
+      tags: [système, redémarrer, reboot]
+      command: "sudo reboot"
+      explanation: Redémarre immédiatement la machine.
+
+    - id: system_shutdown
+      description: Éteindre le système
+      tags: [système, éteindre, shutdown, halt]
+      command: "sudo shutdown -h now"
+      explanation: Éteint la machine immédiatement.
+
+    - id: system_update
+      description: Mettre à jour les paquets (Debian/Ubuntu)
+      tags: [système, mise à jour, update, apt]
+      command: "sudo apt update && sudo apt upgrade -y"
+      explanation: Met à jour la liste des paquets et installe les mises à jour disponibles.
+
+    - id: system_check_os
+      description: Vérifier la version de l'OS
+      tags: [système, version, OS, distribution]
+      command: "lsb_release -a"
+      explanation: Affiche des informations sur la distribution Linux utilisée.
+
+    - id: system_check_kernel
+      description: Vérifier la version du noyau
+      tags: [système, noyau, kernel, version]
+      command: "uname -r"
+      explanation: Affiche la version du noyau Linux.
+
+    - id: system_check_uptime
+      description: Voir depuis combien de temps le système est en marche
+      tags: [système, uptime, temps, marche]
+      command: "uptime"
+      explanation: Affiche le temps écoulé depuis le dernier démarrage.
+
+    - id: system_check_hostname
+      description: Voir le nom de la machine
+      tags: [système, hostname, nom, machine]
+      command: "hostname"
+      explanation: Affiche le nom d'hôte de la machine.
+
+    - id: system_check_cpu
+      description: Voir les informations sur le processeur
+      tags: [système, CPU, processeur, info]
+      command: "lscpu"
+      explanation: Affiche des détails sur l'architecture et les cœurs du CPU.
+
+    - id: system_check_memory
+      description: Voir l'utilisation de la mémoire
+      tags: [système, mémoire, RAM, free]
+      command: "free -h"
+      explanation: Affiche l'utilisation de la mémoire vive (RAM) et de la swap.
+
+    - id: system_check_disk
+      description: Voir l'espace disque disponible
+      tags: [système, disque, espace, df]
+      command: "df -h"
+      explanation: Affiche l'espace disque utilisé et disponible pour chaque partition.
+
+  # ===== Fichiers et Répertoires =====
+  files:
+    - id: files_list
+      description: Lister les fichiers et répertoires
+      tags: [fichiers, lister, ls, répertoire]
+      command: "ls -l"
+      explanation: Affiche la liste des fichiers et répertoires avec leurs permissions, propriétaire, taille et date de modification.
+
+    - id: files_list_all
+      description: Lister tous les fichiers (y compris cachés)
+      tags: [fichiers, lister, cachés, ls, all]
+      command: "ls -la"
+      explanation: Affiche tous les fichiers, y compris les fichiers cachés (commencant par un point).
+
+    - id: files_create
+      description: Créer un fichier vide
+      tags: [fichiers, créer, touch, vide]
+      command: "touch nom_du_fichier"
+      explanation: Crée un fichier vide s'il n'existe pas, ou met à jour son horodatage s'il existe déjà.
+
+    - id: files_create_directory
+      description: Créer un répertoire
+      tags: [fichiers, répertoire, créer, mkdir]
+      command: "mkdir nom_du_repertoire"
+      explanation: Crée un nouveau répertoire.
+
+    - id: files_create_directory_recursive
+      description: Créer un répertoire et ses sous-répertoires
+      tags: [fichiers, répertoire, créer, récursif, mkdir]
+      command: "mkdir -p chemin/vers/le/repertoire"
+      explanation: Crée un répertoire et tous ses parents s'ils n'existent pas.
+
+    - id: files_copy
+      description: Copier un fichier ou un répertoire
+      tags: [fichiers, copier, cp, répertoire]
+      command: "cp source destination"
+      explanation: Copie un fichier ou un répertoire vers une destination. Utilisez `-r` pour copier récursivement un répertoire.
+
+    - id: files_move
+      description: Déplacer ou renommer un fichier ou un répertoire
+      tags: [fichiers, déplacer, renommer, mv]
+      command: "mv source destination"
+      explanation: Déplace ou renomme un fichier ou un répertoire.
+
+    - id: files_remove
+      description: Supprimer un fichier
+      tags: [fichiers, supprimer, rm, effacer]
+      command: "rm nom_du_fichier"
+      explanation: Supprime un fichier. Utilisez `-f` pour forcer la suppression et `-r` pour supprimer récursivement un répertoire.
+
+    - id: files_remove_directory
+      description: Supprimer un répertoire (vide)
+      tags: [fichiers, répertoire, supprimer, rmdir]
+      command: "rmdir nom_du_repertoire"
+      explanation: Supprime un répertoire vide.
+
+    - id: files_remove_recursive
+      description: Supprimer un répertoire et son contenu
+      tags: [fichiers, répertoire, supprimer, récursif, rm]
+      command: "rm -rf nom_du_repertoire"
+      explanation: Supprime un répertoire et tout son contenu de manière récursive et forcée.
+
+    - id: files_find
+      description: Rechercher des fichiers
+      tags: [fichiers, rechercher, find, nom]
+      command: "find /chemin -name 'nom_du_fichier'"
+      explanation: Recherche des fichiers ou répertoires par nom dans un chemin donné.
+
+    - id: files_grep
+      description: Rechercher du texte dans des fichiers
+      tags: [fichiers, rechercher, texte, grep]
+      command: "grep 'texte' nom_du_fichier"
+      explanation: Recherche une chaîne de caractères dans un fichier. Utilisez `-r` pour rechercher récursivement dans un répertoire.
+
+    - id: files_cat
+      description: Afficher le contenu d'un fichier
+      tags: [fichiers, afficher, contenu, cat]
+      command: "cat nom_du_fichier"
+      explanation: Affiche le contenu d'un fichier dans le terminal.
+
+    - id: files_less
+      description: Afficher le contenu d'un fichier page par page
+      tags: [fichiers, afficher, page, less]
+      command: "less nom_du_fichier"
+      explanation: Affiche le contenu d'un fichier page par page, permettant de naviguer avec les flèches.
+
+    - id: files_head
+      description: Afficher les premières lignes d'un fichier
+      tags: [fichiers, afficher, premières lignes, head]
+      command: "head -n 10 nom_du_fichier"
+      explanation: Affiche les 10 premières lignes d'un fichier.
+
+    - id: files_tail
+      description: Afficher les dernières lignes d'un fichier
+      tags: [fichiers, afficher, dernières lignes, tail]
+      command: "tail -n 10 nom_du_fichier"
+      explanation: Affiche les 10 dernières lignes d'un fichier. Utilisez `-f` pour suivre les mises à jour en temps réel.
+
+    - id: files_tar
+      description: Compresser un répertoire en .tar.gz
+      tags: [fichiers, compresser, tar, archive]
+      command: "tar -czvf archive.tar.gz /chemin/vers/repertoire"
+      explanation: Compresse un répertoire ou un fichier en une archive `.tar.gz`.
+
+    - id: files_untar
+      description: Décompresser une archive .tar.gz
+      tags: [fichiers, décompresser, tar, extraire]
+      command: "tar -xzvf archive.tar.gz"
+      explanation: Décompresse une archive `.tar.gz` dans le répertoire courant.
+
+  # ===== Permissions =====
+  permissions:
+    - id: permissions_change
+      description: Changer les permissions d'un fichier ou répertoire
+      tags: [permissions, chmod, changer, droits]
+      command: "chmod 755 nom_du_fichier"
+      explanation: "Change les permissions d'un fichier ou répertoire. Exemple : `755` donne les droits `rwxr-xr-x`."
+
+    - id: permissions_change_owner
+      description: Changer le propriétaire d'un fichier ou répertoire
+      tags: [permissions, chown, propriétaire, changer]
+      command: "sudo chown utilisateur:groupe nom_du_fichier"
+      explanation: Change le propriétaire et le groupe d'un fichier ou répertoire.
+
+    - id: permissions_change_group
+      description: Changer le groupe d'un fichier ou répertoire
+      tags: [permissions, chgrp, groupe, changer]
+      command: "sudo chgrp groupe nom_du_fichier"
+      explanation: Change le groupe d'un fichier ou répertoire.
+
+  # ===== Processus =====
+  processes:
+    - id: processes_list
+      description: Lister les processus en cours
+      tags: [processus, lister, ps, aux]
+      command: "ps aux"
+      explanation: Affiche tous les processus en cours avec leur PID, utilisation CPU/mémoire, et commande.
+
+    - id: processes_kill
+      description: Tuer un processus
+      tags: [processus, tuer, kill, PID]
+      command: "kill -9 PID"
+      explanation: Termine un processus de force (SIGKILL). Remplacez `PID` par l'identifiant du processus.
+
+    - id: processes_kill_by_name
+      description: Tuer un processus par son nom
+      tags: [processus, tuer, killall, nom]
+      command: "pkill -9 nom_du_processus"
+      explanation: Termine tous les processus portant un nom donné.
+
+    - id: processes_top
+      description: Afficher les processus en temps réel
+      tags: [processus, top, temps réel, monitoring]
+      command: "top"
+      explanation: Affiche une vue interactive des processus en cours, triés par utilisation CPU.
+
+    - id: processes_htop
+      description: Afficher les processus avec htop (plus convivial)
+      tags: [processus, htop, monitoring, interactif]
+      command: "htop"
+      explanation: Alternative à `top` avec une interface plus conviviale (nécessite l'installation de `htop`).
+
+    - id: processes_find
+      description: Trouver un processus par son nom
+      tags: [processus, trouver, pgrep, nom]
+      command: "pgrep -l nom_du_processus"
+      explanation: Affiche le PID et le nom des processus correspondant à un nom donné.
+
+  # ===== Réseau =====
+  network:
+    - id: network_ifconfig
+      description: Afficher les interfaces réseau
+      tags: [réseau, ifconfig, interfaces, IP]
+      command: "ifconfig"
+      explanation: Affiche les interfaces réseau, leurs adresses IP, et leur statut.
+
+    - id: network_ip
+      description: Afficher l'adresse IP
+      tags: [réseau, IP, adresse, hostname]
+      command: "hostname -I"
+      explanation: Affiche les adresses IP de la machine.
+
+    - id: network_ping
+      description: Tester la connectivité avec une adresse
+      tags: [réseau, ping, connectivité, test]
+      command: "ping adresse_IP_ou_nom_de_domaine"
+      explanation: Envoie des paquets ICMP pour tester la connectivité avec une adresse ou un nom de domaine.
+
+    - id: network_netstat
+      description: Afficher les connexions réseau actives
+      tags: [réseau, netstat, connexions, ports]
+      command: "netstat -tuln"
+      explanation: Affiche les connexions réseau actives, les ports ouverts, et les services en écoute.
+
+    - id: network_ss
+      description: Alternative moderne à netstat
+      tags: [réseau, ss, connexions, ports]
+      command: "ss -tuln"
+      explanation: Affiche les connexions réseau actives et les ports ouverts (plus rapide que `netstat`).
+
+    - id: network_curl
+      description: Effectuer une requête HTTP
+      tags: [réseau, curl, requête, HTTP, API]
+      command: "curl https://exemple.com"
+      explanation: Effectue une requête HTTP vers une URL et affiche la réponse.
+
+    - id: network_wget
+      description: Télécharger un fichier depuis une URL
+      tags: [réseau, wget, télécharger, download]
+      command: "wget https://exemple.com/fichier.zip"
+      explanation: Télécharge un fichier depuis une URL.
+
+    - id: network_nslookup
+      description: Résoudre un nom de domaine en IP
+      tags: [réseau, nslookup, DNS, résolution]
+      command: "nslookup exemple.com"
+      explanation: Résout un nom de domaine en adresse IP en utilisant les serveurs DNS.
+
+    - id: network_traceroute
+      description: Tracer la route vers une adresse
+      tags: [réseau, traceroute, route, latence]
+      command: "traceroute exemple.com"
+      explanation: Affiche le chemin emprunté par les paquets pour atteindre une adresse, avec les temps de réponse.
+
+  # ===== Utilisateurs et Groupes =====
+  users:
+    - id: users_add
+      description: Ajouter un nouvel utilisateur
+      tags: [utilisateurs, ajouter, useradd, créer]
+      command: "sudo useradd -m nom_utilisateur"
+      explanation: Crée un nouvel utilisateur avec un répertoire personnel.
+
+    - id: users_delete
+      description: Supprimer un utilisateur
+      tags: [utilisateurs, supprimer, userdel, effacer]
+      command: "sudo userdel -r nom_utilisateur"
+      explanation: Supprime un utilisateur et son répertoire personnel.
+
+    - id: users_modify_password
+      description: Changer le mot de passe d'un utilisateur
+      tags: [utilisateurs, mot de passe, passwd, changer]
+      command: "sudo passwd nom_utilisateur"
+      explanation: Change le mot de passe d'un utilisateur.
+
+    - id: users_add_to_group
+      description: Ajouter un utilisateur à un groupe
+      tags: [utilisateurs, groupe, ajouter, usermod]
+      command: "sudo usermod -aG nom_du_groupe nom_utilisateur"
+      explanation: Ajoute un utilisateur à un groupe supplémentaire.
+
+    - id: users_list
+      description: Lister tous les utilisateurs
+      tags: [utilisateurs, lister, cat, etc, passwd]
+      command: "cat /etc/passwd"
+      explanation: Affiche la liste de tous les utilisateurs du système.
+
+    - id: users_groups
+      description: Voir les groupes d'un utilisateur
+      tags: [utilisateurs, groupes, groups, afficher]
+      command: "groups nom_utilisateur"
+      explanation: Affiche les groupes auxquels appartient un utilisateur.
+
+  # ===== Disques et Stockage =====
+  storage:
+    - id: storage_mount
+      description: Monter un disque ou une partition
+      tags: [stockage, monter, mount, disque]
+      command: "sudo mount /dev/sdXn /point/de/montage"
+      explanation: "Monte un disque ou une partition sur un point de montage. Remplacez `sdXn` par le nom du périphérique (ex: `sda1`)."
+
+    - id: storage_umount
+      description: Démonter un disque ou une partition
+      tags: [stockage, démonter, umount, disque]
+      command: "sudo umount /point/de/montage"
+      explanation: Démonte un disque ou une partition précédemment montée.
+
+    - id: storage_df
+      description: Voir l'espace disque utilisé
+      tags: [stockage, df, espace, disque]
+      command: "df -h"
+      explanation: Affiche l'espace disque utilisé et disponible pour chaque partition.
+
+    - id: storage_du
+      description: Voir l'espace utilisé par un répertoire
+      tags: [stockage, du, espace, répertoire]
+      command: "du -sh /chemin/vers/repertoire"
+      explanation: Affiche l'espace disque utilisé par un répertoire ou un fichier.
+
+    - id: storage_fdisk
+      description: Lister les partitions disque
+      tags: [stockage, fdisk, partitions, disque]
+      command: "sudo fdisk -l"
+      explanation: Affiche la liste des disques et de leurs partitions.
+
+    - id: storage_mkfs
+      description: Formater une partition
+      tags: [stockage, mkfs, formater, partition]
+      command: "sudo mkfs.ext4 /dev/sdXn"
+      explanation: "Formate une partition en système de fichiers `ext4`. **Attention : cela efface toutes les données !**"
+
+  # ===== Services =====
+  services:
+    - id: services_start
+      description: Démarrer un service
+      tags: [services, démarrer, start, systemctl]
+      command: "sudo systemctl start nom_du_service"
+      explanation: Démarre un service système.
+
+    - id: services_stop
+      description: Arrêter un service
+      tags: [services, arrêter, stop, systemctl]
+      command: "sudo systemctl stop nom_du_service"
+      explanation: Arrête un service système.
+
+    - id: services_restart
+      description: Redémarrer un service
+      tags: [services, redémarrer, restart, systemctl]
+      command: "sudo systemctl restart nom_du_service"
+      explanation: Redémarre un service système.
+
+    - id: services_status
+      description: Vérifier le statut d'un service
+      tags: [services, statut, status, systemctl]
+      command: "sudo systemctl status nom_du_service"
+      explanation: Affiche le statut d'un service (actif, inactif, erreurs, etc.).
+
+    - id: services_enable
+      description: Activer un service au démarrage
+      tags: [services, activer, enable, démarrage]
+      command: "sudo systemctl enable nom_du_service"
+      explanation: Configure un service pour qu'il démarre automatiquement au boot.
+
+    - id: services_disable
+      description: Désactiver un service au démarrage
+      tags: [services, désactiver, disable, démarrage]
+      command: "sudo systemctl disable nom_du_service"
+      explanation: Empêche un service de démarrer automatiquement au boot.
+
+  # ===== Compression et Archives =====
+  compression:
+    - id: compression_gzip
+      description: Compresser un fichier avec gzip
+      tags: [compression, gzip, compresser, fichier]
+      command: "gzip nom_du_fichier"
+      explanation: Compresse un fichier avec `gzip`. Le fichier original est remplacé par une version `.gz`.
+
+    - id: compression_gunzip
+      description: Décompresser un fichier .gz
+      tags: [compression, gunzip, décompresser, gz]
+      command: "gunzip nom_du_fichier.gz"
+      explanation: Décompresse un fichier `.gz`.
+
+    - id: compression_zip
+      description: Créer une archive ZIP
+      tags: [compression, zip, archive, créer]
+      command: "zip archive.zip fichier1 fichier2"
+      explanation: Crée une archive ZIP contenant les fichiers spécifiés.
+
+    - id: compression_unzip
+      description: Décompresser une archive ZIP
+      tags: [compression, unzip, décompresser, ZIP]
+      command: "unzip archive.zip"
+      explanation: Décompresse une archive ZIP dans le répertoire courant.
+
+  # ===== Réseau Avancé =====
+  network_advanced:
+    - id: network_ssh
+      description: Se connecter à un serveur distant via SSH
+      tags: [réseau, SSH, connexion, distant]
+      command: "ssh utilisateur@adresse_IP"
+      explanation: Établit une connexion SSH sécurisée vers un serveur distant.
+
+    - id: network_scp
+      description: Copier un fichier vers un serveur distant via SCP
+      tags: [réseau, SCP, copier, distant, fichier]
+      command: "scp fichier utilisateur@adresse_IP:/chemin/de/destination"
+      explanation: Copie un fichier local vers un serveur distant en utilisant SCP.
+
+    - id: network_rsync
+      description: Synchroniser des fichiers avec un serveur distant
+      tags: [réseau, rsync, synchroniser, distant]
+      command: "rsync -avz /chemin/local utilisateur@adresse_IP:/chemin/distant"
+      explanation: Synchronise des fichiers ou répertoires entre une machine locale et un serveur distant.
+
+    - id: network_netcat
+      description: Tester une connexion TCP avec netcat
+      tags: [réseau, netcat, TCP, connexion, test]
+      command: "nc -zv adresse_IP port"
+      explanation: Teste si un port TCP est ouvert sur une adresse IP donnée.
+
+    - id: network_iptables
+      description: Afficher les règles du pare-feu (iptables)
+      tags: [réseau, iptables, pare-feu, règles]
+      command: "sudo iptables -L -n -v"
+      explanation: Affiche les règles du pare-feu configurées avec `iptables`.
+
+  # ===== Logs =====
+  logs:
+    - id: logs_view_system
+      description: Voir les logs système
+      tags: [logs, système, journalctl, syslog]
+      command: "sudo journalctl -xe"
+      explanation: Affiche les logs système avec `journalctl` (pour les distributions utilisant `systemd`).
+
+    - id: logs_view_file
+      description: Voir le contenu d'un fichier de log
+      tags: [logs, fichier, cat, tail]
+      command: "tail -f /var/log/nom_du_fichier.log"
+      explanation: Affiche les dernières lignes d'un fichier de log et suit les mises à jour en temps réel.
+
+    - id: logs_filter
+      description: Filtrer les logs par service ou mot-clé
+      tags: [logs, filtrer, grep, journalctl]
+      command: "journalctl -u nom_du_service | grep 'mot-clé'"
+      explanation: Filtre les logs d'un service spécifique pour trouver des entrées contenant un mot-clé.
+
+  # ===== Divers =====
+  misc:
+    - id: misc_date
+      description: Afficher la date et l'heure actuelles
+      tags: [divers, date, heure, time]
+      command: "date"
+      explanation: Affiche la date et l'heure actuelles du système.
+
+    - id: misc_calendar
+      description: Afficher un calendrier
+      tags: [divers, calendrier, cal]
+      command: "cal"
+      explanation: Affiche un calendrier du mois en cours.
+
+    - id: misc_echo
+      description: Afficher du texte dans le terminal
+      tags: [divers, echo, texte, afficher]
+      command: "echo 'Bonjour, monde !'"
+      explanation: Affiche le texte passé en argument dans le terminal.
+
+    - id: misc_clear
+      description: Effacer le terminal
+      tags: [divers, clear, effacer, terminal]
+      command: "clear"
+      explanation: Efface le contenu du terminal.
+
+    - id: misc_history
+      description: Voir l'historique des commandes
+      tags: [divers, historique, history, commandes]
+      command: "history"
+      explanation: Affiche l'historique des commandes exécutées dans le terminal.
+
+    - id: misc_alias
+      description: Créer un alias pour une commande
+      tags: [divers, alias, raccourci, commande]
+      command: "alias ll='ls -la'"
+      explanation: Crée un alias `ll` pour la commande `ls -la`. Les alias sont temporaires (pour la session en cours).
+
+    - id: misc_whoami
+      description: Voir l'utilisateur actuel
+      tags: [divers, whoami, utilisateur, actuel]
+      command: "whoami"
+      explanation: Affiche le nom de l'utilisateur actuel.
+
+    - id: misc_uname
+      description: Voir des informations sur le système
+      tags: [divers, uname, système, info]
+      command: "uname -a"
+      explanation: Affiche des informations détaillées sur le système (noyau, architecture, etc.).
