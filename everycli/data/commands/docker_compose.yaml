@@ -1,0 +1,987 @@
+# Commandes et configurations Docker Compose (YAML)
+docker_compose:
+
+  # ===== Commandes de Base =====
+  basic_commands:
+    - id: docker_compose_up
+      description: Démarrer les services définis dans docker-compose.yml
+      tags: [docker, compose, up, démarrer, services, conteneurs]
+      command: "docker-compose up -d"
+      explanation: |
+        Démarre tous les services définis dans le fichier `docker-compose.yml`.
+        - `-d` : Mode détaché (en arrière-plan).
+        - Sans `-d` : Affiche les logs en temps réel.
+      options:
+        - "--build": "Reconstruit les images avant de démarrer les conteneurs."
+        - "--force-recreate": "Force la recréation des conteneurs, même s'ils existent déjà."
+        - "--scale service=3": "Démarre 3 instances du service `service`."
+      example: "docker-compose up -d --build"
+
+    - id: docker_compose_down
+      description: Arrêter et supprimer les conteneurs, réseaux et volumes
+      tags: [docker, compose, down, arrêter, supprimer, conteneurs, réseaux, volumes]
+      command: "docker-compose down"
+      explanation: |
+        Arrête et supprime les conteneurs, réseaux et volumes définis dans `docker-compose.yml`.
+      options:
+        - "-v": "Supprime également les volumes anonymes (attention : perte de données !)."
+        - "--rmi all": "Supprime également les images utilisées par les services."
+      example: "docker-compose down -v"
+
+    - id: docker_compose_ps
+      description: Lister les conteneurs en cours d'exécution
+      tags: [docker, compose, ps, lister, conteneurs, statut]
+      command: "docker-compose ps"
+      explanation: Affiche la liste des conteneurs démarrés par Docker Compose, avec leur statut.
+      options:
+        - "-a": "Affiche tous les conteneurs (y compris ceux arrêtés)."
+
+    - id: docker_compose_logs
+      description: Afficher les logs des services
+      tags: [docker, compose, logs, afficher, journaux, conteneurs]
+      command: "docker-compose logs"
+      explanation: Affiche les logs de tous les services.
+      options:
+        - "-f": "Suivre les logs en temps réel (comme `tail -f`)."
+        - "--tail=100": "Affiche les 100 dernières lignes de logs."
+        - "service_name": "Affiche uniquement les logs d'un service spécifique."
+      example: "docker-compose logs -f web"
+
+    - id: docker_compose_restart
+      description: Redémarrer un ou plusieurs services
+      tags: [docker, compose, restart, redémarrer, service]
+      command: "docker-compose restart service_name"
+      explanation: Redémarre un service spécifique.
+      example: "docker-compose restart web db"
+
+    - id: docker_compose_start
+      description: Démarrer des conteneurs arrêtés
+      tags: [docker, compose, start, démarrer, conteneurs]
+      command: "docker-compose start service_name"
+      explanation: Démarre un conteneur arrêté sans le recréer.
+
+    - id: docker_compose_stop
+      description: Arrêter des conteneurs en cours d'exécution
+      tags: [docker, compose, stop, arrêter, conteneurs]
+      command: "docker-compose stop service_name"
+      explanation: Arrête un conteneur sans le supprimer.
+
+    - id: docker_compose_pause
+      description: Mettre en pause des conteneurs
+      tags: [docker, compose, pause, mettre en pause, conteneurs]
+      command: "docker-compose pause service_name"
+      explanation: Met en pause un conteneur (il reste en mémoire mais ne consomme pas de CPU).
+
+    - id: docker_compose_unpause
+      description: Reprendre des conteneurs en pause
+      tags: [docker, compose, unpause, reprendre, conteneurs]
+      command: "docker-compose unpause service_name"
+      explanation: Reprend un conteneur mis en pause.
+
+    - id: docker_compose_build
+      description: Construire ou reconstruire les images des services
+      tags: [docker, compose, build, construire, image]
+      command: "docker-compose build"
+      explanation: Construit les images des services définis dans `docker-compose.yml`.
+      options:
+        - "--no-cache": "Ignore le cache et reconstruit tout depuis zéro."
+        - "service_name": "Reconstruit uniquement l'image d'un service spécifique."
+      example: "docker-compose build --no-cache web"
+
+    - id: docker_compose_pull
+      description: Télécharger les images des services
+      tags: [docker, compose, pull, télécharger, image]
+      command: "docker-compose pull"
+      explanation: Télécharge les images des services depuis Docker Hub ou un registry privé.
+      options:
+        - "service_name": "Télécharge uniquement l'image d'un service spécifique."
+
+    - id: docker_compose_exec
+      description: Exécuter une commande dans un conteneur en cours d'exécution
+      tags: [docker, compose, exec, exécuter, commande, conteneur]
+      command: "docker-compose exec service_name commande"
+      explanation: Exécute une commande dans un conteneur en cours d'exécution.
+      example: "docker-compose exec web bash"
+      options:
+        - "-it": "Mode interactif avec un terminal (pour les commandes comme `bash`)."
+        - "-u root": "Exécute la commande en tant qu'utilisateur `root`."
+      example: "docker-compose exec -it -u root web bash"
+
+    - id: docker_compose_run
+      description: Exécuter une commande dans un nouveau conteneur
+      tags: [docker, compose, run, exécuter, commande, conteneur]
+      command: "docker-compose run service_name commande"
+      explanation: |
+        Crée un nouveau conteneur pour le service et exécute une commande dedans.
+        **Différence avec `exec`** : `run` crée un nouveau conteneur, tandis que `exec` utilise un conteneur existant.
+      options:
+        - "--rm": "Supprime le conteneur après l'exécution de la commande."
+        - "-d": "Exécute la commande en arrière-plan."
+      example: "docker-compose run --rm web npm test"
+
+    - id: docker_compose_config
+      description: Valider et afficher la configuration finale
+      tags: [docker, compose, config, valider, configuration]
+      command: "docker-compose config"
+      explanation: Affiche la configuration finale après interpolation des variables et fichiers de configuration.
+
+    - id: docker_compose_version
+      description: Afficher la version de Docker Compose
+      tags: [docker, compose, version, --version]
+      command: "docker-compose --version"
+      explanation: Affiche la version installée de Docker Compose.
+
+    - id: docker_compose_help
+      description: Afficher l'aide de Docker Compose
+      tags: [docker, compose, help, aide, manuel]
+      command: "docker-compose --help"
+      explanation: Affiche le manuel d'utilisation de Docker Compose.
+
+  # ===== Gestion des Images =====
+  images:
+    - id: docker_compose_images
+      description: Lister les images utilisées par les services
+      tags: [docker, compose, images, lister]
+      command: "docker-compose images"
+      explanation: Affiche la liste des images utilisées par les services définis dans `docker-compose.yml`.
+
+    - id: docker_compose_pull_images
+      description: Télécharger toutes les images des services
+      tags: [docker, compose, pull, images, télécharger]
+      command: "docker-compose pull"
+      explanation: Télécharge toutes les images nécessaires pour les services.
+
+    - id: docker_compose_build_images
+      description: Reconstruire les images des services
+      tags: [docker, compose, build, images, reconstruire]
+      command: "docker-compose build --no-cache"
+      explanation: Reconstruit toutes les images sans utiliser le cache.
+
+  # ===== Réseau =====
+  network:
+    - id: docker_compose_networks
+      description: Lister les réseaux créés par Docker Compose
+      tags: [docker, compose, networks, lister, réseaux]
+      command: "docker-compose network ls"
+      explanation: Affiche la liste des réseaux créés par Docker Compose.
+
+    - id: docker_compose_network_inspect
+      description: Inspecter un réseau spécifique
+      tags: [docker, compose, network, inspect, détails, réseau]
+      command: "docker network inspect nom_du_réseau"
+      explanation: Affiche des informations détaillées sur un réseau Docker.
+      note: "Utilisez `docker-compose network ls` pour lister les réseaux."
+
+  # ===== Volumes =====
+  volumes:
+    - id: docker_compose_volumes
+      description: Lister les volumes créés par Docker Compose
+      tags: [docker, compose, volumes, lister]
+      command: "docker-compose volume ls"
+      explanation: Affiche la liste des volumes créés par Docker Compose.
+
+    - id: docker_compose_volume_inspect
+      description: Inspecter un volume spécifique
+      tags: [docker, compose, volume, inspect, détails]
+      command: "docker volume inspect nom_du_volume"
+      explanation: Affiche des informations détaillées sur un volume Docker.
+
+  # ===== Fichier docker-compose.yml =====
+  docker_compose_file:
+    - id: docker_compose_version
+      description: Spécifier la version du schéma Docker Compose
+      tags: [docker, compose, version, schéma, yaml]
+      yaml: |
+        version: "3.8"
+      explanation: |
+        Spécifie la version du schéma Docker Compose.
+        - **Version 1** : Format ancien (sans `version`).
+        - **Version 2.x** : Ajout de fonctionnalités comme `depends_on`, `healthcheck`.
+        - **Version 3.x** : Compatible avec Docker Swarm, suppression de certaines options (ex: `extends`).
+        - **Recommandation** : Utilisez la version **3.8** pour une compatibilité maximale.
+
+    - id: docker_compose_services
+      description: Définir les services dans docker-compose.yml
+      tags: [docker, compose, services, conteneurs, yaml]
+      yaml: |
+        services:
+          web:
+            image: nginx:latest
+            ports:
+              - "80:80"
+            volumes:
+              - ./html:/usr/share/nginx/html
+            environment:
+              - NGINX_ENV=production
+            restart: unless-stopped
+      explanation: |
+        Définit un ou plusieurs services (conteneurs) dans le fichier `docker-compose.yml`.
+        **Options courantes** :
+        - `image` : Image Docker à utiliser.
+        - `build` : Chemin vers un `Dockerfile` pour construire l'image.
+        - `ports` : Mappage des ports (`hôte:conteneur`).
+        - `volumes` : Montage de volumes (`local:conteneur`).
+        - `environment` : Variables d'environnement.
+        - `restart` : Politique de redémarrage (`no`, `always`, `on-failure`, `unless-stopped`).
+        - `depends_on` : Dépendances entre services.
+
+    - id: docker_compose_build
+      description: Construire une image personnalisée
+      tags: [docker, compose, build, image, Dockerfile]
+      yaml: |
+        services:
+          app:
+            build:
+              context: .
+              dockerfile: Dockerfile
+              args:
+                NODE_ENV: production
+      explanation: |
+        Utilise un `Dockerfile` pour construire une image personnalisée.
+        **Options** :
+        - `context` : Répertoire contenant le `Dockerfile` (par défaut : `.`).
+        - `dockerfile` : Nom du fichier Dockerfile (par défaut : `Dockerfile`).
+        - `args` : Variables passées au `Dockerfile` (via `ARG`).
+
+    - id: docker_compose_ports
+      description: Configurer le mappage des ports
+      tags: [docker, compose, ports, mappage, réseau]
+      yaml: |
+        services:
+          web:
+            image: nginx
+            ports:
+              - "8080:80"   # Hôte:8080 → Conteneur:80
+              - "443:443"   # Hôte:443 → Conteneur:443
+              - "127.0.0.1:3000:3000"  # Seule l'IP locale peut accéder au port 3000
+      explanation: |
+        Mappe les ports du conteneur vers l'hôte.
+        **Formats** :
+        - `"8080:80"` : Port 8080 de l'hôte → port 80 du conteneur.
+        - `"127.0.0.1:3000:3000"` : Seule l'IP locale peut accéder au port 3000 du conteneur.
+
+    - id: docker_compose_volumes
+      description: Configurer les volumes
+      tags: [docker, compose, volumes, montage, stockage]
+      yaml: |
+        services:
+          db:
+            image: postgres
+            volumes:
+              - db_data:/var/lib/postgresql/data
+              - ./backup:/backup
+        volumes:
+          db_data:
+      explanation: |
+        Monte des volumes pour persister les données ou partager des fichiers.
+        **Types de volumes** :
+        - **Volume nommé** (`db_data`) : Géré par Docker (persistant même si le conteneur est supprimé).
+        - **Volume anonyme** : Créé automatiquement si non défini (ex: `./data`).
+        - **Volume lié** (`./backup:/backup`) : Lie un répertoire local à un répertoire dans le conteneur.
+
+    - id: docker_compose_environment
+      description: Définir des variables d'environnement
+      tags: [docker, compose, environment, variables, env]
+      yaml: |
+        services:
+          app:
+            image: myapp
+            environment:
+              - DB_HOST=db
+              - DB_USER=admin
+              - DB_PASS=${DB_PASSWORD}  # Variable définie dans un fichier .env
+            env_file:
+              - .env
+      explanation: |
+        Définit des variables d'environnement pour un service.
+        **Options** :
+        - `environment` : Variables définies directement dans le fichier YAML.
+        - `env_file` : Charge les variables depuis un fichier (ex: `.env`).
+        - **Variables dynamiques** : Utilisez `${VARIABLE}` pour référencer des variables du fichier `.env`.
+
+    - id: docker_compose_depends_on
+      description: Définir des dépendances entre services
+      tags: [docker, compose, depends_on, dépendances, ordre]
+      yaml: |
+        services:
+          web:
+            image: nginx
+            depends_on:
+              - app
+              - db
+          app:
+            image: myapp
+          db:
+            image: postgres
+      explanation: |
+        Spécifie que le service `web` dépend des services `app` et `db`.
+        **Note** : `depends_on` ne garantit pas que les services dépendants soient prêts (ex: base de données initialisée). Utilisez des `healthcheck` pour cela.
+
+    - id: docker_compose_networks
+      description: Configurer des réseaux personnalisés
+      tags: [docker, compose, networks, réseau, personnalisé]
+      yaml: |
+        services:
+          web:
+            image: nginx
+            networks:
+              - frontend
+              - backend
+          db:
+            image: postgres
+            networks:
+              - backend
+        networks:
+          frontend:
+          backend:
+      explanation: |
+        Définit des réseaux personnalisés pour isoler ou connecter des services.
+        **Options** :
+        - Si le réseau n'est pas défini dans `networks`, Docker Compose le crée automatiquement.
+        - Utilisez `external: true` pour utiliser un réseau existant.
+
+    - id: docker_compose_healthcheck
+      description: Ajouter un healthcheck à un service
+      tags: [docker, compose, healthcheck, santé, service]
+      yaml: |
+        services:
+          db:
+            image: postgres
+            healthcheck:
+              test: ["CMD-SHELL", "pg_isready -U postgres"]
+              interval: 5s
+              timeout: 5s
+              retries: 5
+      explanation: |
+        Définit un test de santé pour un service.
+        **Options** :
+        - `test` : Commande pour vérifier la santé (ex: `CMD-SHELL` ou `CMD`).
+        - `interval` : Intervalle entre les tests (ex: `5s`).
+        - `timeout` : Temps maximum pour le test (ex: `5s`).
+        - `retries` : Nombre de tentatives avant de marquer le service comme "malade".
+
+    - id: docker_compose_restart
+      description: Configurer la politique de redémarrage
+      tags: [docker, compose, restart, redémarrage, politique]
+      yaml: |
+        services:
+          app:
+            image: myapp
+            restart: unless-stopped
+      explanation: |
+        Définit la politique de redémarrage d'un conteneur.
+        **Options** :
+        - `no` : Ne redémarre jamais (par défaut).
+        - `always` : Redémarre toujours après un arrêt.
+        - `on-failure` : Redémarre uniquement en cas d'erreur.
+        - `unless-stopped` : Redémarre toujours, sauf si explicitement arrêté.
+
+    - id: docker_compose_secrets
+      description: Utiliser des secrets pour les données sensibles
+      tags: [docker, compose, secrets, données, sensibles]
+      yaml: |
+        services:
+          app:
+            image: myapp
+            secrets:
+              - db_password
+        secrets:
+          db_password:
+            file: ./secrets/db_password.txt
+      explanation: |
+        Utilise des secrets pour stocker des données sensibles (ex: mots de passe).
+        **Options** :
+        - `file` : Chemin vers un fichier contenant le secret.
+        - `external` : Utilise un secret existant (créé avec `docker secret create`).
+
+    - id: docker_compose_extends
+      description: Étendre un service existant
+      tags: [docker, compose, extends, héritage, service]
+      yaml: |
+        services:
+          base:
+            image: alpine
+            command: sleep infinity
+          app:
+            extends:
+              file: common-services.yml
+              service: base
+            volumes:
+              - ./app:/app
+      explanation: |
+        Permet de réutiliser la configuration d'un service existant (dans le même fichier ou un fichier externe).
+        **Note** : Non compatible avec la version 3.x de Docker Compose.
+
+    - id: docker_compose_profiles
+      description: Utiliser des profils pour activer/désactiver des services
+      tags: [docker, compose, profiles, service, conditionnel]
+      yaml: |
+        services:
+          app:
+            image: myapp
+            profiles: ["dev"]
+          db:
+            image: postgres
+            profiles: ["dev", "prod"]
+      explanation: |
+        Permet de démarrer uniquement les services associés à un profil.
+        **Utilisation** :
+        - `docker-compose --profile dev up` : Démarre uniquement les services avec le profil `dev`.
+        - `docker-compose --profile dev --profile prod up` : Démarre les services avec les profils `dev` ou `prod`.
+
+  # ===== Variables et Fichiers .env =====
+  env_file:
+    - id: docker_compose_env_file
+      description: Utiliser un fichier .env pour les variables
+      tags: [docker, compose, env, variables, fichier]
+      yaml: |
+        # docker-compose.yml
+        services:
+          app:
+            image: myapp
+            environment:
+              - DB_HOST=${DB_HOST}
+              - DB_PORT=${DB_PORT}
+      explanation: |
+        Charge les variables depuis un fichier `.env` dans le même répertoire que `docker-compose.yml`.
+        **Exemple de fichier `.env`** :
+        ```
+        DB_HOST=db
+        DB_PORT=5432
+        ```
+      note: "Le fichier `.env` ne doit **pas** être versionné (ajoutez-le à `.gitignore`)."
+
+    - id: docker_compose_variable_substitution
+      description: Substitution de variables dans docker-compose.yml
+      tags: [docker, compose, variables, substitution, "${VAR}"]
+      yaml: |
+        services:
+          app:
+            image: myapp:${TAG}
+            ports:
+              - "${HOST_PORT}:${CONTAINER_PORT}"
+      explanation: |
+        Utilise des variables définies dans le fichier `.env` ou passées en ligne de commande.
+        **Exemple d'utilisation** :
+        ```bash
+        TAG=latest HOST_PORT=8080 CONTAINER_PORT=80 docker-compose up
+        ```
+
+  # ===== Exemples Complets =====
+  examples:
+    - id: docker_compose_example_web_app
+      description: Exemple complet : Application web avec Nginx, Node.js et PostgreSQL
+      tags: [docker, compose, exemple, web, nginx, nodejs, postgres]
+      yaml: |
+        version: "3.8"
+
+        services:
+          # Service Nginx (reverse proxy)
+          web:
+            image: nginx:alpine
+            ports:
+              - "80:80"
+              - "443:443"
+            volumes:
+              - ./nginx/conf.d:/etc/nginx/conf.d
+              - ./nginx/ssl:/etc/nginx/ssl
+              - ./app/dist:/usr/share/nginx/html
+            depends_on:
+              - app
+            networks:
+              - frontend
+              - backend
+
+          # Service Node.js (backend)
+          app:
+            build:
+              context: ./app
+              dockerfile: Dockerfile
+            environment:
+              - NODE_ENV=production
+              - DB_HOST=db
+              - DB_PORT=5432
+              - DB_USER=${DB_USER}
+              - DB_PASS=${DB_PASS}
+            volumes:
+              - ./app:/app
+              - /app/node_modules
+            command: npm start
+            depends_on:
+              - db
+            networks:
+              - backend
+
+          # Service PostgreSQL (base de données)
+          db:
+            image: postgres:13
+            environment:
+              - POSTGRES_USER=${DB_USER}
+              - POSTGRES_PASSWORD=${DB_PASS}
+              - POSTGRES_DB=myapp
+            volumes:
+              - postgres_data:/var/lib/postgresql/data
+            healthcheck:
+              test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+              interval: 5s
+              timeout: 5s
+              retries: 5
+            networks:
+              - backend
+
+        # Volumes
+        volumes:
+          postgres_data:
+
+        # Réseaux
+        networks:
+          frontend:
+          backend:
+
+      explanation: |
+        Exemple complet d'une application web avec :
+        - **Nginx** comme reverse proxy.
+        - **Node.js** pour le backend.
+        - **PostgreSQL** pour la base de données.
+        - **Volumes** pour persister les données de PostgreSQL.
+        - **Réseaux** pour isoler le frontend et le backend.
+        - **Variables d'environnement** pour la configuration.
+
+    - id: docker_compose_example_wordpress
+      description: Exemple complet : WordPress avec MySQL
+      tags: [docker, compose, exemple, wordpress, mysql, php]
+      yaml: |
+        version: "3.8"
+
+        services:
+          # Service WordPress
+          wordpress:
+            image: wordpress:latest
+            ports:
+              - "80:80"
+            volumes:
+              - wordpress_data:/var/www/html
+            environment:
+              - WORDPRESS_DB_HOST=db
+              - WORDPRESS_DB_USER=${DB_USER}
+              - WORDPRESS_DB_PASSWORD=${DB_PASS}
+              - WORDPRESS_DB_NAME=wordpress
+            depends_on:
+              - db
+            networks:
+              - wordpress_network
+
+          # Service MySQL
+          db:
+            image: mysql:5.7
+            environment:
+              - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASS}
+              - MYSQL_DATABASE=wordpress
+              - MYSQL_USER=${DB_USER}
+              - MYSQL_PASSWORD=${DB_PASS}
+            volumes:
+              - mysql_data:/var/lib/mysql
+            networks:
+              - wordpress_network
+
+        # Volumes
+        volumes:
+          wordpress_data:
+          mysql_data:
+
+        # Réseaux
+        networks:
+          wordpress_network:
+
+      explanation: |
+        Exemple complet pour déployer WordPress avec MySQL :
+        - **WordPress** : Conteneur avec l'application WordPress.
+        - **MySQL** : Conteneur avec la base de données.
+        - **Volumes** : Persistance des données pour WordPress et MySQL.
+        - **Variables d'environnement** : Configuration de la base de données.
+
+    - id: docker_compose_example_redis
+      description: Exemple complet : Application avec Redis
+      tags: [docker, compose, exemple, redis, cache]
+      yaml: |
+        version: "3.8"
+
+        services:
+          # Service Redis
+          redis:
+            image: redis:alpine
+            ports:
+              - "6379:6379"
+            volumes:
+              - redis_data:/data
+            command: redis-server --appendonly yes
+            networks:
+              - app_network
+
+          # Service Application
+          app:
+            image: myapp:latest
+            environment:
+              - REDIS_HOST=redis
+              - REDIS_PORT=6379
+            depends_on:
+              - redis
+            networks:
+              - app_network
+
+        # Volumes
+        volumes:
+          redis_data:
+
+        # Réseaux
+        networks:
+          app_network:
+
+      explanation: |
+        Exemple d'une application utilisant Redis comme cache :
+        - **Redis** : Conteneur avec le serveur Redis.
+        - **Application** : Conteneur qui se connecte à Redis.
+        - **Volume** : Persistance des données Redis.
+
+  # ===== Astuces et Bonnes Pratiques =====
+  tips:
+    - id: docker_compose_tip_1
+      description: Utiliser des noms de services explicites
+      tags: [docker, compose, astuce, noms, services]
+      tip: |
+        Donnez des noms **clairs et descriptifs** à vos services (ex: `web`, `db`, `redis`) pour faciliter la maintenance.
+        Évitez les noms génériques comme `service1`, `container2`.
+
+    - id: docker_compose_tip_2
+      description: Toujours définir un volume pour les bases de données
+      tags: [docker, compose, astuce, volumes, bases de données]
+      tip: |
+        Pour les bases de données (PostgreSQL, MySQL, etc.), **toujours** définir un volume nommé pour éviter la perte de données.
+        Exemple :
+        ```yaml
+        volumes:
+          db_data:
+        ```
+
+    - id: docker_compose_tip_3
+      description: Utiliser des variables d'environnement pour les secrets
+      tags: [docker, compose, astuce, variables, secrets]
+      tip: |
+        Ne **jamais** stocker de mots de passe ou clés secrètes directement dans `docker-compose.yml`.
+        Utilisez un fichier `.env` ou des secrets Docker :
+        ```yaml
+        environment:
+          - DB_PASS=\${DB_PASS}
+        ```
+
+    - id: docker_compose_tip_4
+      description: Limiter les ressources des conteneurs
+      tags: [docker, compose, astuce, ressources, limites]
+      tip: |
+        Limitez les ressources (CPU, mémoire) pour éviter qu'un conteneur ne consomme toutes les ressources de la machine :
+        ```yaml
+        deploy:
+          resources:
+            limits:
+              cpus: "0.5"
+              memory: 512M
+        ```
+        **Note** : `deploy` est compatible avec Docker Compose **version 3.x** et Docker Swarm.
+
+    - id: docker_compose_tip_5
+      description: Utiliser des healthchecks pour les dépendances
+      tags: [docker, compose, astuce, healthcheck, dépendances]
+      tip: |
+        Utilisez des `healthcheck` pour vous assurer qu'un service est prêt avant de démarrer un service dépendant :
+        ```yaml
+        healthcheck:
+          test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+          interval: 30s
+          timeout: 10s
+          retries: 3
+        ```
+
+    - id: docker_compose_tip_6
+      description: Éviter d'utiliser `latest` pour les images
+      tags: [docker, compose, astuce, images, latest]
+      tip: |
+        Évitez d'utiliser le tag `latest` pour les images en production. Préférez des versions spécifiques :
+        ```yaml
+        image: nginx:1.21.6  # Mieux que nginx\:latest
+        ```
+
+    - id: docker_compose_tip_7
+      description: Utiliser des réseaux personnalisés pour l'isolation
+      tags: [docker, compose, astuce, réseaux, isolation]
+      tip: |
+        Utilisez des réseaux personnalisés pour isoler les services et améliorer la sécurité :
+        ```yaml
+        networks:
+          frontend:
+          backend:
+        ```
+
+    - id: docker_compose_tip_8
+      description: Documenter votre docker-compose.yml
+      tags: [docker, compose, astuce, documentation, commentaires]
+      tip: |
+        Ajoutez des **commentaires** dans votre fichier `docker-compose.yml` pour expliquer la configuration :
+        ```yaml
+        # Service Nginx : reverse proxy pour l'application
+        web:
+          image: nginx:1.21.6
+          # Mappe le port 80 de l'hôte au port 80 du conteneur
+          ports:
+            - "80:80"
+        ```
+
+    - id: docker_compose_tip_9
+      description: Utiliser `depends_on` avec prudence
+      tags: [docker, compose, astuce, depends_on, ordre]
+      tip: |
+        `depends_on` ne garantit **pas** que le service dépendant soit prêt (ex: base de données initialisée).
+        Utilisez des `healthcheck` ou des scripts d'initialisation pour vérifier la disponibilité.
+
+    - id: docker_compose_tip_10
+      description: Sauvegarder les volumes importants
+      tags: [docker, compose, astuce, sauvegarde, volumes]
+      tip: |
+        Sauvegardez régulièrement les volumes contenant des données importantes (ex: bases de données) :
+        ```bash
+        docker run --rm -v nom_volume:/volume -v \$(pwd):/backup alpine tar cvf /backup/backup.tar /volume
+        ```
+
+  # ===== Dépannage =====
+  troubleshooting:
+    - id: docker_compose_error_port_already_in_use
+      description: Résoudre "port already in use"
+      tags: [docker, compose, erreur, port, déjà utilisé]
+      causes:
+        - Un autre conteneur ou service utilise déjà le port.
+        - Un processus local (ex: Apache, Nginx) écoute sur le port.
+      solutions:
+        - "Vérifiez les ports utilisés : `sudo netstat -tulnp | grep PORT`."
+        - "Arrêtez le service ou conteneur utilisant le port : `docker-compose down` ou `sudo systemctl stop nginx`."
+        - "Changez le port dans `docker-compose.yml` (ex: `8080:80` au lieu de `80:80`)."
+
+    - id: docker_compose_error_volume_not_found
+      description: Résoudre "volume not found"
+      tags: [docker, compose, erreur, volume, introuvable]
+      causes:
+        - Le volume n'a pas été créé.
+        - Le volume a été supprimé manuellement.
+      solutions:
+        - "Vérifiez que le volume existe : `docker volume ls`."
+        - "Recréez le volume : `docker-compose up -d` (Docker Compose le recréera automatiquement)."
+
+    - id: docker_compose_error_network_not_found
+      description: Résoudre "network not found"
+      tags: [docker, compose, erreur, réseau, introuvable]
+      causes:
+        - Le réseau n'a pas été créé.
+        - Le réseau a été supprimé manuellement.
+      solutions:
+        - "Vérifiez que le réseau existe : `docker network ls`."
+        - "Recréez le réseau : `docker-compose up -d`."
+
+    - id: docker_compose_error_image_not_found
+      description: Résoudre "image not found"
+      tags: [docker, compose, erreur, image, introuvable]
+      causes:
+        - L'image n'existe pas sur Docker Hub ou le registry privé.
+        - L'image n'a pas été construite (`build` manquant).
+        - Erreur de typographie dans le nom de l'image.
+      solutions:
+        - "Vérifiez le nom de l'image : `docker-compose pull`."
+        - "Si l'image est construite localement, utilisez `build:` au lieu de `image:`."
+        - "Vérifiez que vous êtes connecté au registry privé : `docker login`."
+        - "Construisez l'image manuellement : `docker-compose build`."
+        - "Tirez l'image manuellement : `docker pull nom_image`."
+        - "Vérifiez la casse du nom de l'image (Docker est sensible à la casse)."
+
+    - id: docker_compose_error_container_exited
+      description: Résoudre "container exited"
+      tags: [docker, compose, erreur, conteneur, terminé]
+      causes:
+        - Le conteneur a planté (erreur dans l'application).
+        - Le conteneur a terminé son travail (ex: script en `command:`).
+        - Le conteneur n'a pas de processus en cours d'exécution.
+      solutions:
+        - "Vérifiez les logs du conteneur : `docker-compose logs service_name`."
+        - "Démarrez le conteneur en mode interactif pour déboguer : `docker-compose run --rm service_name sh`."
+        - "Vérifiez la commande par défaut du conteneur (ex: `command: sleep infinity` pour garder le conteneur actif)."
+        - "Utilisez `restart: unless-stopped` pour redémarrer automatiquement le conteneur."
+
+    - id: docker_compose_error_permission_denied
+      description: Résoudre "permission denied" pour les volumes
+      tags: [docker, compose, erreur, permission, refusée, volumes]
+      causes:
+        - Les permissions du répertoire local ne permettent pas à Docker d'y accéder.
+        - Le conteneur s'exécute avec un utilisateur différent (ex: `root` vs `www-data`).
+      solutions:
+        - "Vérifiez les permissions du répertoire local : `ls -la /chemin/vers/repertoire`."
+        - "Modifiez les permissions : `chmod -R 755 /chemin/vers/repertoire`."
+        - "Utilisez un utilisateur spécifique dans le conteneur : `user: '1000'` (UID de l'utilisateur local)."
+        - "Ajoutez l'utilisateur du conteneur au groupe du répertoire : `chown -R utilisateur:groupe /chemin/vers/repertoire`."
+        - "Utilisez un volume nommé au lieu d'un volume lié : `volumes: [nom_volume:/chemin/dans/conteneur]`."
+        - "Exécutez le conteneur en tant que `root` (temporairement) : `user: root`."
+
+    - id: docker_compose_error_depends_on
+      description: Résoudre les problèmes avec `depends_on`
+      tags: [docker, compose, erreur, depends_on, dépendances]
+      causes:
+        - Le service dépendant n'est pas prêt (ex: base de données non initialisée).
+        - Le service dépendant a planté.
+      solutions:
+        - "Ajoutez un `healthcheck` au service dépendant pour vérifier sa disponibilité."
+        - "Utilisez un script d'initialisation dans le service dépendant pour attendre qu'il soit prêt."
+        - "Augmentez le `timeout` ou les `retries` dans le `healthcheck`."
+        - "Vérifiez les logs du service dépendant : `docker-compose logs service_dependant`."
+        - "Démarrez manuellement le service dépendant en premier : `docker-compose up -d service_dependant`."
+        - "Utilisez un outil comme `wait-for-it.sh` pour attendre qu'un port soit disponible."
+
+    - id: docker_compose_error_out_of_memory
+      description: Résoudre "out of memory" (OOM)
+      tags: [docker, compose, erreur, mémoire, OOM]
+      causes:
+        - Le conteneur utilise plus de mémoire que disponible.
+        - La machine hôte n'a pas assez de mémoire.
+      solutions:
+        - "Limitez la mémoire du conteneur : `deploy.resources.limits.memory: 512M`."
+        - "Augmentez la mémoire de la machine hôte ou utilisez une machine plus puissante."
+        - "Optimisez votre application pour utiliser moins de mémoire."
+        - "Vérifiez les logs pour identifier le conteneur problématique : `docker-compose logs`."
+        - "Utilisez `docker stats` pour surveiller l'utilisation de la mémoire."
+
+    - id: docker_compose_error_build_failed
+      description: Résoudre "build failed"
+      tags: [docker, compose, erreur, build, échoué]
+      causes:
+        - Erreur dans le `Dockerfile`.
+        - Dépendances manquantes dans le `Dockerfile`.
+        - Problème de réseau (impossible de télécharger des paquets).
+      solutions:
+        - "Vérifiez les logs de construction : `docker-compose build --no-cache`."
+        - "Corrigez les erreurs dans le `Dockerfile` (ex: `RUN apt-get update` avant `RUN apt-get install`)."
+        - "Vérifiez que toutes les dépendances sont installées dans le `Dockerfile`."
+        - "Utilisez un réseau différent pour le build : `network_mode: host` (temporairement)."
+        - "Augmentez le timeout de build : `docker-compose build --build-arg COMPOSER_ALLOW_SUPERUSER=1`."
+        - "Vérifiez que le contexte de build (`context`) contient tous les fichiers nécessaires."
+
+    - id: docker_compose_error_connection_refused
+      description: Résoudre "connection refused" entre conteneurs
+      tags: [docker, compose, erreur, connexion, refusée, conteneurs]
+      causes:
+        - Le service cible n'est pas démarré.
+        - Le service cible écoute sur une adresse ou un port différent.
+        - Problème de réseau (les conteneurs ne sont pas sur le même réseau).
+      solutions:
+        - "Vérifiez que le service cible est démarré : `docker-compose ps`."
+        - "Vérifiez que le service cible écoute sur le bon port : `docker-compose exec service_cible netstat -tulnp`."
+        - "Utilisez le nom du service comme nom d'hôte (ex: `db:5432` au lieu de `localhost:5432`)."
+        - "Vérifiez que les conteneurs sont sur le même réseau : `docker-compose exec service_name ip a`."
+        - "Vérifiez les logs du service cible : `docker-compose logs service_cible`."
+        - "Testez la connexion depuis le conteneur source : `docker-compose exec service_source curl -v http://service_cible:port`."
+        - "Vérifiez que le service cible n'a pas de `healthcheck` qui échoue."
+
+  # ===== Commandes Docker Compose avec Docker Swarm =====
+  swarm:
+    - id: docker_compose_stack_deploy
+      description: Déployer une stack avec Docker Swarm
+      tags: [docker, compose, swarm, stack, deploy, déployer]
+      command: "docker stack deploy -c docker-compose.yml nom_de_la_stack"
+      explanation: Déploie une stack de services sur un cluster Docker Swarm.
+      options:
+        - "-c docker-compose.yml": "Spécifie le fichier de configuration."
+        - "--with-registry-auth": "Utilise les identifiants du registry Docker."
+      example: "docker stack deploy -c docker-compose.yml myapp"
+
+    - id: docker_compose_stack_list
+      description: Lister les stacks déployées
+      tags: [docker, compose, swarm, stack, lister]
+      command: "docker stack ls"
+      explanation: Affiche la liste des stacks déployées sur le cluster Swarm.
+
+    - id: docker_compose_stack_remove
+      description: Supprimer une stack
+      tags: [docker, compose, swarm, stack, supprimer]
+      command: "docker stack rm nom_de_la_stack"
+      explanation: Supprime une stack et tous ses services, conteneurs, réseaux et volumes associés.
+
+    - id: docker_compose_stack_ps
+      description: Lister les services d'une stack
+      tags: [docker, compose, swarm, stack, services, lister]
+      command: "docker stack ps nom_de_la_stack"
+      explanation: Affiche la liste des services et conteneurs d'une stack.
+
+    - id: docker_compose_stack_services
+      description: Lister les services d'une stack
+      tags: [docker, compose, swarm, stack, services]
+      command: "docker stack services nom_de_la_stack"
+      explanation: Affiche la liste des services d'une stack avec leur statut.
+
+  # ===== Outils Complémentaires =====
+  tools:
+    - id: docker_compose_override
+      description: Utiliser un fichier docker-compose.override.yml
+      tags: [docker, compose, override, fichier, développement]
+      explanation: |
+        Docker Compose charge automatiquement un fichier `docker-compose.override.yml` s'il existe dans le même répertoire que `docker-compose.yml`.
+        **Utilisation** :
+        - Placez les configurations spécifiques au développement dans `docker-compose.override.yml`.
+        - Exemple : Montage de volumes supplémentaires pour le développement.
+      example: |
+        # docker-compose.override.yml
+        version: "3.8"
+        services:
+          app:
+            volumes:
+              - ./app:/app
+            environment:
+              - NODE_ENV=development
+
+    - id: docker_compose_multiple_files
+      description: Utiliser plusieurs fichiers de configuration
+      tags: [docker, compose, fichiers, multiples, -f]
+      command: "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d"
+      explanation: |
+        Permet de combiner plusieurs fichiers de configuration Docker Compose.
+        **Utilisation** :
+        - `docker-compose.yml` : Configuration de base.
+        - `docker-compose.prod.yml` : Configuration spécifique à la production.
+      example: |
+        # docker-compose.prod.yml
+        version: "3.8"
+        services:
+          app:
+            environment:
+              - NODE_ENV=production
+            deploy:
+              replicas: 3
+
+    - id: docker_compose_env_file
+      description: Spécifier un fichier .env personnalisé
+      tags: [docker, compose, env, fichier, personnalisé]
+      command: "docker-compose --env-file .env.prod up -d"
+      explanation: Utilise un fichier `.env` personnalisé au lieu du fichier `.env` par défaut.
+
+    - id: docker_compose_project_name
+      description: Changer le nom du projet
+      tags: [docker, compose, projet, nom, -p]
+      command: "docker-compose -p mon_projet up -d"
+      explanation: |
+        Change le nom du projet (par défaut, le nom du répertoire).
+        **Utilisation** :
+        - Utile pour éviter les conflits de noms entre différents projets.
+        - Les conteneurs, réseaux et volumes seront préfixés par `mon_projet_`.
+
+    - id: docker_compose_dry_run
+      description: Simuler une commande sans l'exécuter
+      tags: [docker, compose, dry run, simulation, --dry-run]
+      command: "docker-compose config --services"
+      explanation: |
+        Affiche la configuration finale sans démarrer les conteneurs.
+        **Options utiles** :
+        - `docker-compose config --services`: Liste les services.
+        - `docker-compose config --volumes`: Liste les volumes.
+
