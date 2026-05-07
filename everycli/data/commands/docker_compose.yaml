@@ -197,7 +197,7 @@ docker_compose:
         Spécifie la version du schéma Docker Compose.
         - **Version 1** : Format ancien (sans `version`).
         - **Version 2.x** : Ajout de fonctionnalités comme `depends_on`, `healthcheck`.
-        - **Version 3.x** : Compatible avec Docker Swarm, suppression de certaines options (ex: `extends`).
+        - "**Version 3.x** : Compatible avec Docker Swarm, suppression de certaines options (ex: `extends`)."
         - **Recommandation** : Utilisez la version **3.8** pour une compatibilité maximale.
 
     - id: docker_compose_services
@@ -276,7 +276,7 @@ docker_compose:
         Monte des volumes pour persister les données ou partager des fichiers.
         **Types de volumes** :
         - **Volume nommé** (`db_data`) : Géré par Docker (persistant même si le conteneur est supprimé).
-        - **Volume anonyme** : Créé automatiquement si non défini (ex: `./data`).
+        - "**Volume anonyme** : Créé automatiquement si non défini (ex: `./data`)."
         - **Volume lié** (`./backup:/backup`) : Lie un répertoire local à un répertoire dans le conteneur.
 
     - id: docker_compose_environment
@@ -296,7 +296,7 @@ docker_compose:
         Définit des variables d'environnement pour un service.
         **Options** :
         - `environment` : Variables définies directement dans le fichier YAML.
-        - `env_file` : Charge les variables depuis un fichier (ex: `.env`).
+        - "`env_file` : Charge les variables depuis un fichier (ex: `.env`)."
         - **Variables dynamiques** : Utilisez `${VARIABLE}` pour référencer des variables du fichier `.env`.
 
     - id: docker_compose_depends_on
@@ -355,9 +355,9 @@ docker_compose:
       explanation: |
         Définit un test de santé pour un service.
         **Options** :
-        - `test` : Commande pour vérifier la santé (ex: `CMD-SHELL` ou `CMD`).
-        - `interval` : Intervalle entre les tests (ex: `5s`).
-        - `timeout` : Temps maximum pour le test (ex: `5s`).
+        - "`test` : Commande pour vérifier la santé (ex: `CMD-SHELL` ou `CMD`)."
+        - "`interval` : Intervalle entre les tests (ex: `5s`)."
+        - "`timeout` : Temps maximum pour le test (ex: `5s`)."
         - `retries` : Nombre de tentatives avant de marquer le service comme "malade".
 
     - id: docker_compose_restart
