@@ -470,7 +470,7 @@ docker_compose:
   # ===== Exemples Complets =====
   examples:
     - id: docker_compose_example_web_app
-      description: Exemple complet : Application web avec Nginx, Node.js et PostgreSQL
+      description: "Exemple complet : Application web avec Nginx, Node.js et PostgreSQL"
       tags: [docker, compose, exemple, web, nginx, nodejs, postgres]
       yaml: |
         version: "3.8"
@@ -548,7 +548,7 @@ docker_compose:
         - **Variables d'environnement** pour la configuration.
 
     - id: docker_compose_example_wordpress
-      description: Exemple complet : WordPress avec MySQL
+      description: "Exemple complet : WordPress avec MySQL"
       tags: [docker, compose, exemple, wordpress, mysql, php]
       yaml: |
         version: "3.8"
@@ -601,7 +601,7 @@ docker_compose:
         - **Variables d'environnement** : Configuration de la base de données.
 
     - id: docker_compose_example_redis
-      description: Exemple complet : Application avec Redis
+      description: "Exemple complet : Application avec Redis"
       tags: [docker, compose, exemple, redis, cache]
       yaml: |
         version: "3.8"
@@ -646,7 +646,7 @@ docker_compose:
   # ===== Astuces et Bonnes Pratiques =====
   tips:
     - id: docker_compose_tip_1
-      description: Utiliser des noms de services explicites
+      description: "Utiliser des noms de services explicites"
       tags: [docker, compose, astuce, noms, services]
       tip: |
         Donnez des noms **clairs et descriptifs** à vos services (ex: `web`, `db`, `redis`) pour faciliter la maintenance.
@@ -664,7 +664,7 @@ docker_compose:
         ```
 
     - id: docker_compose_tip_3
-      description: Utiliser des variables d'environnement pour les secrets
+      description: "Utiliser des variables d'environnement pour les secrets"
       tags: [docker, compose, astuce, variables, secrets]
       tip: |
         Ne **jamais** stocker de mots de passe ou clés secrètes directement dans `docker-compose.yml`.
@@ -675,7 +675,7 @@ docker_compose:
         ```
 
     - id: docker_compose_tip_4
-      description: Limiter les ressources des conteneurs
+      description: "Limiter les ressources des conteneurs"
       tags: [docker, compose, astuce, ressources, limites]
       tip: |
         Limitez les ressources (CPU, mémoire) pour éviter qu'un conteneur ne consomme toutes les ressources de la machine :
@@ -702,13 +702,29 @@ docker_compose:
         ```
 
     - id: docker_compose_tip_6
-      description: Éviter d'utiliser `latest` pour les images
-      tags: [docker, compose, astuce, images, latest]
-      tip: |
-        Évitez d'utiliser le tag `latest` pour les images en production. Préférez des versions spécifiques :
-        ```yaml
-        image: nginx:1.21.6  # Mieux que nginx\:latest
-        ```
+      description: "Éviter d'utiliser `latest` pour les images"
+      tags: ["docker", "compose", "astuce", "images", "latest"]
+      tip: "Évitez d'utiliser le tag `latest` pour les images en production. Préférez des versions spécifiques : image: nginx:1.21.6"
+
+    - id: docker_compose_tip_10
+      description: "Sauvegarder les volumes importants"
+      tags: ["docker", "compose", "astuce", "sauvegarde", "volumes"]
+      tip: "Sauvegardez régulièrement les volumes : docker run --rm -v nom_volume:/volume -v $(pwd):/backup alpine tar cvf /backup/backup.tar /volume"
+    - id: docker_compose_error_connection_refused
+      escription: "Résoudre 'connection refused' entre conteneurs"
+      tags: ["docker", "compose", "erreur", "connexion", "refusée"]
+      causes:
+        - "Le service cible n'est pas démarré."
+        - "Le service cible écoute sur une adresse ou un port différent."
+        - "Problème de réseau (les conteneurs ne sont pas sur le même réseau)."
+      solutions:
+        - "Vérifiez que le service cible est démarré : `docker-compose ps`."
+        - "Vérifiez que le service cible écoute sur le bon port : `docker-compose exec service_cible netstat -tulnp`."
+        - "Utilisez le nom du service comme nom d'hôte (ex: `db:5432` au lieu de `localhost:5432`)."
+        - "Vérifiez que les conteneurs sont sur le même réseau : `docker-compose exec service_name ip a`."
+        - "Vérifiez les logs du service cible : `docker-compose logs service_cible`."
+        - "Testez la connexion depuis le conteneur source : `docker-compose exec service_source curl -v http://service_cible:port`."
+        - "Vérifiez que le service cible n'a pas de `healthcheck` qui échoue."
 
     - id: docker_compose_tip_7
       description: Utiliser des réseaux personnalisés pour l'isolation
@@ -741,15 +757,6 @@ docker_compose:
       tip: |
         `depends_on` ne garantit **pas** que le service dépendant soit prêt (ex: base de données initialisée).
         Utilisez des `healthcheck` ou des scripts d'initialisation pour vérifier la disponibilité.
-
-    - id: docker_compose_tip_10
-      description: Sauvegarder les volumes importants
-      tags: [docker, compose, astuce, sauvegarde, volumes]
-      tip: |
-        Sauvegardez régulièrement les volumes contenant des données importantes (ex: bases de données) :
-        ```bash
-        docker run --rm -v nom_volume:/volume -v \$(pwd):/backup alpine tar cvf /backup/backup.tar /volume
-        ```
 
   # ===== Dépannage =====
   troubleshooting:
@@ -817,7 +824,7 @@ docker_compose:
       tags: [docker, compose, erreur, permission, refusée, volumes]
       causes:
         - Les permissions du répertoire local ne permettent pas à Docker d'y accéder.
-        - Le conteneur s'exécute avec un utilisateur différent (ex: `root` vs `www-data`).
+        - "Le conteneur s'exécute avec un utilisateur différent (ex: `root` vs `www-data`)."
       solutions:
         - "Vérifiez les permissions du répertoire local : `ls -la /chemin/vers/repertoire`."
         - "Modifiez les permissions : `chmod -R 755 /chemin/vers/repertoire`."
@@ -868,23 +875,7 @@ docker_compose:
         - "Augmentez le timeout de build : `docker-compose build --build-arg COMPOSER_ALLOW_SUPERUSER=1`."
         - "Vérifiez que le contexte de build (`context`) contient tous les fichiers nécessaires."
 
-    - id: docker_compose_error_connection_refused
-      description: Résoudre "connection refused" entre conteneurs
-      tags: [docker, compose, erreur, connexion, refusée, conteneurs]
-      causes:
-        - Le service cible n'est pas démarré.
-        - Le service cible écoute sur une adresse ou un port différent.
-        - Problème de réseau (les conteneurs ne sont pas sur le même réseau).
-      solutions:
-        - "Vérifiez que le service cible est démarré : `docker-compose ps`."
-        - "Vérifiez que le service cible écoute sur le bon port : `docker-compose exec service_cible netstat -tulnp`."
-        - "Utilisez le nom du service comme nom d'hôte (ex: `db:5432` au lieu de `localhost:5432`)."
-        - "Vérifiez que les conteneurs sont sur le même réseau : `docker-compose exec service_name ip a`."
-        - "Vérifiez les logs du service cible : `docker-compose logs service_cible`."
-        - "Testez la connexion depuis le conteneur source : `docker-compose exec service_source curl -v http://service_cible:port`."
-        - "Vérifiez que le service cible n'a pas de `healthcheck` qui échoue."
-
-  # ===== Commandes Docker Compose avec Docker Swarm =====
+    # ===== Commandes Docker Compose avec Docker Swarm =====
   swarm:
     - id: docker_compose_stack_deploy
       description: Déployer une stack avec Docker Swarm
