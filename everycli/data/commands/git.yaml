@@ -1,4 +1,4 @@
-﻿- id: git_replace_in_commits
+- id: git_replace_in_commits
   description: Remplacer un mot dans tous les messages de commits
   tags: [git, commit, remplacer, historique, message, réécrire]
   commands:
@@ -37,8 +37,8 @@
       fix: "Vérifie ton historique avec : git log --oneline"
 
 - id: git_stash_changes
-  description: Mettre mes changements de côté temporairement
-  tags: [git, stash, sauvegarder, temporaire, côté, mettre, suspendre]
+  description: Sauvegarder mon travail sans commiter (mettre de côté)
+  tags: [git, stash, sauvegarder, temporaire, côté, mettre, suspendre, sans, commiter]
   commands:
     linux: "git stash"
     windows: "git stash"
@@ -230,8 +230,8 @@
 # ── Stash ─────────────────────────────────────────────────────────────────────
 
 - id: git_stash_changes
-  description: Mettre mes changements de côté temporairement
-  tags: [git, stash, sauvegarder, temporaire, côté, mettre, suspendre, ranger]
+  description: Sauvegarder mon travail sans commiter (mettre de côté)
+  tags: [git, stash, sauvegarder, temporaire, côté, mettre, suspendre, ranger, sans, commiter]
   commands:
     linux: "git stash"
     windows: "git stash"
