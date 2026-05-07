@@ -1,6 +1,6 @@
 - id: git_replace_in_commits
-  description: Remplacer un mot dans tous les messages de commits
-  tags: [git, commit, remplacer, historique, message, réécrire]
+  description: Remplacer ou modifier un mot dans tous les messages de commits
+  tags: [git, commit, remplacer, modifier, historique, message, réécrire, mot, tous, tout]
   commands:
     linux: "git filter-branch --msg-filter 'sed s/ancien/nouveau/g' -- --all"
     windows: "git filter-branch --msg-filter \"sed 's/ancien/nouveau/g'\" -- --all"
@@ -190,8 +190,8 @@
   warning: Cette action est irréversible. Les changements non commités seront perdus.
 
 - id: git_replace_in_commits
-  description: Remplacer un mot dans tous les messages de commits
-  tags: [git, commit, remplacer, historique, message, réécrire, mot]
+  description: Remplacer ou modifier un mot dans tous les messages de commits
+  tags: [git, commit, remplacer, modifier, historique, message, réécrire, mot, tous, tout]
   commands:
     linux: "git filter-branch --msg-filter 'sed s/ancien/nouveau/g' -- --all"
     windows: "git filter-branch --msg-filter \"sed 's/ancien/nouveau/g'\" -- --all"

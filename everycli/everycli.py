@@ -14,7 +14,7 @@ from everycli.core.add_engine import AddEngine
 from everycli.infra.os_resolver import OSResolver
 from everycli.infra.yaml_loader import YamlLoader
 from everycli.infra.yaml_writer import YamlWriter
-from everycli.infra.tfidf_matcher import TFIDFMatcher
+from everycli.infra.hybrid_matcher import HybridMatcher
 from everycli.infra.rich_formatter import RichFormatter
 from everycli.infra.shell_runner import ShellRunner
 from everycli.infra.clipboard_copy import ClipboardCopy
@@ -29,7 +29,7 @@ ENVIRONMENTS = ["git", "linux", "docker", "npm", "ssh", "other"]
 def _build_search_engine() -> SearchEngine:
     engine = SearchEngine(
         loader=YamlLoader(DATA_DIR),
-        matcher=TFIDFMatcher(),
+        matcher=HybridMatcher(semantic_weight=0.6),
         os_resolver=OSResolver(),
     )
     engine.boot()
