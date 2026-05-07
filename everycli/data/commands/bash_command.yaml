@@ -1,0 +1,1437 @@
+# Commandes Shell/Bash (YAML)
+bash_commands:
+
+  # ===== Navigation et Répertoires =====
+  navigation:
+    - id: bash_pwd
+      description: Afficher le répertoire courant
+      tags: [bash, pwd, répertoire, courant, chemin]
+      command: "pwd"
+      explanation: Affiche le chemin absolu du répertoire de travail actuel.
+
+    - id: bash_ls
+      description: Lister les fichiers et répertoires
+      tags: [bash, ls, lister, fichiers, répertoires]
+      command: "ls"
+      explanation: Liste les fichiers et répertoires dans le répertoire courant.
+      options:
+        - "-l": "Affiche les détails (permissions, propriétaire, taille, date)."
+        - "-a": "Affiche les fichiers cachés (commencant par `.`)."
+        - "-h": "Affiche les tailles en format lisible (Ko, Mo, Go)."
+        - "-R": "Liste récursivement les sous-répertoires."
+      example: "ls -lh"
+
+    - id: bash_cd
+      description: Changer de répertoire
+      tags: [bash, cd, changer, répertoire, chemin]
+      command: "cd /chemin/vers/repertoire"
+      explanation: Change le répertoire de travail actuel.
+      examples:
+        - "cd ~": "Retourne au répertoire personnel (`/home/utilisateur`)."
+        - "cd ..": "Remonte d'un niveau dans l'arborescence."
+        - "cd -": "Retourne au répertoire précédent."
+
+    - id: bash_mkdir
+      description: Créer un répertoire
+      tags: [bash, mkdir, créer, répertoire]
+      command: "mkdir nom_du_repertoire"
+      explanation: Crée un nouveau répertoire.
+      options:
+        - "-p": "Crée les répertoires parents si nécessaire (ex: `mkdir -p chemin/vers/repertoire`)."
+
+    - id: bash_rmdir
+      description: Supprimer un répertoire vide
+      tags: [bash, rmdir, supprimer, répertoire, vide]
+      command: "rmdir nom_du_repertoire"
+      explanation: Supprime un répertoire **vide**. Échoue si le répertoire contient des fichiers.
+
+    - id: bash_pushd_popd
+      description: Sauvegarder et restaurer le répertoire courant
+      tags: [bash, pushd, popd, sauvegarder, restaurer, répertoire]
+      command: "pushd /chemin/vers/repertoire && popd"
+      explanation: |
+        - `pushd` : Sauvegarde le répertoire courant et bascule vers un nouveau répertoire.
+        - `popd` : Retourne au répertoire sauvegardé précédemment.
+
+  # ===== Manipulation de Fichiers =====
+  files:
+    - id: bash_touch
+      description: Créer un fichier vide ou mettre à jour son horodatage
+      tags: [bash, touch, créer, fichier, vide, horodatage]
+      command: "touch nom_du_fichier"
+      explanation: Crée un fichier vide s'il n'existe pas, ou met à jour son horodatage s'il existe.
+
+    - id: bash_cp
+      description: Copier des fichiers ou répertoires
+      tags: [bash, cp, copier, fichier, répertoire]
+      command: "cp source destination"
+      explanation: Copie un fichier ou un répertoire vers une destination.
+      options:
+        - "-r": "Copie récursivement un répertoire et son contenu."
+        - "-i": "Demande confirmation avant d'écraser un fichier existant."
+        - "-v": "Affiche les fichiers copiés (mode verbeux)."
+      example: "cp -rv /chemin/source/ /chemin/destination/"
+
+    - id: bash_mv
+      description: Déplacer ou renommer un fichier/répertoire
+      tags: [bash, mv, déplacer, renommer, fichier, répertoire]
+      command: "mv source destination"
+      explanation: Déplace ou renomme un fichier ou un répertoire.
+      example: "mv ancien_nom.txt nouveau_nom.txt"
+
+    - id: bash_rm
+      description: Supprimer des fichiers ou répertoires
+      tags: [bash, rm, supprimer, fichier, répertoire]
+      command: "rm nom_du_fichier"
+      explanation: Supprime un fichier.
+      warning: "La suppression est **irréversible** !"
+      options:
+        - "-r": "Supprime récursivement un répertoire et son contenu."
+        - "-f": "Force la suppression sans demander de confirmation."
+      example: "rm -rf /chemin/vers/repertoire/"
+
+    - id: bash_cat
+      description: Afficher le contenu d'un fichier
+      tags: [bash, cat, afficher, contenu, fichier]
+      command: "cat nom_du_fichier"
+      explanation: Affiche le contenu d'un fichier dans le terminal.
+      options:
+        - "-n": "Affiche les numéros de ligne."
+        - "-b": "Numérote les lignes non vides."
+
+    - id: bash_less
+      description: Afficher le contenu d'un fichier page par page
+      tags: [bash, less, afficher, page, fichier]
+      command: "less nom_du_fichier"
+      explanation: Permet de naviguer dans un fichier texte page par page.
+      shortcuts:
+        - "q": "Quitter."
+        - "/motif": "Rechercher un motif dans le fichier."
+        - "n": "Aller à l'occurrence suivante."
+        - "G": "Aller à la fin du fichier."
+        - "g": "Aller au début du fichier."
+
+    - id: bash_head
+      description: Afficher les premières lignes d'un fichier
+      tags: [bash, head, premières, lignes, fichier]
+      command: "head -n 10 nom_du_fichier"
+      explanation: Affiche les 10 premières lignes d'un fichier.
+      options:
+        - "-n": "Spécifie le nombre de lignes à afficher."
+
+    - id: bash_tail
+      description: Afficher les dernières lignes d'un fichier
+      tags: [bash, tail, dernières, lignes, fichier]
+      command: "tail -n 10 nom_du_fichier"
+      explanation: Affiche les 10 dernières lignes d'un fichier.
+      options:
+        - "-f": "Suivre les mises à jour du fichier en temps réel (utile pour les logs)."
+      example: "tail -f /var/log/syslog"
+
+    - id: bash_nano
+      description: Éditer un fichier avec Nano
+      tags: [bash, nano, éditer, fichier, texte]
+      command: "nano nom_du_fichier"
+      explanation: Ouvre un fichier dans l'éditeur de texte **Nano**.
+      shortcuts:
+        - "Ctrl+O": "Enregistrer le fichier."
+        - "Ctrl+X": "Quitter Nano."
+        - "Ctrl+K": "Couper une ligne."
+        - "Ctrl+U": "Coller une ligne."
+
+    - id: bash_vim
+      description: Éditer un fichier avec Vim
+      tags: [bash, vim, éditer, fichier, texte]
+      command: "vim nom_du_fichier"
+      explanation: Ouvre un fichier dans l'éditeur de texte **Vim**.
+      shortcuts:
+        - "i": "Passer en mode insertion."
+        - "Esc": "Quitter le mode insertion."
+        - ":w": "Enregistrer le fichier."
+        - ":q": "Quitter Vim."
+        - ":wq": "Enregistrer et quitter."
+        - "dd": "Supprimer une ligne."
+        - "yy": "Copier une ligne."
+
+    - id: bash_find
+      description: Rechercher des fichiers ou répertoires
+      tags: [bash, find, rechercher, fichier, répertoire]
+      command: "find /chemin -name 'nom_du_fichier'"
+      explanation: Recherche des fichiers ou répertoires par nom dans une arborescence.
+      options:
+        - "-type f": "Recherche uniquement des fichiers."
+        - "-type d": "Recherche uniquement des répertoires."
+        - "-mtime -7": "Fichiers modifiés dans les 7 derniers jours."
+        - "-size +10M": "Fichiers de plus de 10 Mo."
+      example: "find /home -type f -name '*.log'"
+
+    - id: bash_grep
+      description: Rechercher du texte dans des fichiers
+      tags: [bash, grep, rechercher, texte, fichier]
+      command: "grep 'motif' nom_du_fichier"
+      explanation: Recherche une chaîne de caractères dans un fichier.
+      options:
+        - "-r": "Recherche récursivement dans un répertoire."
+        - "-i": "Ignore la casse."
+        - "-v": "Inverse la recherche (affiche les lignes qui **ne** contiennent pas le motif)."
+        - "-n": "Affiche les numéros de ligne."
+        - "-l": "Affiche uniquement les noms des fichiers contenant le motif."
+      example: "grep -r 'erreur' /var/log/"
+
+    - id: bash_locale
+      description: Localiser une commande
+      tags: [bash, which, whereis, locale, chemin]
+      command: "which nom_de_la_commande"
+      explanation: Affiche le chemin absolu d'une commande exécutable.
+      alternatives:
+        - "whereis nom_de_la_commande": "Recherche dans plus de répertoires (binaires, manuels, sources)."
+        - "type nom_de_la_commande": "Affiche le type de la commande (alias, fonction, binaire)."
+
+  # ===== Permissions =====
+  permissions:
+    - id: bash_chmod
+      description: Changer les permissions d'un fichier/répertoire
+      tags: [bash, chmod, permissions, droits, fichier, répertoire]
+      command: "chmod 755 nom_du_fichier"
+      explanation: Change les permissions d'un fichier ou répertoire.
+      options:
+        - "u": "Utilisateur (propriétaire)."
+        - "g": "Groupe."
+        - "o": "Autres (others)."
+        - "a": "Tous (all)."
+        - "+": "Ajoute une permission."
+        - "-": "Retire une permission."
+        - "r": "Lecture (read)."
+        - "w": "Écriture (write)."
+        - "x": "Exécution (execute)."
+      examples:
+        - "chmod u+x script.sh": "Ajoute le droit d'exécution pour l'utilisateur."
+        - "chmod 644 fichier.txt": "Donne `rw-r--r--` (lecture/écriture pour l'utilisateur, lecture pour les autres)."
+        - "chmod -R 755 /chemin/": "Applique récursivement les permissions à un répertoire."
+
+    - id: bash_chown
+      description: Changer le propriétaire d'un fichier/répertoire
+      tags: [bash, chown, propriétaire, changer, fichier, répertoire]
+      command: "sudo chown utilisateur:groupe nom_du_fichier"
+      explanation: Change le propriétaire et le groupe d'un fichier ou répertoire.
+      example: "sudo chown -R www-data:www-data /var/www/"
+
+    - id: bash_chgrp
+      description: Changer le groupe d'un fichier/répertoire
+      tags: [bash, chgrp, groupe, changer, fichier, répertoire]
+      command: "sudo chgrp groupe nom_du_fichier"
+      explanation: Change le groupe d'un fichier ou répertoire.
+
+    - id: bash_umask
+      description: Définir les permissions par défaut pour les nouveaux fichiers
+      tags: [bash, umask, permissions, défaut, fichier]
+      command: "umask 022"
+      explanation: |
+        Définit les permissions par défaut pour les nouveaux fichiers.
+        - `022` : Les nouveaux fichiers auront `rw-r--r--` (644) et les répertoires `rwxr-xr-x` (755).
+        - `002` : Les nouveaux fichiers auront `rw-rw-r--` (664) et les répertoires `rwxrwxr-x` (775).
+
+  # ===== Processus =====
+  processes:
+    - id: bash_ps
+      description: Lister les processus en cours
+      tags: [bash, ps, processus, lister, aux]
+      command: "ps aux"
+      explanation: Affiche tous les processus en cours avec leur PID, utilisation CPU/mémoire, et commande.
+      options:
+        - "ef": "Affiche les processus sous forme d'arborescence."
+        - "u": "Affiche les processus d'un utilisateur spécifique."
+
+    - id: bash_top
+      description: Afficher les processus en temps réel
+      tags: [bash, top, processus, temps réel, monitoring]
+      command: "top"
+      explanation: Affiche une vue interactive des processus en cours, triés par utilisation CPU.
+      shortcuts:
+        - "q": "Quitter."
+        - "k": "Tuer un processus (demande le PID)."
+        - "P": "Trier par utilisation CPU."
+        - "M": "Trier par utilisation mémoire."
+
+    - id: bash_htop
+      description: Alternative à `top` avec une interface plus conviviale
+      tags: [bash, htop, processus, monitoring, interactif]
+      command: "htop"
+      explanation: |
+        Affiche les processus avec une interface colorée et interactive.
+        **Installation** : `sudo apt install htop` (Debian/Ubuntu) ou `sudo yum install htop` (CentOS/RHEL).
+      shortcuts:
+        - "F6": "Trier par colonne."
+        - "F9": "Tuer un processus."
+        - "F10": "Quitter."
+
+    - id: bash_kill
+      description: Tuer un processus par son PID
+      tags: [bash, kill, processus, tuer, PID]
+      command: "kill -9 PID"
+      explanation: Envoie un signal pour terminer un processus. `-9` (SIGKILL) force la termination.
+      warning: "Utilisez `-9` avec prudence, car le processus n'aura pas le temps de nettoyer ses ressources."
+      example: "kill -9 1234"
+
+    - id: bash_pkill
+      description: Tuer un processus par son nom
+      tags: [bash, pkill, processus, tuer, nom]
+      command: "pkill -9 nom_du_processus"
+      explanation: Termine tous les processus portant un nom donné.
+      example: "pkill -9 nginx"
+
+    - id: bash_killall
+      description: Tuer tous les processus d'un nom donné
+      tags: [bash, killall, processus, tuer, nom]
+      command: "killall nom_du_processus"
+      explanation: Termine tous les processus correspondant à un nom.
+      warning: "Peut tuer des processus critiques si le nom est trop générique (ex: `killall java`)."
+
+    - id: bash_bg
+      description: Mettre un processus en arrière-plan
+      tags: [bash, bg, arrière-plan, processus, jobs]
+      command: "Ctrl+Z puis bg"
+      explanation: |
+        - `Ctrl+Z` : Suspend le processus en cours.
+        - `bg` : Reprend le processus en arrière-plan.
+
+    - id: bash_fg
+      description: Ramener un processus en premier plan
+      tags: [bash, fg, premier plan, processus, jobs]
+      command: "fg %numéro_du_job"
+      explanation: Ramène un processus en arrière-plan au premier plan.
+      example: "fg %1"
+
+    - id: bash_jobs
+      description: Lister les jobs en arrière-plan
+      tags: [bash, jobs, arrière-plan, processus, liste]
+      command: "jobs"
+      explanation: Affiche la liste des processus en arrière-plan ou suspendus.
+
+    - id: bash_nice
+      description: Lancer un processus avec une priorité modifiée
+      tags: [bash, nice, priorité, processus, CPU]
+      command: "nice -n 10 commande"
+      explanation: Lance une commande avec une priorité plus basse (valeur de `nice` entre -20 et 19).
+      example: "nice -n 10 backup_script.sh"
+
+    - id: bash_renice
+      description: Changer la priorité d'un processus existant
+      tags: [bash, renice, priorité, processus, PID]
+      command: "renice -n 10 -p PID"
+      explanation: Modifie la priorité d'un processus déjà en cours d'exécution.
+
+  # ===== Réseau =====
+  network:
+    - id: bash_ifconfig
+      description: Afficher les interfaces réseau
+      tags: [bash, ifconfig, réseau, interfaces, IP]
+      command: "ifconfig"
+      explanation: Affiche les interfaces réseau, leurs adresses IP, et leur statut.
+      note: "Sur certaines distributions modernes, utilisez `ip a` à la place."
+
+    - id: bash_ip
+      description: Alternative moderne à `ifconfig`
+      tags: [bash, ip, réseau, interfaces, IP]
+      command: "ip a"
+      explanation: Affiche les adresses IP et les interfaces réseau.
+      options:
+        - "ip route": "Affiche la table de routage."
+        - "ip link": "Affiche les interfaces réseau."
+
+    - id: bash_ping
+      description: Tester la connectivité avec une adresse
+      tags: [bash, ping, réseau, connectivité, test]
+      command: "ping adresse_IP_ou_nom_de_domaine"
+      explanation: Envoie des paquets ICMP pour tester la connectivité.
+      options:
+        - "-c 4": "Envoie 4 paquets puis s'arrête."
+        - "-i 2": "Intervalle de 2 secondes entre les paquets."
+      example: "ping -c 4 google.com"
+
+    - id: bash_netstat
+      description: Afficher les connexions réseau actives
+      tags: [bash, netstat, réseau, connexions, ports]
+      command: "netstat -tuln"
+      explanation: Affiche les connexions réseau actives, les ports ouverts, et les services en écoute.
+      options:
+        - "-t": "Affiche les connexions TCP."
+        - "-u": "Affiche les connexions UDP."
+        - "-l": "Affiche les ports en écoute."
+        - "-n": "Affiche les adresses IP au lieu des noms d'hôte."
+
+    - id: bash_ss
+      description: Alternative moderne à `netstat`
+      tags: [bash, ss, réseau, connexions, ports]
+      command: "ss -tuln"
+      explanation: Affiche les connexions réseau actives et les ports ouverts (plus rapide que `netstat`).
+
+    - id: bash_curl
+      description: Effectuer une requête HTTP
+      tags: [bash, curl, réseau, requête, HTTP, API]
+      command: "curl https://exemple.com"
+      explanation: Effectue une requête HTTP vers une URL et affiche la réponse.
+      options:
+        - "-X POST": "Envoie une requête POST."
+        - "-H 'Header: Value'": "Ajoute un en-tête HTTP."
+        - "-d 'data'": "Envoie des données dans le corps de la requête."
+        - "-o fichier": "Enregistre la réponse dans un fichier."
+        - "-v": "Mode verbeux (affiche les en-têtes)."
+      example: "curl -X POST -H 'Content-Type: application/json' -d '{\"key\":\"value\"}' https://api.exemple.com"
+
+    - id: bash_wget
+      description: Télécharger un fichier depuis une URL
+      tags: [bash, wget, réseau, télécharger, download]
+      command: "wget https://exemple.com/fichier.zip"
+      explanation: Télécharge un fichier depuis une URL.
+      options:
+        - "-O nom_du_fichier": "Enregistre le fichier sous un nom spécifique."
+        - "-P /chemin/": "Enregistre le fichier dans un répertoire spécifique."
+        - "-c": "Reprend un téléchargement interrompu."
+        - "-b": "Télécharge en arrière-plan."
+      example: "wget -O mon_fichier.zip https://exemple.com/fichier.zip"
+
+    - id: bash_nslookup
+      description: Résoudre un nom de domaine en IP
+      tags: [bash, nslookup, réseau, DNS, résolution]
+      command: "nslookup exemple.com"
+      explanation: Résout un nom de domaine en adresse IP en utilisant les serveurs DNS.
+
+    - id: bash_dig
+      description: Alternative à `nslookup` pour les requêtes DNS
+      tags: [bash, dig, réseau, DNS, résolution]
+      command: "dig exemple.com"
+      explanation: Effectue une requête DNS et affiche des informations détaillées.
+      options:
+        - "MX": "Recherche les enregistrements MX (serveurs de mail)."
+        - "TXT": "Recherche les enregistrements TXT."
+        - "NS": "Recherche les serveurs DNS (Name Servers)."
+      example: "dig MX google.com"
+
+    - id: bash_traceroute
+      description: Tracer la route vers une adresse
+      tags: [bash, traceroute, réseau, route, latence]
+      command: "traceroute exemple.com"
+      explanation: Affiche le chemin emprunté par les paquets pour atteindre une adresse, avec les temps de réponse.
+      note: "Sur certaines distributions, utilisez `tracepath` ou `mtr` à la place."
+
+    - id: bash_mtr
+      description: Combinaison de `traceroute` et `ping`
+      tags: [bash, mtr, réseau, traceroute, ping]
+      command: "mtr exemple.com"
+      explanation: Combine les fonctionnalités de `traceroute` et `ping` pour diagnostiquer les problèmes réseau.
+      note: "Installation : `sudo apt install mtr` (Debian/Ubuntu) ou `sudo yum install mtr` (CentOS/RHEL)."
+
+    - id: bash_nmap
+      description: Scanner les ports ouverts sur une machine
+      tags: [bash, nmap, réseau, scan, ports]
+      command: "nmap -sV adresse_IP"
+      explanation: Scanne les ports ouverts sur une machine et détecte les services associés.
+      options:
+        - "-p 80,443": "Scanne uniquement les ports 80 et 443."
+        - "-O": "Détecte le système d'exploitation."
+        - "-A": "Scan agressif (détection OS, services, etc.)."
+      note: "Installation : `sudo apt install nmap` (Debian/Ubuntu)."
+
+  # ===== Compression et Archives =====
+  compression:
+    - id: bash_tar
+      description: Créer une archive tar
+      tags: [bash, tar, archive, compresser, fichier]
+      command: "tar -cvf archive.tar /chemin/vers/dossier"
+      explanation: Crée une archive `.tar` contenant un dossier ou des fichiers.
+      options:
+        - "-c": "Crée une archive."
+        - "-v": "Mode verbeux (affiche les fichiers ajoutés)."
+        - "-f": "Spécifie le nom du fichier d'archive."
+        - "-z": "Compresse avec gzip (créé un `.tar.gz`)."
+        - "-j": "Compresse avec bzip2 (créé un `.tar.bz2`)."
+      examples:
+        - "tar -czvf archive.tar.gz /chemin/": "Crée une archive `.tar.gz`."
+        - "tar -cjvf archive.tar.bz2 /chemin/": "Crée une archive `.tar.bz2`."
+
+    - id: bash_untar
+      description: Extraire une archive tar
+      tags: [bash, tar, extraire, décompresser, archive]
+      command: "tar -xvf archive.tar"
+      explanation: Extrait le contenu d'une archive `.tar`.
+      options:
+        - "-x": "Extrait une archive."
+        - "-z": "Décompresse une archive `.tar.gz`."
+        - "-j": "Décompresse une archive `.tar.bz2`."
+        - "-C /chemin/": "Extrait dans un répertoire spécifique."
+      examples:
+        - "tar -xzvf archive.tar.gz": "Extrait une archive `.tar.gz`."
+        - "tar -xjvf archive.tar.bz2 -C /destination/": "Extrait une archive `.tar.bz2` dans `/destination/`."
+
+    - id: bash_gzip
+      description: Compresser un fichier avec gzip
+      tags: [bash, gzip, compresser, fichier]
+      command: "gzip nom_du_fichier"
+      explanation: Compresse un fichier avec `gzip`. Le fichier original est remplacé par une version `.gz`.
+      options:
+        - "-d": "Décompresse un fichier `.gz`."
+        - "-k": "Conserve le fichier original après compression."
+      example: "gzip -k fichier.txt"
+
+    - id: bash_gunzip
+      description: Décompresser un fichier .gz
+      tags: [bash, gunzip, décompresser, gz]
+      command: "gunzip fichier.gz"
+      explanation: Décompresse un fichier `.gz`. Le fichier `.gz` est supprimé après décompression.
+
+    - id: bash_zip
+      description: Créer une archive ZIP
+      tags: [bash, zip, archive, compresser, fichier]
+      command: "zip archive.zip fichier1 fichier2"
+      explanation: Crée une archive ZIP contenant les fichiers spécifiés.
+      options:
+        - "-r": "Inclut récursivement les répertoires."
+      example: "zip -r archive.zip /chemin/vers/dossier/"
+
+    - id: bash_unzip
+      description: Décompresser une archive ZIP
+      tags: [bash, unzip, décompresser, ZIP]
+      command: "unzip archive.zip"
+      explanation: Décompresse une archive ZIP dans le répertoire courant.
+      options:
+        - "-d /chemin/": "Extrait dans un répertoire spécifique."
+      example: "unzip archive.zip -d /destination/"
+
+    - id: bash_7z
+      description: Compresser/décompresser avec 7-Zip
+      tags: [bash, 7z, compresser, décompresser, archive]
+      command: "7z a archive.7z /chemin/vers/dossier"
+      explanation: Crée une archive `.7z` avec une compression puissante.
+      options:
+        - "a": "Ajoute des fichiers à une archive."
+        - "e": "Extrait une archive."
+        - "-tzip": "Crée une archive ZIP."
+      note: "Installation : `sudo apt install p7zip-full` (Debian/Ubuntu)."
+
+  # ===== Texte et Filtrage =====
+  text:
+    - id: bash_echo
+      description: Afficher du texte dans le terminal
+      tags: [bash, echo, texte, afficher]
+      command: "echo 'Bonjour, monde !'"
+      explanation: Affiche le texte passé en argument dans le terminal.
+      options:
+        - "-n": "N'affiche pas de saut de ligne à la fin."
+        - "-e": "Interprète les séquences d'échappement (ex: `\n`, `\t`)."
+      example: "echo -e 'Ligne 1\nLigne 2'"
+
+    - id: bash_printf
+      description: Afficher du texte formaté
+      tags: [bash, printf, texte, formaté, afficher]
+      command: "printf 'Bonjour, %s !\n' 'Euloge'"
+      explanation: Affiche du texte formaté, similaire à `printf` en C.
+      example: "printf '%-10s %-10s\n' 'Nom' 'Âge'"
+
+    - id: bash_sort
+      description: Trier les lignes d'un fichier
+      tags: [bash, sort, trier, lignes, fichier]
+      command: "sort nom_du_fichier"
+      explanation: Trie les lignes d'un fichier par ordre alphabétique.
+      options:
+        - "-r": "Trie dans l'ordre inverse."
+        - "-n": "Trie numériquement."
+        - "-u": "Supprime les doublons."
+        - "-k 2": "Trie selon la 2ème colonne."
+      example: "sort -n -k 2 données.csv"
+
+    - id: bash_uniq
+      description: Supprimer les lignes en double
+      tags: [bash, uniq, doublons, lignes, fichier]
+      command: "uniq nom_du_fichier"
+      explanation: Supprime les lignes consécutives en double dans un fichier trié.
+      options:
+        - "-c": "Compte le nombre d'occurrences de chaque ligne."
+        - "-d": "Affiche uniquement les lignes en double."
+      example: "sort fichier.txt | uniq -c"
+
+    - id: bash_cut
+      description: Extraire des sections de chaque ligne
+      tags: [bash, cut, extraire, colonnes, fichier]
+      command: "cut -d',' -f1,3 nom_du_fichier.csv"
+      explanation: Extrait des colonnes spécifiques d'un fichier délimité.
+      options:
+        - "-d": "Spécifie le délimiteur (ex: `,` pour CSV)."
+        - "-f": "Spécifie les colonnes à extraire (ex: `1,3` pour les 1ère et 3ème colonnes)."
+      example: "cut -d':' -f1 /etc/passwd"
+
+    - id: bash_awk
+      description: Traiter du texte avec AWK
+      tags: [bash, awk, texte, traiter, colonnes]
+      command: "awk '{print $1}' nom_du_fichier"
+      explanation: Affiche la première colonne de chaque ligne d'un fichier.
+      options:
+        - "-F':'" : "Spécifie le délimiteur (ex: `:` pour `/etc/passwd`)."
+        - "BEGIN {action}": "Exécute une action avant de traiter les lignes."
+        - "END {action}": "Exécute une action après avoir traité toutes les lignes."
+      example: "awk -F',' '{print $1, $3}' données.csv"
+
+    - id: bash_sed
+      description: Remplacer du texte dans un fichier
+      tags: [bash, sed, remplacer, texte, fichier]
+      command: "sed 's/ancien/nouveau/g' nom_du_fichier"
+      explanation: Remplace toutes les occurrences de "ancien" par "nouveau" dans un fichier.
+      options:
+        - "-i": "Modifie le fichier directement (sans cette option, `sed` affiche le résultat dans le terminal)."
+        - "s/ancien/nouveau/": "Remplace la première occurrence par ligne."
+        - "s/ancien/nouveau/g": "Remplace toutes les occurrences par ligne."
+      example: "sed -i 's/foo/bar/g' fichier.txt"
+
+    - id: bash_tr
+      description: Remplacer ou supprimer des caractères
+      tags: [bash, tr, remplacer, caractères, supprimer]
+      command: "echo 'Bonjour' | tr 'a-z' 'A-Z'"
+      explanation: Remplace les caractères minuscules par des majuscules.
+      options:
+        - "-d": "Supprime les caractères spécifiés."
+        - "-s": "Remplace les séquences répétées par une seule occurrence."
+      example: "echo 'Bonjour  ' | tr -s ' '"
+
+    - id: bash_wc
+      description: Compter les mots, lignes ou caractères
+      tags: [bash, wc, compter, mots, lignes, caractères]
+      command: "wc nom_du_fichier"
+      explanation: Affiche le nombre de lignes, mots et caractères dans un fichier.
+      options:
+        - "-l": "Compte uniquement les lignes."
+        - "-w": "Compte uniquement les mots."
+        - "-c": "Compte uniquement les caractères."
+      example: "wc -l fichier.txt"
+
+    - id: bash_diff
+      description: Comparer deux fichiers
+      tags: [bash, diff, comparer, fichiers, différences]
+      command: "diff fichier1 fichier2"
+      explanation: Affiche les différences entre deux fichiers.
+      options:
+        - "-u": "Affiche les différences dans un format unifié."
+        - "-y": "Affiche les différences côte à côte."
+      example: "diff -u ancien.txt nouveau.txt"
+
+    - id: bash_paste
+      description: Fusionner des lignes de plusieurs fichiers
+      tags: [bash, paste, fusionner, lignes, fichiers]
+      command: "paste fichier1 fichier2"
+      explanation: Fusionne les lignes de plusieurs fichiers en les séparant par une tabulation.
+      options:
+        - "-d','": "Utilise une virgule comme délimiteur au lieu d'une tabulation."
+      example: "paste -d',' fichier1 fichier2"
+
+  # ===== Variables et Environnement =====
+  variables:
+    - id: bash_export
+      description: Définir une variable d'environnement
+      tags: [bash, export, variable, environnement]
+      command: "export NOM_VARIABLE=valeur"
+      explanation: Définit une variable d'environnement pour la session en cours.
+      example: "export PATH=$PATH:/usr/local/bin"
+
+    - id: bash_env
+      description: Afficher toutes les variables d'environnement
+      tags: [bash, env, variables, environnement, liste]
+      command: "env"
+      explanation: Affiche toutes les variables d'environnement actuelles.
+
+    - id: bash_printenv
+      description: Afficher une variable d'environnement spécifique
+      tags: [bash, printenv, variable, environnement]
+      command: "printenv NOM_VARIABLE"
+      explanation: Affiche la valeur d'une variable d'environnement.
+      example: "printenv PATH"
+
+    - id: bash_set
+      description: Définir une variable shell (non exportée)
+      tags: [bash, set, variable, shell]
+      command: "NOM_VARIABLE=valeur"
+      explanation: Définit une variable shell locale (non disponible pour les sous-processus).
+      example: "MA_VARIABLE='Bonjour'"
+
+    - id: bash_unset
+      description: Supprimer une variable
+      tags: [bash, unset, variable, supprimer]
+      command: "unset NOM_VARIABLE"
+      explanation: Supprime une variable shell ou d'environnement.
+
+    - id: bash_echo_variable
+      description: Afficher la valeur d'une variable
+      tags: [bash, echo, variable, afficher]
+      command: "echo $NOM_VARIABLE"
+      explanation: Affiche la valeur d'une variable shell.
+      example: "echo $HOME"
+
+    - id: bash_read
+      description: Lire une entrée utilisateur
+      tags: [bash, read, entrée, utilisateur, input]
+      command: "read -p 'Entrez votre nom: ' nom"
+      explanation: Lit une entrée utilisateur et la stocke dans une variable.
+      options:
+        - "-p": "Affiche un prompt avant de lire l'entrée."
+        - "-s": "Masque l'entrée (utile pour les mots de passe)."
+      example: "read -s -p 'Entrez votre mot de passe: ' password"
+
+  # ===== Scripts Bash =====
+  scripts:
+    - id: bash_shebang
+      description: Déclarer un script Bash
+      tags: [bash, shebang, script, "#!/bin/bash"]
+      command: "#!/bin/bash"
+      explanation: Première ligne d'un script Bash pour spécifier l'interpréteur.
+      example: |
+        #!/bin/bash
+        echo "Bonjour, monde !"
+
+    - id: bash_execute_script
+      description: Exécuter un script Bash
+      tags: [bash, exécuter, script, chmod, +x]
+      command: "chmod +x script.sh && ./script.sh"
+      explanation: |
+        1. `chmod +x script.sh` : Rend le script exécutable.
+        2. `./script.sh` : Exécute le script.
+      note: "Assurez-vous que le script a les permissions d'exécution (`chmod +x`)."
+
+    - id: bash_source
+      description: Exécuter un script dans le shell courant
+      tags: [bash, source, exécuter, script, shell]
+      command: "source script.sh"
+      explanation: Exécute un script dans le shell courant (les variables et fonctions définies dans le script restent disponibles après son exécution).
+      alternative: ". script.sh"
+
+    - id: bash_exit
+      description: Quitter un script avec un code de retour
+      tags: [bash, exit, quitter, script, code]
+      command: "exit 0"
+      explanation: Quitte un script avec un code de retour (0 = succès, autre = erreur).
+      example: "exit 1" # Quitte avec un code d'erreur.
+
+    - id: bash_if
+      description: Structure conditionnelle `if`
+      tags: [bash, if, condition, then, else, fi]
+      command: |
+        if [ condition ]; then
+          # Code à exécuter si la condition est vraie
+        else
+          # Code à exécuter sinon
+        fi
+      explanation: Exécute un bloc de code si une condition est vraie.
+      examples:
+        - |
+          if [ -f fichier.txt ]; then
+            echo "Le fichier existe."
+          fi
+        - |
+          if [ "$var" -eq 10 ]; then
+            echo "var est égal à 10."
+          elif [ "$var" -gt 10 ]; then
+            echo "var est supérieur à 10."
+          else
+            echo "var est inférieur à 10."
+          fi
+
+    - id: bash_case
+      description: Structure conditionnelle `case`
+      tags: [bash, case, switch, condition]
+      command: |
+        case "$variable" in
+          motif1)
+            # Code pour motif1
+            ;;
+          motif2)
+            # Code pour motif2
+            ;;
+          *)
+            # Code par défaut
+            ;;
+        esac
+      explanation: Alternative à `if` pour comparer une variable à plusieurs motifs.
+      example: |
+        case "$1" in
+          start)
+            echo "Démarrage du service..."
+            ;;
+          stop)
+            echo "Arrêt du service..."
+            ;;
+          *)
+            echo "Commande invalide."
+            ;;
+        esac
+
+    - id: bash_for
+      description: Boucle `for`
+      tags: [bash, for, boucle, in, do, done]
+      command: |
+        for variable in liste; do
+          # Code à exécuter pour chaque élément
+        done
+      explanation: Exécute un bloc de code pour chaque élément d'une liste.
+      examples:
+        - |
+          for i in 1 2 3; do
+            echo "Nombre: $i"
+          done
+        - |
+          for fichier in *.txt; do
+            echo "Fichier: $fichier"
+          done
+
+    - id: bash_while
+      description: Boucle `while`
+      tags: [bash, while, boucle, do, done]
+      command: |
+        while [ condition ]; do
+          # Code à exécuter tant que la condition est vraie
+        done
+      explanation: Exécute un bloc de code tant qu'une condition est vraie.
+      example: |
+        count=1
+        while [ $count -le 5 ]; do
+          echo "Compteur: $count"
+          ((count++))
+        done
+
+    - id: bash_until
+      description: Boucle `until`
+      tags: [bash, until, boucle, do, done]
+      command: |
+        until [ condition ]; do
+          # Code à exécuter jusqu'à ce que la condition soit vraie
+        done
+      explanation: Exécute un bloc de code jusqu'à ce qu'une condition devienne vraie.
+      example: |
+        until [ -f fichier.txt ]; do
+          echo "En attente de la création de fichier.txt..."
+          sleep 1
+        done
+
+    - id: bash_functions
+      description: Définir une fonction
+      tags: [bash, function, fonction, définir]
+      command: |
+        nom_de_la_fonction() {
+          # Code de la fonction
+        }
+      explanation: Définit une fonction réutilisable dans un script.
+      example: |
+        dire_bonjour() {
+          echo "Bonjour, $1 !"
+        }
+        dire_bonjour "Euloge"
+
+    - id: bash_arguments
+      description: Utiliser les arguments d'un script
+      tags: [bash, arguments, $1, $2, $@, $#]
+      command: |
+        echo "Premier argument: $1"
+        echo "Tous les arguments: $@"
+        echo "Nombre d'arguments: $#"
+      explanation: |
+        - `$1`, `$2`, etc. : Arguments positionnels.
+        - `$@` : Tous les arguments sous forme de liste.
+        - `$#` : Nombre d'arguments.
+        - `$0` : Nom du script.
+
+  # ===== Gestion des Utilisateurs =====
+  users:
+    - id: bash_whoami
+      description: Afficher l'utilisateur actuel
+      tags: [bash, whoami, utilisateur, actuel]
+      command: "whoami"
+      explanation: Affiche le nom de l'utilisateur actuel.
+
+    - id: bash_id
+      description: Afficher les informations d'un utilisateur
+      tags: [bash, id, utilisateur, informations, uid, gid]
+      command: "id nom_utilisateur"
+      explanation: Affiche l'UID, le GID et les groupes d'un utilisateur.
+      example: "id euloge"
+
+    - id: bash_useradd
+      description: Ajouter un nouvel utilisateur
+      tags: [bash, useradd, ajouter, utilisateur, créer]
+      command: "sudo useradd -m nom_utilisateur"
+      explanation: Crée un nouvel utilisateur avec un répertoire personnel.
+      options:
+        - "-m": "Crée le répertoire personnel (`/home/nom_utilisateur`)."
+        - "-s /bin/bash": "Définir le shell par défaut."
+        - "-G groupe1,groupe2": "Ajoute l'utilisateur à des groupes supplémentaires."
+      example: "sudo useradd -m -s /bin/bash -G sudo euloge"
+
+    - id: bash_userdel
+      description: Supprimer un utilisateur
+      tags: [bash, userdel, supprimer, utilisateur]
+      command: "sudo userdel -r nom_utilisateur"
+      explanation: Supprime un utilisateur et son répertoire personnel.
+      options:
+        - "-r": "Supprime également le répertoire personnel et la boîte mail."
+
+    - id: bash_usermod
+      description: Modifier un utilisateur
+      tags: [bash, usermod, modifier, utilisateur]
+      command: "sudo usermod [options] nom_utilisateur"
+      explanation: Modifie les propriétés d'un utilisateur.
+      options:
+        - "-aG groupe": "Ajoute l'utilisateur à un groupe supplémentaire."
+        - "-s /bin/bash": "Change le shell par défaut."
+        - "-l nouveau_nom": "Renomme l'utilisateur."
+      example: "sudo usermod -aG sudo euloge"
+
+    - id: bash_passwd
+      description: Changer le mot de passe d'un utilisateur
+      tags: [bash, passwd, mot de passe, changer, utilisateur]
+      command: "sudo passwd nom_utilisateur"
+      explanation: Change le mot de passe d'un utilisateur.
+
+    - id: bash_su
+      description: Changer d'utilisateur
+      tags: [bash, su, changer, utilisateur, switch]
+      command: "su - nom_utilisateur"
+      explanation: Bascule vers un autre utilisateur.
+      options:
+        - "-": "Charge l'environnement de l'utilisateur (comme un login complet)."
+      example: "su - root"
+
+    - id: bash_sudo
+      description: Exécuter une commande en tant qu'administrateur
+      tags: [bash, sudo, administrateur, root, superutilisateur]
+      command: "sudo commande"
+      explanation: Exécute une commande avec les droits de l'utilisateur `root`.
+      options:
+        - "-i": "Ouvre un shell root."
+        - "-u utilisateur": "Exécute la commande en tant qu'un autre utilisateur."
+      example: "sudo apt update"
+
+    - id: bash_groups
+      description: Afficher les groupes d'un utilisateur
+      tags: [bash, groups, groupes, utilisateur]
+      command: "groups nom_utilisateur"
+      explanation: Affiche les groupes auxquels appartient un utilisateur.
+
+    - id: bash_groupadd
+      description: Ajouter un nouveau groupe
+      tags: [bash, groupadd, ajouter, groupe, créer]
+      command: "sudo groupadd nom_du_groupe"
+      explanation: Crée un nouveau groupe.
+
+    - id: bash_groupdel
+      description: Supprimer un groupe
+      tags: [bash, groupdel, supprimer, groupe]
+      command: "sudo groupdel nom_du_groupe"
+      explanation: Supprime un groupe vide.
+
+    - id: bash_gpasswd
+      description: Ajouter un utilisateur à un groupe
+      tags: [bash, gpasswd, groupe, ajouter, utilisateur]
+      command: "sudo gpasswd -a nom_utilisateur nom_du_groupe"
+      explanation: Ajoute un utilisateur à un groupe.
+
+  # ===== Gestion des Paquets =====
+  packages:
+    - id: bash_apt_update
+      description: Mettre à jour la liste des paquets (Debian/Ubuntu)
+      tags: [bash, apt, update, mise à jour, paquets]
+      command: "sudo apt update"
+      explanation: Met à jour la liste des paquets disponibles depuis les dépôts.
+
+    - id: bash_apt_upgrade
+      description: Mettre à jour les paquets installés (Debian/Ubuntu)
+      tags: [bash, apt, upgrade, mise à jour, paquets]
+      command: "sudo apt upgrade -y"
+      explanation: Met à jour tous les paquets installés vers leurs dernières versions.
+      options:
+        - "-y": "Répond automatiquement 'oui' aux prompts."
+
+    - id: bash_apt_install
+      description: Installer un paquet (Debian/Ubuntu)
+      tags: [bash, apt, install, installer, paquet]
+      command: "sudo apt install nom_du_paquet -y"
+      explanation: Installe un paquet depuis les dépôts.
+      example: "sudo apt install nginx -y"
+
+    - id: bash_apt_remove
+      description: Supprimer un paquet (Debian/Ubuntu)
+      tags: [bash, apt, remove, supprimer, paquet]
+      command: "sudo apt remove nom_du_paquet -y"
+      explanation: Supprime un paquet installé.
+      options:
+        - "--purge": "Supprime également les fichiers de configuration."
+
+    - id: bash_apt_search
+      description: Rechercher un paquet (Debian/Ubuntu)
+      tags: [bash, apt, search, rechercher, paquet]
+      command: "apt search nom_du_paquet"
+      explanation: Recherche un paquet dans les dépôts.
+
+    - id: bash_apt_show
+      description: Afficher les informations d'un paquet (Debian/Ubuntu)
+      tags: [bash, apt, show, informations, paquet]
+      command: "apt show nom_du_paquet"
+      explanation: Affiche des informations détaillées sur un paquet (version, dépendances, etc.).
+
+    - id: bash_apt_clean
+      description: Nettoyer le cache des paquets (Debian/Ubuntu)
+      tags: [bash, apt, clean, cache, paquets]
+      command: "sudo apt clean"
+      explanation: Supprime les fichiers `.deb` téléchargés et mis en cache dans `/var/cache/apt/archives/`.
+
+    - id: bash_apt_autoremove
+      description: Supprimer les paquets inutiles (Debian/Ubuntu)
+      tags: [bash, apt, autoremove, paquets, inutiles]
+      command: "sudo apt autoremove -y"
+      explanation: Supprime les paquets installés automatiquement et qui ne sont plus nécessaires.
+
+    - id: bash_yum_install
+      description: Installer un paquet (CentOS/RHEL)
+      tags: [bash, yum, install, installer, paquet]
+      command: "sudo yum install nom_du_paquet -y"
+      explanation: Installe un paquet depuis les dépôts (pour les distributions basées sur RPM).
+
+    - id: bash_yum_remove
+      description: Supprimer un paquet (CentOS/RHEL)
+      tags: [bash, yum, remove, supprimer, paquet]
+      command: "sudo yum remove nom_du_paquet -y"
+      explanation: Supprime un paquet installé.
+
+    - id: bash_dnf_install
+      description: Installer un paquet avec DNF (Fedora)
+      tags: [bash, dnf, install, installer, paquet]
+      command: "sudo dnf install nom_du_paquet -y"
+      explanation: Installe un paquet avec DNF (successeur de YUM sur Fedora).
+
+    - id: bash_pacman_install
+      description: Installer un paquet (Arch Linux)
+      tags: [bash, pacman, install, installer, paquet]
+      command: "sudo pacman -S nom_du_paquet"
+      explanation: Installe un paquet avec Pacman (Arch Linux).
+      options:
+        - "-S": "Installe un paquet."
+        - "-Sy": "Met à jour la base de données des paquets avant l'installation."
+        - "-u": "Met à jour tous les paquets installés."
+
+    - id: bash_pacman_remove
+      description: Supprimer un paquet (Arch Linux)
+      tags: [bash, pacman, remove, supprimer, paquet]
+      command: "sudo pacman -R nom_du_paquet"
+      explanation: Supprime un paquet installé avec Pacman.
+      options:
+        - "-s": "Supprime également les dépendances inutiles."
+
+  # ===== Services =====
+  services:
+    - id: bash_systemctl_start
+      description: Démarrer un service
+      tags: [bash, systemctl, start, démarrer, service]
+      command: "sudo systemctl start nom_du_service"
+      explanation: Démarre un service système (pour les distributions utilisant `systemd`).
+
+    - id: bash_systemctl_stop
+      description: Arrêter un service
+      tags: [bash, systemctl, stop, arrêter, service]
+      command: "sudo systemctl stop nom_du_service"
+      explanation: Arrête un service système.
+
+    - id: bash_systemctl_restart
+      description: Redémarrer un service
+      tags: [bash, systemctl, restart, redémarrer, service]
+      command: "sudo systemctl restart nom_du_service"
+      explanation: Redémarre un service système.
+
+    - id: bash_systemctl_status
+      description: Vérifier le statut d'un service
+      tags: [bash, systemctl, status, statut, service]
+      command: "sudo systemctl status nom_du_service"
+      explanation: Affiche le statut d'un service (actif, inactif, erreurs, etc.).
+
+    - id: bash_systemctl_enable
+      description: Activer un service au démarrage
+      tags: [bash, systemctl, enable, activer, démarrage, service]
+      command: "sudo systemctl enable nom_du_service"
+      explanation: Configure un service pour qu'il démarre automatiquement au boot.
+
+    - id: bash_systemctl_disable
+      description: Désactiver un service au démarrage
+      tags: [bash, systemctl, disable, désactiver, démarrage, service]
+      command: "sudo systemctl disable nom_du_service"
+      explanation: Empêche un service de démarrer automatiquement au boot.
+
+    - id: bash_systemctl_list_units
+      description: Lister tous les services
+      tags: [bash, systemctl, list-units, lister, services]
+      command: "systemctl list-units --type=service"
+      explanation: Affiche la liste de tous les services système.
+
+    - id: bash_service_start
+      description: Démarrer un service (anciennes distributions)
+      tags: [bash, service, start, démarrer]
+      command: "sudo service nom_du_service start"
+      explanation: Démarre un service (pour les distributions utilisant `SysVinit` au lieu de `systemd`).
+
+    - id: bash_service_stop
+      description: Arrêter un service (anciennes distributions)
+      tags: [bash, service, stop, arrêter]
+      command: "sudo service nom_du_service stop"
+      explanation: Arrête un service.
+
+  # ===== Journalisation (Logs) =====
+  logs:
+    - id: bash_journalctl
+      description: Voir les logs système (systemd)
+      tags: [bash, journalctl, logs, système, journal]
+      command: "sudo journalctl -xe"
+      explanation: Affiche les logs système avec des détails étendus.
+      options:
+        - "-u nom_du_service": "Affiche les logs d'un service spécifique."
+        - "-f": "Suivre les logs en temps réel (comme `tail -f`)."
+        - "--since today": "Affiche les logs depuis aujourd'hui."
+        - "--no-pager": "Affiche les logs sans pagination."
+      example: "sudo journalctl -u nginx -f"
+
+    - id: bash_tail_log
+      description: Suivre un fichier de log en temps réel
+      tags: [bash, tail, log, fichier, temps réel]
+      command: "tail -f /var/log/nom_du_fichier.log"
+      explanation: Affiche les dernières lignes d'un fichier de log et suit les mises à jour en temps réel.
+
+    - id: bash_grep_log
+      description: Filtrer les logs avec grep
+      tags: [bash, grep, log, filtrer, erreur]
+      command: "grep 'erreur' /var/log/syslog"
+      explanation: Filtre les lignes contenant le mot "erreur" dans un fichier de log.
+
+    - id: bash_dmesg
+      description: Afficher les messages du noyau
+      tags: [bash, dmesg, noyau, messages, boot]
+      command: "dmesg"
+      explanation: Affiche les messages du noyau Linux (utile pour diagnostiquer des problèmes matériels).
+      options:
+        - "-H": "Affiche les messages dans un format lisible."
+        - "-T": "Affiche les horodatages en format humain."
+
+  # ===== Disques et Stockage =====
+  storage:
+    - id: bash_df
+      description: Voir l'espace disque utilisé
+      tags: [bash, df, espace, disque, utilisé, disponible]
+      command: "df -h"
+      explanation: Affiche l'espace disque utilisé et disponible pour chaque partition.
+      options:
+        - "-h": "Affiche les tailles en format lisible (Ko, Mo, Go)."
+        - "-T": "Affiche le type de système de fichiers."
+
+    - id: bash_du
+      description: Voir l'espace utilisé par un répertoire
+      tags: [bash, du, espace, répertoire, utilisé]
+      command: "du -sh /chemin/vers/repertoire"
+      explanation: Affiche l'espace disque utilisé par un répertoire ou un fichier.
+      options:
+        - "-s": "Affiche uniquement le total pour le répertoire spécifié."
+        - "-h": "Affiche les tailles en format lisible."
+        - "--max-depth=1": "Limite la profondeur de récursivité."
+
+    - id: bash_fdisk
+      description: Lister les partitions disque
+      tags: [bash, fdisk, partitions, disque, liste]
+      command: "sudo fdisk -l"
+      explanation: Affiche la liste des disques et de leurs partitions.
+
+    - id: bash_mount
+      description: Monter un disque ou une partition
+      tags: [bash, mount, monter, disque, partition]
+      command: "sudo mount /dev/sdXn /point/de/montage"
+      explanation: Monte un disque ou une partition sur un point de montage.
+      example: "sudo mount /dev/sda1 /mnt/mon_disque"
+
+    - id: bash_umount
+      description: Démonter un disque ou une partition
+      tags: [bash, umount, démonter, disque, partition]
+      command: "sudo umount /point/de/montage"
+      explanation: Démonte un disque ou une partition précédemment montée.
+
+    - id: bash_mkfs
+      description: Formater une partition
+      tags: [bash, mkfs, formater, partition, système de fichiers]
+      command: "sudo mkfs.ext4 /dev/sdXn"
+      explanation: Formate une partition en système de fichiers `ext4`.
+      warning: "**Attention** : Cela efface toutes les données sur la partition !"
+      options:
+        - "-t ext4": "Spécifie le type de système de fichiers (ex: `ext4`, `xfs`, `ntfs`)."
+
+    - id: bash_fsck
+      description: Vérifier et réparer un système de fichiers
+      tags: [bash, fsck, vérifier, réparer, système de fichiers]
+      command: "sudo fsck /dev/sdXn"
+      explanation: Vérifie et répare les erreurs sur un système de fichiers.
+      warning: "Ne pas exécuter sur une partition montée ! Démontez-la d'abord avec `umount`."
+
+    - id: bash_lsblk
+      description: Lister les périphériques de stockage
+      tags: [bash, lsblk, périphériques, stockage, disques]
+      command: "lsblk"
+      explanation: Affiche une liste arborescente des périphériques de stockage (disques, partitions, etc.).
+
+    - id: bash_blkid
+      description: Afficher les UUID des partitions
+      tags: [bash, blkid, UUID, partitions, identifiants]
+      command: "sudo blkid"
+      explanation: Affiche les UUID et types de systèmes de fichiers pour toutes les partitions.
+
+    - id: bash_parted
+      description: Gérer les partitions avec Parted
+      tags: [bash, parted, partitions, gérer, disque]
+      command: "sudo parted /dev/sdX"
+      explanation: Ouvre l'outil `parted` pour gérer les partitions d'un disque.
+      note: "Installation : `sudo apt install parted` (Debian/Ubuntu)."
+
+  # ===== Cron (Tâches Planifiées) =====
+  cron:
+    - id: bash_crontab_edit
+      description: Éditer les tâches cron de l'utilisateur
+      tags: [bash, crontab, éditer, tâches, planifiées]
+      command: "crontab -e"
+      explanation: Ouvre l'éditeur pour modifier les tâches cron de l'utilisateur actuel.
+      note: "Les tâches cron sont stockées dans `/var/spool/cron/crontabs/`."
+
+    - id: bash_crontab_list
+      description: Lister les tâches cron de l'utilisateur
+      tags: [bash, crontab, lister, tâches, planifiées]
+      command: "crontab -l"
+      explanation: Affiche la liste des tâches cron de l'utilisateur actuel.
+
+    - id: bash_crontab_remove
+      description: Supprimer toutes les tâches cron de l'utilisateur
+      tags: [bash, crontab, supprimer, tâches, planifiées]
+      command: "crontab -r"
+      explanation: Supprime toutes les tâches cron de l'utilisateur actuel.
+
+    - id: bash_cron_syntax
+      description: Syntaxe des tâches cron
+      tags: [bash, cron, syntaxe, tâches, planifiées]
+      command: "* * * * * commande"
+      explanation: |
+        Syntaxe d'une ligne cron :
+        ```
+        * * * * * commande
+        | | | | |
+        | | | | +----- Jour de la semaine (0 - 7) (0 et 7 = dimanche)
+        | | | +------- Mois (1 - 12)
+        | | +--------- Jour du mois (1 - 31)
+        | +----------- Heure (0 - 23)
+        +------------- Minute (0 - 59)
+        ```
+      examples:
+        - "0 * * * * /chemin/vers/script.sh": "Exécute le script toutes les heures à la minute 0."
+        - "0 0 * * * /chemin/vers/backup.sh": "Exécute le script tous les jours à minuit."
+        - "0 0 * * 0 /chemin/vers/maintenance.sh": "Exécute le script tous les dimanches à minuit."
+
+  # ===== Divers =====
+  misc:
+    - id: bash_date
+      description: Afficher la date et l'heure actuelles
+      tags: [bash, date, heure, afficher]
+      command: "date"
+      explanation: Affiche la date et l'heure actuelles du système.
+      options:
+        - "+'%Y-%m-%d'": "Affiche la date au format `AAAA-MM-JJ`."
+        - "+'%H:%M:%S'": "Affiche l'heure au format `HH:MM:SS`."
+      example: "date +'%Y-%m-%d %H:%M:%S'"
+
+    - id: bash_cal
+      description: Afficher un calendrier
+      tags: [bash, cal, calendrier, mois, année]
+      command: "cal"
+      explanation: Affiche un calendrier du mois en cours.
+      options:
+        - "-y": "Affiche le calendrier de l'année en cours."
+        - "2026": "Affiche le calendrier pour l'année 2026."
+      example: "cal -y"
+
+    - id: bash_alias
+      description: Créer un alias pour une commande
+      tags: [bash, alias, raccourci, commande]
+      command: "alias ll='ls -la'"
+      explanation: Crée un alias `ll` pour la commande `ls -la`. Les alias sont temporaires (pour la session en cours).
+      note: "Pour rendre un alias permanent, ajoutez-le à `~/.bashrc` ou `~/.bash_aliases`."
+
+    - id: bash_unalias
+      description: Supprimer un alias
+      tags: [bash, unalias, supprimer, alias]
+      command: "unalias ll"
+      explanation: Supprime l'alias `ll`.
+
+    - id: bash_history
+      description: Voir l'historique des commandes
+      tags: [bash, history, historique, commandes]
+      command: "history"
+      explanation: Affiche l'historique des commandes exécutées dans le terminal.
+      options:
+        - "-c": "Efface l'historique."
+        - "-w": "Enregistre l'historique dans le fichier `~/.bash_history`."
+      note: "L'historique est stocké dans `~/.bash_history`."
+
+    - id: bash_clear
+      description: Effacer le terminal
+      tags: [bash, clear, effacer, terminal]
+      command: "clear"
+      explanation: Efface le contenu du terminal.
+
+    - id: bash_man
+      description: Afficher le manuel d'une commande
+      tags: [bash, man, manuel, aide, commande]
+      command: "man nom_de_la_commande"
+      explanation: Affiche le manuel d'utilisation d'une commande.
+      example: "man ls"
+
+    - id: bash_info
+      description: Afficher des informations détaillées sur une commande
+      tags: [bash, info, informations, commande]
+      command: "info nom_de_la_commande"
+      explanation: Affiche des informations détaillées sur une commande (alternative à `man`).
+
+    - id: bash_whatis
+      description: Afficher une description courte d'une commande
+      tags: [bash, whatis, description, commande]
+      command: "whatis nom_de_la_commande"
+      explanation: Affiche une description en une ligne d'une commande.
+
+    - id: bash_time
+      description: Mesurer le temps d'exécution d'une commande
+      tags: [bash, time, temps, exécution, commande]
+      command: "time commande"
+      explanation: Mesure le temps CPU et réel pris par une commande.
+      example: "time ls -R /"
+
+    - id: bash_ulimit
+      description: Voir ou modifier les limites système
+      tags: [bash, ulimit, limites, système, processus]
+      command: "ulimit -a"
+      explanation: Affiche toutes les limites système pour le shell actuel (nombre de processus, taille des fichiers, etc.).
+      options:
+        - "-n": "Affiche le nombre maximum de fichiers ouverts."
+        - "-u": "Affiche le nombre maximum de processus utilisateur."
+
+    - id: bash_uname
+      description: Afficher des informations sur le système
+      tags: [bash, uname, système, informations, noyau]
+      command: "uname -a"
+      explanation: Affiche des informations détaillées sur le système (noyau, architecture, etc.).
+      options:
+        - "-s": "Affiche uniquement le nom du noyau."
+        - "-r": "Affiche uniquement la version du noyau."
+        - "-m": "Affiche uniquement l'architecture matérielle."
+
+    - id: bash_hostname
+      description: Afficher ou modifier le nom de la machine
+      tags: [bash, hostname, nom, machine, hôte]
+      command: "hostname"
+      explanation: Affiche le nom d'hôte de la machine.
+      options:
+        - "-f": "Affiche le nom de domaine complet (FQDN)."
+        - "-i": "Affiche l'adresse IP de la machine."
+
+    - id: bash_w
+      description: Afficher les utilisateurs connectés
+      tags: [bash, w, utilisateurs, connectés, who]
+      command: "w"
+      explanation: Affiche les utilisateurs actuellement connectés et leurs processus en cours.
+
+    - id: bash_who
+      description: Afficher les utilisateurs connectés (version simplifiée)
+      tags: [bash, who, utilisateurs, connectés]
+      command: "who"
+      explanation: Affiche une liste des utilisateurs connectés avec leur terminal et heure de connexion.
+
+    - id: bash_last
+      description: Afficher l'historique des connexions
+      tags: [bash, last, historique, connexions, utilisateurs]
+      command: "last"
+      explanation: Affiche l'historique des connexions des utilisateurs (reboot, shutdown, etc.).
+
+    - id: bash_finger
+      description: Afficher des informations sur un utilisateur
+      tags: [bash, finger, utilisateur, informations]
+      command: "finger nom_utilisateur"
+      explanation: Affiche des informations sur un utilisateur (nom, terminal, heure de connexion, etc.).
+      note: "Le service `finger` doit être installé et activé (`sudo apt install finger`)."
+
+    - id: bash_wall
+      description: Envoyer un message à tous les utilisateurs connectés
+      tags: [bash, wall, message, utilisateurs, broadcast]
+      command: "wall 'Message important !'"
+      explanation: Envoie un message à tous les utilisateurs connectés.
+      note: "Nécessite les droits `root` ou l'appartenance au groupe `tty`."
+
+    - id: bash_yes
+      description: Afficher "y" en boucle
+      tags: [bash, yes, boucle, y]
+      command: "yes | commande"
+      explanation: Affiche "y" en boucle jusqu'à ce qu'il soit interrompu. Utile pour répondre automatiquement "oui" à des prompts.
+      example: "yes | apt install paquet" # Répond "y" à toutes les questions.
+
+    - id: bash_sleep
+      description: Mettre en pause le shell
+      tags: [bash, sleep, pause, temps, attente]
+      command: "sleep 5"
+      explanation: Met le shell en pause pendant 5 secondes.
+      options:
+        - "s": "Secondes (par défaut)."
+        - "m": "Minutes."
+        - "h": "Heures."
+      example: "sleep 1m" # Pause de 1 minute.
+
+    - id: bash_shutdown
+      description: Éteindre ou redémarrer la machine
+      tags: [bash, shutdown, éteindre, redémarrer, halt, reboot]
+      command: "sudo shutdown -h now"
+      explanation: Éteint la machine immédiatement.
+      options:
+        - "-h": "Éteint la machine."
+        - "-r": "Redémarre la machine."
+        - "+5": "Éteint la machine dans 5 minutes."
+        - "now": "Exécute l'action immédiatement."
+      examples:
+        - "sudo shutdown -r +10": "Redémarre la machine dans 10 minutes."
+        - "sudo shutdown -c": "Annule un shutdown planifié."
+
+    - id: bash_reboot
+      description: Redémarrer la machine
+      tags: [bash, reboot, redémarrer, machine]
+      command: "sudo reboot"
+      explanation: Redémarre la machine immédiatement.
+
+    - id: bash_halt
+      description: Arrêter la machine (sans redémarrage)
+      tags: [bash, halt, arrêter, machine]
+      command: "sudo halt"
+      explanation: Arrête la machine sans la redémarrer.
+
+    - id: bash_beep
+      description: Émettre un bip sonore
+      tags: [bash, beep, bip, sonore]
+      command: "beep"
+      explanation: Émet un bip sonore via le haut-parleur du système.
+      note: "Installation : `sudo apt install beep` (Debian/Ubuntu)."
+
+    - id: bash_banner
+      description: Afficher un texte en bannière
+      tags: [bash, banner, texte, bannière]
+      command: "banner 'Bonjour'"
+      explanation: Affiche un texte en grandes lettres ASCII.
+      note: "Installation : `sudo apt install sysvbanner` (Debian/Ubuntu)."
+
+    - id: bash_fortune
+      description: Afficher une citation aléatoire
+      tags: [bash, fortune, citation, aléatoire]
+      command: "fortune"
+      explanation: Affiche une citation ou un proverbe aléatoire.
+      note: "Installation : `sudo apt install fortune-mod` (Debian/Ubuntu)."
+
+    - id: bash_cowsay
+      description: Faire parler une vache ASCII
+      tags: [bash, cowsay, vache, ASCII, fun]
+      command: "cowsay 'Bonjour !'"
+      explanation: Affiche une vache ASCII avec un message.
+      note: "Installation : `sudo apt install cowsay` (Debian/Ubuntu)."
