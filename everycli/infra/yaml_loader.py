@@ -19,15 +19,25 @@ class YamlLoader:
     def load_all(self) -> list[Scenario]:
         scenarios = []
 
+        def _extract_entries(data):
+            if isinstance(data, list):
+                for item in data:
+                    yield from _extract_entries(item)
+            elif isinstance(data, dict):
+                if "id" in data and "description" in data:
+                    yield data
+                else:
+                    for value in data.values():
+                        yield from _extract_entries(value)
+
         for yaml_file in sorted(self._data_dir.glob("*.yaml")):
             raw = yaml_file.read_text(encoding="utf-8")
-            entries = yaml.safe_load(raw)
-            if not isinstance(entries, list):
+            try:
+                entries = yaml.safe_load(raw)
+            except Exception:
                 continue
 
-            for entry in entries:
-                if not isinstance(entry, dict):
-                    continue
+            for entry in _extract_entries(entries):
                 try:
                     scenarios.append(self._parse(entry))
                 except (KeyError, TypeError):
