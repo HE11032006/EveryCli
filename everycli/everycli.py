@@ -18,22 +18,29 @@ from everycli.infra.hybrid_matcher import HybridMatcher
 from everycli.infra.rich_formatter import RichFormatter
 from everycli.infra.shell_runner import ShellRunner
 from everycli.infra.clipboard_copy import ClipboardCopy
+from everycli.infra import daemon_client
+from everycli.infra.daemon_client import DaemonResult, DaemonError
 
 app = typer.Typer(add_completion=False, help="Find the exact CLI command you need.")
 console = Console()
 
-DATA_DIR = Path(__file__).parent / "data" / "commands"
+DATA_DIR     = Path(__file__).parent / "data" / "commands"
 ENVIRONMENTS = ["git", "linux", "docker", "npm", "ssh", "other"]
 
 
-def _build_search_engine() -> SearchEngine:
+# ── Fallback local (sans daemon) ──────────────────────────────────────────────
+
+def _search_local(query: str, top_k: int) -> list:
+    """Recherche directe sans daemon — lente mais toujours fonctionnelle."""
+    matcher = HybridMatcher(semantic_weight=0.6)
     engine = SearchEngine(
         loader=YamlLoader(DATA_DIR),
-        matcher=HybridMatcher(semantic_weight=0.6),
+        matcher=matcher,
         os_resolver=OSResolver(),
     )
-    engine.boot()
-    return engine
+    with console.status("[dim]Chargement...[/dim]", spinner="dots"):
+        engine.boot()
+        return engine.search(query, top_k=top_k)
 
 
 # ── search ────────────────────────────────────────────────────────────────────
@@ -46,12 +53,32 @@ def search(
     env: str = typer.Option(None, "--env", help="Filtrer par environnement."),
     copy: bool = typer.Option(False, "--copy", "-c", help="Copier la commande dans le presse-papier."),
     run: bool = typer.Option(False, "--run", "-r", help="Exécuter la commande directement."),
+    no_daemon: bool = typer.Option(False, "--no-daemon", help="Forcer le mode direct (sans daemon)."),
 ):
     """Trouve la commande CLI dont tu as besoin."""
-    engine = _build_search_engine()
-    formatter = RichFormatter()
-    results = engine.search(query, top_k=top)
 
+    # ── Résolution des résultats (daemon ou fallback local) ───────────────────
+    results = []
+    used_daemon = False
+
+    if not no_daemon:
+        daemon_resp = daemon_client.search(query, top_k=top)
+
+        if isinstance(daemon_resp, DaemonResult):
+            used_daemon = True
+            # Convertir les dicts en objets compatibles RichFormatter
+            results = _daemon_results_to_search_results(daemon_resp.results)
+        else:
+            # DaemonError — warning + fallback silencieux
+            console.print(
+                f"  [yellow]⚠ Daemon indisponible ({daemon_resp.reason})"
+                f" — mode direct activé.[/yellow]"
+            )
+            results = _search_local(query, top_k=top)
+    else:
+        results = _search_local(query, top_k=top)
+
+    # ── Filtrage environnement ────────────────────────────────────────────────
     if env:
         results = [r for r in results if env.lower() in r.scenario.tags]
 
@@ -59,6 +86,8 @@ def search(
         console.print("\n[yellow]Aucun résultat trouvé.[/yellow] Essaie d'autres mots-clés.")
         raise typer.Exit(1)
 
+    # ── Affichage ─────────────────────────────────────────────────────────────
+    formatter = RichFormatter()
     for result in results:
         formatter.format(result)
 
@@ -91,6 +120,67 @@ def search(
                     formatter.format_error_hint(output, result)
 
     console.print()
+
+
+def _daemon_results_to_search_results(raw: list[dict]) -> list:
+    """
+    Convertit les dicts JSON du daemon en SearchResult compatibles
+    avec RichFormatter — sans recharger le moteur.
+    """
+    from everycli.core.models import (
+        Scenario, Command, SearchResult, OS
+    )
+    from everycli.infra.os_resolver import OSResolver
+
+    current_os = OSResolver().resolve()
+    out = []
+    for r in raw:
+        cmd = Command(linux=r["command"], windows=r["command"], macos=r["command"])
+        scenario = Scenario(
+            id=r["id"],
+            description=r["description"],
+            tags=r.get("tags", []),
+            command=cmd,
+            explanation=r.get("explanation", ""),
+            warning=r.get("warning", ""),
+        )
+        out.append(SearchResult(
+            scenario=scenario,
+            resolved_command=r["command"],
+            score=r.get("score", 0.0),
+        ))
+    return out
+
+
+# ── daemon ────────────────────────────────────────────────────────────────────
+
+@app.command()
+def daemon(
+    start: bool = typer.Option(False, "--start", help="Démarrer le daemon."),
+    stop:  bool = typer.Option(False, "--stop",  help="Arrêter le daemon."),
+    status: bool = typer.Option(False, "--status", help="Afficher l'état du daemon."),
+    logs:  bool = typer.Option(False, "--logs",  help="Afficher les logs du daemon."),
+    debug: bool = typer.Option(False, "--debug", help="Démarrer en mode verbeux."),
+):
+    """Gérer le daemon EveryCLI (start / stop / status / logs)."""
+    from everycli.infra.daemon import (
+        start_daemon, stop_daemon, status_daemon, show_logs
+    )
+
+    if start:
+        console.print("[dim]Démarrage du daemon EveryCLI...[/dim]")
+        start_daemon(debug=debug)
+    elif stop:
+        stop_daemon()
+    elif status:
+        status_daemon()
+    elif logs:
+        show_logs()
+    else:
+        console.print(
+            "Usage : everycli daemon [--start | --stop | --status | --logs]\n"
+            "Ajoute --debug avec --start pour les logs verbeux."
+        )
 
 
 # ── add ───────────────────────────────────────────────────────────────────────
@@ -128,6 +218,10 @@ def add():
     console.print(
         f"\n[bold green]✔ Scénario ajouté[/bold green] → [cyan]{scenario.id}[/cyan]\n"
     )
+
+    # Notifie le daemon de recharger la base
+    if daemon_client.send_reload():
+        console.print("  [dim]→ Daemon notifié (base rechargée)[/dim]")
 
 
 # ── list ──────────────────────────────────────────────────────────────────────
