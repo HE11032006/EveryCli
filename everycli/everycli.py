@@ -6,35 +6,49 @@ As thin as possible: wire dependencies, boot, run.
 from pathlib import Path
 import typer
 from rich.console import Console
-from rich.prompt import Prompt, Confirm
-import yaml
 
-from everycli.core.search_engine import SearchEngine
-from everycli.core.add_engine import AddEngine
-from everycli.core.history import History
-from everycli.infra.os_resolver import OSResolver
-from everycli.infra.yaml_loader import YamlLoader
-from everycli.infra.yaml_writer import YamlWriter
-from everycli.infra.hybrid_matcher import HybridMatcher
-from everycli.infra.rich_formatter import RichFormatter
-from everycli.infra.shell_runner import ShellRunner
-from everycli.infra.clipboard_copy import ClipboardCopy
+# On garde uniquement les imports légers pour le mode client
 from everycli.infra import daemon_client
 from everycli.infra.daemon_client import DaemonResult, DaemonError
+
+import sys
+import os
+import os
 
 app = typer.Typer(add_completion=False, help="Find the exact CLI command you need.")
 console = Console()
 
-DATA_DIR     = Path(__file__).parent / "data" / "commands"
+# Support PyInstaller (chemins gelés)
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    DATA_DIR = Path(sys._MEIPASS) / "everycli" / "data" / "commands"
+else:
+    DATA_DIR = Path(__file__).parent / "data" / "commands"
 ENVIRONMENTS = ["git", "linux", "docker", "npm", "ssh", "other"]
 
-history_manager = History()
+def _get_history():
+    from everycli.core.history import History
+    return History()
+
+# history_manager sera chargé à la demande
+_history_manager = None
+
+def _get_history_manager():
+    global _history_manager
+    if _history_manager is None:
+        from everycli.core.history import History
+        _history_manager = History()
+    return _history_manager
 
 
 # ── Fallback local (sans daemon) ──────────────────────────────────────────────
 
 def _search_local(query: str, top_k: int) -> list:
     """Recherche directe sans daemon — lente mais toujours fonctionnelle."""
+    from everycli.infra.hybrid_matcher import HybridMatcher
+    from everycli.core.search_engine import SearchEngine
+    from everycli.infra.yaml_loader import YamlLoader
+    from everycli.infra.os_resolver import OSResolver
+
     matcher = HybridMatcher(semantic_weight=0.6)
     engine = SearchEngine(
         loader=YamlLoader(DATA_DIR),
@@ -63,6 +77,7 @@ def search(
 
     # ── Gestion de l'historique si pas de query ───────────────────────────────
     if not query:
+        history_manager = _get_history_manager()
         recent = history_manager.load()
         if not recent:
             console.print("\n[yellow]Aucun historique.[/yellow] Tape une recherche pour commencer !")
@@ -118,12 +133,13 @@ def search(
         final_results = [results[index]]
 
     # ── Affichage & Actions ───────────────────────────────────────────────────
+    from everycli.infra.rich_formatter import RichFormatter
     formatter = RichFormatter()
     
     # On sauvegarde le premier résultat dans l'historique pour la prochaine fois
     if final_results:
         best = final_results[0]
-        history_manager.save(query, description=best.scenario.description, command=best.resolved_command)
+        _get_history_manager().save(query, description=best.scenario.description, command=best.resolved_command)
 
     for result in final_results[:top]:
         formatter.format(result)
@@ -141,6 +157,7 @@ def search(
 
 
 def _copy_to_clipboard(command: str):
+    from everycli.infra.clipboard_copy import ClipboardCopy
     clipboard = ClipboardCopy()
     success = clipboard.copy(command)
     if success:
@@ -149,8 +166,10 @@ def _copy_to_clipboard(command: str):
         console.print("  [yellow]⚠ Impossible de copier.[/yellow] Installe xclip.")
 
 def _run_command(command: str, result, formatter):
+    from rich.prompt import Confirm
     console.print(f"\n  [dim]Exécution de :[/dim] [cyan]{command}[/cyan]\n")
     if Confirm.ask("  Confirmes-tu l'exécution ?"):
+        from everycli.infra.shell_runner import ShellRunner
         runner = ShellRunner()
         code, output = runner.run(command)
         if output:
@@ -230,6 +249,7 @@ def daemon(
 @app.command()
 def add():
     """Ajouter un nouveau scénario à la base de données."""
+    from rich.prompt import Prompt, Confirm
     console.print("\n[bold cyan]✦ Ajouter un scénario[/bold cyan]\n")
 
     env = Prompt.ask("  Environnement", choices=ENVIRONMENTS, default="git")
@@ -246,6 +266,8 @@ def add():
         console.print("[yellow]Annulé.[/yellow]")
         raise typer.Exit(0)
 
+    from everycli.core.add_engine import AddEngine
+    from everycli.infra.yaml_writer import YamlWriter
     engine = AddEngine(writer=YamlWriter(DATA_DIR))
     scenario = engine.add(
         environment=env,
@@ -269,6 +291,7 @@ def list_scenarios(
     env: str = typer.Option(None, "--env", help="Filtrer par environnement."),
 ):
     """Lister tous les scénarios disponibles."""
+    from everycli.infra.yaml_loader import YamlLoader
     loader = YamlLoader(DATA_DIR)
     scenarios = loader.load_all()
 
@@ -300,6 +323,7 @@ def export(
     env: str = typer.Option(None, "--env", help="Filtrer par environnement."),
 ):
     """Exporter la base de scénarios."""
+    from everycli.infra.yaml_loader import YamlLoader
     loader = YamlLoader(DATA_DIR)
     scenarios = loader.load_all()
 
@@ -322,6 +346,7 @@ def export(
             entry["errors"] = [{"trigger": h.trigger, "cause": h.cause, "fix": h.fix} for h in s.error_hints]
         entries.append(entry)
 
+    import yaml
     output.write_text(yaml.dump(entries, allow_unicode=True, sort_keys=False), encoding="utf-8")
     console.print(f"\n[bold green]✔ Export terminé[/bold green] → [cyan]{output}[/cyan] ([white]{len(entries)} scénarios[/white])\n")
 
@@ -338,6 +363,7 @@ def import_yaml(
         raise typer.Exit(1)
     
     try:
+        import yaml
         content = yaml.safe_load(path.read_text())
         if not isinstance(content, list): raise ValueError("Format liste attendu.")
     except Exception as e:
@@ -393,6 +419,7 @@ def history(
     clear: bool = typer.Option(False, "--clear", help="Vider l'historique.")
 ):
     """Gérer l'historique des recherches."""
+    history_manager = _get_history_manager()
     if clear:
         history_manager.clear()
         console.print("[bold green]✔ Historique vidé.[/bold green]")

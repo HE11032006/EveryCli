@@ -140,7 +140,12 @@ def _build_engine():
     from everycli.infra.yaml_loader import YamlLoader
     from everycli.infra.hybrid_matcher import HybridMatcher
 
-    data_dir = _Path(__file__).parent.parent / "data" / "commands"
+    # Support PyInstaller
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        data_dir = _Path(sys._MEIPASS) / "everycli" / "data" / "commands"
+    else:
+        data_dir = _Path(__file__).parent.parent / "data" / "commands"
+
     engine = SearchEngine(
         loader=YamlLoader(data_dir),
         matcher=HybridMatcher(semantic_weight=0.6),

@@ -4,6 +4,7 @@ With embedding cache — encodes once, loads instantly after.
 """
 
 import os
+import sys
 import hashlib
 import json
 import logging
@@ -53,7 +54,21 @@ class SemanticMatcher:
             # Import paresseux (lazy) pour ne pas ralentir le démarrage du CLI
             try:
                 from sentence_transformers import SentenceTransformer
-                self._model = SentenceTransformer(self._model_name)
+                
+                model_path = self._model_name
+                # Support PyInstaller : si on est dans un binaire, on cherche le modèle embarqué
+                if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+                    # On teste plusieurs emplacements possibles dans le bundle
+                    candidates = [
+                        Path(sys._MEIPASS) / "models" / self._model_name,
+                        Path(sys._MEIPASS) / "everycli" / "data" / "models" / self._model_name,
+                    ]
+                    for candidate in candidates:
+                        if candidate.exists():
+                            model_path = str(candidate)
+                            break
+                
+                self._model = SentenceTransformer(model_path)
             except Exception:
                 # Environnements sans accès réseau ou sans modèle disponible :
                 # on bascule sur un modèle de secours déterministe très léger
