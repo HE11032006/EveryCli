@@ -1,3 +1,27 @@
+- id: git_add_all
+  description: Préparer tous les fichiers modifiés pour le commit
+  tags: [git, add, ajouter, préparation, staging, index, tout, tous, modifications, fichiers]
+  commands:
+    linux: "git add ."
+    windows: "git add ."
+  explanation: Ajoute tous les fichiers modifiés et nouveaux au staging area.
+
+- id: git_commit
+  description: Enregistrer les modifications
+  tags: [git, commit, enregistrer, sauvegarder, valider, message, modifications, changements]
+  commands:
+    linux: "git commit -m 'message descriptif'"
+    windows: "git commit -m 'message descriptif'"
+  explanation: Crée un nouveau commit avec les fichiers qui sont en staging.
+
+- id: git_push
+  description: Envoyer les modifications sur le serveur
+  tags: [git, push, envoyer, pousser, serveur, distant, remote, origin, publier, synchroniser]
+  commands:
+    linux: "git push origin nom-branche"
+    windows: "git push origin nom-branche"
+  explanation: Envoie tes commits locaux vers le dépôt distant.
+
 - id: git_replace_in_commits
   description: Remplacer ou modifier un mot dans tous les messages de commits
   tags: [git, commit, remplacer, modifier, historique, message, réécrire, mot, tous, tout, global, changer]
