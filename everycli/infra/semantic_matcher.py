@@ -32,8 +32,10 @@ CACHE_DIR = Path.home() / ".everycli" / "cache"
 
 
 def _scenario_to_document(scenario: Scenario) -> str:
-    tags_boosted = " ".join(scenario.tags * 2)
-    return f"{scenario.description} {tags_boosted} {scenario.explanation}"
+    # Boost demandé : Tags x2.5 (on arrondit à 3), Commande x3.0
+    tags_boosted = " ".join(scenario.tags * 3)
+    cmd_boosted = " ".join([scenario.command.linux] * 3)
+    return f"{scenario.description} {tags_boosted} {scenario.explanation} {cmd_boosted}"
 
 
 class SemanticMatcher:
