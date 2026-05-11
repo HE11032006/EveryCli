@@ -1,31 +1,37 @@
-from pathlib import Path
 # -*- mode: python ; coding: utf-8 -*-
+import os
+import sys
+from PyInstaller.utils.hooks import collect_all
 
-model_path = str(Path.home() / '.cache/huggingface/hub/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2')
+# On essaie de localiser le modèle dans le dossier courant ou dans le cache
+# Pour le build CI, on s'assure qu'il est téléchargé avant.
+model_name = "paraphrase-multilingual-MiniLM-L12-v2"
+
+# Collecte automatique pour les grosses librairies complexes
+datas = [('everycli/data/commands/*.yaml', 'everycli/data/commands')]
+binaries = []
+hiddenimports = [
+    'everycli.core', 'everycli.infra', 'rich', 'typer', 'yaml', 
+    'sklearn', 'rank_bm25', 'pick', 'torch', 'sentence_transformers', 
+    'transformers', 'huggingface_hub'
+]
+
+# Cette fonction magique de PyInstaller va trouver tout ce qu'il faut pour sentence_transformers
+tmp_ret = collect_all('sentence_transformers')
+datas += tmp_ret[0]
+binaries += tmp_ret[1]
+hiddenimports += tmp_ret[2]
+
+# On ajoute le modèle s'il existe localement (téléchargé par le workflow)
+if os.path.exists(model_name):
+    datas.append((model_name, f'models/{model_name}'))
 
 a = Analysis(
     ['everycli/everycli.py'],
     pathex=[],
-    binaries=[],
-    datas=[
-        ('everycli/data/commands/*.yaml', 'everycli/data/commands'),
-        ('.env/lib/python3.14/site-packages/sentence_transformers', 'sentence_transformers'),
-        (str(Path.home()) + '/.cache/huggingface/hub/models--sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2', 'models/paraphrase-multilingual-MiniLM-L12-v2'),
-    ],
-    hiddenimports=[
-        'everycli.core',
-        'everycli.infra',
-        'rich',
-        'typer',
-        'yaml',
-        'sklearn',
-        'rank_bm25',
-        'pick',
-        'torch',
-        'sentence_transformers',
-        'transformers',
-        'huggingface_hub',
-    ],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -34,6 +40,7 @@ a = Analysis(
     optimize=0,
 )
 pyz = PYZ(a.pure)
+
 exe = EXE(
     pyz,
     a.scripts,

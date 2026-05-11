@@ -11,6 +11,8 @@ jobs:
   build:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -30,6 +32,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pyinstaller
+
+    - name: Download Model
+      run: |
+        python -c "from sentence_transformers import SentenceTransformer; model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2'); model.save('paraphrase-multilingual-MiniLM-L12-v2')"
 
     - name: Build with PyInstaller (Linux/macOS)
       if: matrix.os != 'windows-latest'
