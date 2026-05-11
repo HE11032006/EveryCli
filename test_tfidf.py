@@ -23,3 +23,5 @@ for q in queries:
         print(f"'{q}' -> {res[0][0].id} (Score: {res[0][1]})")
     else:
         print(f"'{q}' -> No match")
+
+# https://ashleybrookecs.com/
