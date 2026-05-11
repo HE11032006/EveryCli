@@ -25,7 +25,7 @@ from typing import Any
 SOCKET_HOST  = "127.0.0.1"
 SOCKET_PORT  = int(os.environ.get("EVERYCLI_PORT", "51821"))
 TIMEOUT      = float(os.environ.get("EVERYCLI_TIMEOUT", "1.0"))
-RESPAWN_WAIT = 4.0   # secondes max pour attendre le daemon après respawn
+RESPAWN_WAIT = 10.0   # secondes max pour attendre le daemon après respawn
 
 
 # ── Result types ──────────────────────────────────────────────────────────────
@@ -82,6 +82,7 @@ def _respawn_daemon() -> bool:
     try:
         subprocess.Popen(
             [sys.executable, "-m", "everycli.infra.daemon_runner"],
+            env={**os.environ, "PYTHONPATH": str(Path(__file__).parent.parent.parent)},
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             start_new_session=True,   # Détache du terminal courant
@@ -99,18 +100,55 @@ def _respawn_daemon() -> bool:
 
 # ── API publique ──────────────────────────────────────────────────────────────
 
-def search(query: str, top_k: int = 1) -> DaemonResult | DaemonError:
-    """
-    Envoie une requête de recherche au daemon.
+# def search(query: str, top_k: int = 1) -> DaemonResult | DaemonError:
+#     """
+#     Envoie une requête de recherche au daemon.
 
-    Comportement :
-      1. Ping rapide → daemon vivant → search direct
-      2. Daemon absent → respawn silencieux → search
-      3. Respawn échoue → DaemonError (caller bascule en fallback)
-    """
-    if not ping():
-        # Daemon absent — on tente un respawn silencieux
-        import sys as _sys
+#     Comportement :
+#       1. Ping rapide → daemon vivant → search direct
+#       2. Daemon absent → respawn silencieux → search
+#       3. Respawn échoue → DaemonError (caller bascule en fallback)
+#     """
+#     if not ping():
+#         # Daemon absent — on tente un respawn silencieux
+#         import sys as _sys
+#         from rich.console import Console
+#         Console().print(
+#             "  [yellow]⚡ Daemon absent — démarrage automatique...[/yellow]",
+#             highlight=False,
+#         )
+#         ok = _respawn_daemon()
+#         if not ok:
+#             return DaemonError(
+#                 reason=(
+#                     "Impossible de démarrer le daemon automatiquement. "
+#                     "Lance 'everycli daemon --start' pour l'activer."
+#                 ),
+#                 code="RESPAWN_FAILED",
+#             )
+
+#     resp = _send_request({"action": "search", "query": query, "top_k": top_k})
+
+#     if resp is None:
+#         return DaemonError(
+#             reason="Le daemon ne répond pas (timeout).",
+#             code="TIMEOUT",
+#         )
+
+#     if not resp.get("ok"):
+#         return DaemonError(
+#             reason=resp.get("error", "Erreur inconnue"),
+#             code=resp.get("code", "DAEMON_ERROR"),
+#         )
+
+#     return DaemonResult(results=resp.get("results", []))
+
+
+def search(query: str, top_k: int = 1) -> DaemonResult | DaemonError:
+    # Tente directement — pas de ping() préalable qui consomme la connexion
+    resp = _send_request({"action": "search", "query": query, "top_k": top_k})
+
+    if resp is None:
         from rich.console import Console
         Console().print(
             "  [yellow]⚡ Daemon absent — démarrage automatique...[/yellow]",
@@ -119,20 +157,13 @@ def search(query: str, top_k: int = 1) -> DaemonResult | DaemonError:
         ok = _respawn_daemon()
         if not ok:
             return DaemonError(
-                reason=(
-                    "Impossible de démarrer le daemon automatiquement. "
-                    "Lance 'everycli daemon --start' pour l'activer."
-                ),
+                reason="Impossible de démarrer le daemon. Lance 'everycli daemon --start'.",
                 code="RESPAWN_FAILED",
             )
-
-    resp = _send_request({"action": "search", "query": query, "top_k": top_k})
+        resp = _send_request({"action": "search", "query": query, "top_k": top_k})
 
     if resp is None:
-        return DaemonError(
-            reason="Le daemon ne répond pas (timeout).",
-            code="TIMEOUT",
-        )
+        return DaemonError(reason="Le daemon ne répond pas (timeout).", code="TIMEOUT")
 
     if not resp.get("ok"):
         return DaemonError(
@@ -141,7 +172,6 @@ def search(query: str, top_k: int = 1) -> DaemonResult | DaemonError:
         )
 
     return DaemonResult(results=resp.get("results", []))
-
 
 def send_reload() -> bool:
     """
