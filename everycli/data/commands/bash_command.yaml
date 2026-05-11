@@ -5,13 +5,13 @@ bash_commands:
   navigation:
     - id: bash_pwd
       description: Afficher le répertoire courant
-      tags: [bash, pwd, répertoire, courant, chemin]
+      tags: [bash, pwd, répertoire, courant, chemin, shell, terminal, console, où]
       command: "pwd"
       explanation: Affiche le chemin absolu du répertoire de travail actuel.
 
     - id: bash_ls
       description: Lister les fichiers et répertoires
-      tags: [bash, ls, lister, fichiers, répertoires]
+      tags: [bash, ls, lister, fichiers, répertoires, shell, terminal, console, voir, contenu]
       command: "ls"
       explanation: Liste les fichiers et répertoires dans le répertoire courant.
       options:
@@ -23,7 +23,7 @@ bash_commands:
 
     - id: bash_cd
       description: Changer de répertoire
-      tags: [bash, cd, changer, répertoire, chemin]
+      tags: [bash, cd, changer, répertoire, chemin, shell, terminal, console, naviguer, aller, entrer]
       command: "cd /chemin/vers/repertoire"
       explanation: Change le répertoire de travail actuel.
       examples:
@@ -33,7 +33,7 @@ bash_commands:
 
     - id: bash_mkdir
       description: Créer un répertoire
-      tags: [bash, mkdir, créer, répertoire]
+      tags: [bash, mkdir, créer, répertoire, dossier, nouveau, shell, terminal, console]
       command: "mkdir nom_du_repertoire"
       explanation: Crée un nouveau répertoire.
       options:
@@ -81,7 +81,7 @@ bash_commands:
 
     - id: bash_rm
       description: Supprimer des fichiers ou répertoires
-      tags: [bash, rm, supprimer, fichier, répertoire]
+      tags: [bash, rm, supprimer, fichier, répertoire, effacer, shell, terminal, console, détruire]
       command: "rm nom_du_fichier"
       explanation: Supprime un fichier.
       warning: "La suppression est **irréversible** !"
@@ -167,7 +167,7 @@ bash_commands:
 
     - id: bash_grep
       description: Rechercher du texte dans des fichiers
-      tags: [bash, grep, rechercher, texte, fichier]
+      tags: [bash, grep, rechercher, texte, fichier, chercher, trouver, shell, terminal, console, filtrer]
       command: "grep 'motif' nom_du_fichier"
       explanation: Recherche une chaîne de caractères dans un fichier.
       options:
@@ -235,7 +235,7 @@ bash_commands:
   processes:
     - id: bash_ps
       description: Lister les processus en cours
-      tags: [bash, ps, processus, lister, aux]
+      tags: [bash, ps, processus, lister, aux, tâches, système, shell, terminal, console]
       command: "ps aux"
       explanation: Affiche tous les processus en cours avec leur PID, utilisation CPU/mémoire, et commande.
       options:
@@ -341,7 +341,7 @@ bash_commands:
 
     - id: bash_ping
       description: Tester la connectivité avec une adresse
-      tags: [bash, ping, réseau, connectivité, test]
+      tags: [bash, ping, réseau, connectivité, test, internet, joindre, latence, pong, shell, terminal]
       command: "ping adresse_IP_ou_nom_de_domaine"
       explanation: Envoie des paquets ICMP pour tester la connectivité.
       options:
@@ -368,7 +368,7 @@ bash_commands:
 
     - id: bash_curl
       description: Effectuer une requête HTTP
-      tags: [bash, curl, réseau, requête, HTTP, API]
+      tags: [bash, curl, réseau, requête, HTTP, API, web, url, envoyer, télécharger, shell, terminal]
       command: "curl https://exemple.com"
       explanation: Effectue une requête HTTP vers une URL et affiche la réponse.
       options:
@@ -1231,7 +1231,7 @@ bash_commands:
   misc:
     - id: bash_date
       description: Afficher la date et l'heure actuelles
-      tags: [bash, date, heure, afficher]
+      tags: [bash, date, heure, afficher, temps, calendrier, moment, aujourd'hui, shell, terminal]
       command: "date"
       explanation: Affiche la date et l'heure actuelles du système.
       options:
@@ -1398,7 +1398,7 @@ bash_commands:
 
     - id: bash_reboot
       description: Redémarrer la machine
-      tags: [bash, reboot, redémarrer, machine]
+      tags: [bash, reboot, redémarrer, machine, système, relancer, redémarrage, shell, terminal]
       command: "sudo reboot"
       explanation: Redémarre la machine immédiatement.
 
