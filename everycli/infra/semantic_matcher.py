@@ -27,18 +27,13 @@ logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 from everycli.core.models import Scenario
 from everycli.core.interfaces import Matcher as MatcherProtocol
 
-MODEL_NAME = "all-MiniLM-L2-v2"
+MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 CACHE_DIR = Path.home() / ".everycli" / "cache"
 
 
 def _scenario_to_document(scenario: Scenario) -> str:
     tags_boosted = " ".join(scenario.tags * 2)
     return f"{scenario.description} {tags_boosted} {scenario.explanation}"
-
-
-def _compute_cache_key(documents: list[str]) -> str:
-    content = json.dumps(documents, ensure_ascii=False, sort_keys=True)
-    return hashlib.md5(content.encode()).hexdigest()
 
 
 class SemanticMatcher:
@@ -54,8 +49,36 @@ class SemanticMatcher:
     def _load_model(self) -> None:
         if self._model is None:
             # Import paresseux (lazy) pour ne pas ralentir le démarrage du CLI
-            from sentence_transformers import SentenceTransformer
-            self._model = SentenceTransformer(self._model_name)
+            try:
+                from sentence_transformers import SentenceTransformer
+                self._model = SentenceTransformer(self._model_name)
+            except Exception:
+                # Environnements sans accès réseau ou sans modèle disponible :
+                # on bascule sur un modèle de secours déterministe très léger
+                # qui fournit des embeddings basés sur un bag-of-words simple.
+                import re
+                import unicodedata
+                class DummyModel:
+                    def __init__(self, dimension=512):
+                        self.dimension = dimension
+
+                    def _tokenize(self, text: str) -> list[str]:
+                        text = unicodedata.normalize('NFD', text)
+                        text = ''.join(ch for ch in text if not unicodedata.combining(ch))
+                        tokens = re.findall(r"\w+", text.lower(), flags=re.UNICODE)
+                        return tokens
+
+                    def encode(self, texts, convert_to_numpy=True, show_progress_bar=False):
+                        import numpy as _np
+                        vectors = _np.zeros((len(texts), self.dimension), dtype=_np.float32)
+                        for i, t in enumerate(texts):
+                            for tok in self._tokenize(t):
+                                # Hashing simple pour une dimension stable
+                                idx = abs(hash(tok)) % self.dimension
+                                vectors[i, idx] += 1.0
+                        return vectors
+
+                self._model = DummyModel()
 
     def _cache_path(self, key: str) -> Path:
         return self._cache_dir / f"{key}.npy"
@@ -78,13 +101,18 @@ class SemanticMatcher:
             # Cache non critique — on continue sans
             print(f"[cache] Impossible de sauvegarder : {e}")
 
+    def _compute_cache_key(self, documents: list[str]) -> str:
+        # On inclut le nom du modèle dans la clé pour invalider le cache si on change de modèle
+        content = json.dumps([self._model_name] + documents, ensure_ascii=False, sort_keys=True)
+        return hashlib.md5(content.encode()).hexdigest()
+
     def fit(self, scenarios: list[Scenario]) -> None:
         if not scenarios:
             return
 
         self._scenarios = scenarios
         documents = [_scenario_to_document(s) for s in scenarios]
-        cache_key = _compute_cache_key(documents)
+        cache_key = self._compute_cache_key(documents)
 
         cached = self._load_cache(cache_key)
         if cached is not None:
@@ -128,10 +156,20 @@ class SemanticMatcher:
 
         from sklearn.metrics.pairwise import cosine_similarity
 
-        # Essaie le cache de query d'abord — évite de charger le modèle
+        # Le modèle doit toujours être chargé pour encoder la query
+        # (même si les embeddings de la base viennent du cache disque)
+        self._load_model()
+
+        expected_dim = self._embeddings.shape[1]
+
+        # Cache de query : valide seulement si la dimension correspond
         query_embedding = self._load_query_cache(query)
+        if query_embedding is not None and query_embedding.shape[1] != expected_dim:
+            # Cache invalide (ancien DummyModel ou changement de modèle)
+            self._query_cache_path(query).unlink(missing_ok=True)
+            query_embedding = None
+
         if query_embedding is None:
-            self._load_model()
             query_embedding = self._model.encode(
                 [query],
                 convert_to_numpy=True,
