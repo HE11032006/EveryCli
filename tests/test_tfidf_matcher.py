@@ -32,7 +32,7 @@ class TestNormalize:
         assert _normalize("éàü") == "eau"
 
     def test_removes_punctuation(self):
-        assert _normalize("git --amend") == "git  amend"
+        assert _normalize("git --amend") == "git amend"
 
     def test_handles_empty_string(self):
         assert _normalize("") == ""
