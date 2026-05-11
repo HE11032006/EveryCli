@@ -5,7 +5,7 @@ docker_compose:
   basic_commands:
     - id: docker_compose_up
       description: Démarrer les services définis dans docker-compose.yml
-      tags: [docker, compose, up, démarrer, services, conteneurs]
+      tags: [docker, compose, up, démarrer, services, conteneurs, lancer, stack, monter, déploiement]
       command: "docker-compose up -d"
       explanation: |
         Démarre tous les services définis dans le fichier `docker-compose.yml`.
@@ -19,7 +19,7 @@ docker_compose:
 
     - id: docker_compose_down
       description: Arrêter et supprimer les conteneurs, réseaux et volumes
-      tags: [docker, compose, down, arrêter, supprimer, conteneurs, réseaux, volumes]
+      tags: [docker, compose, down, arrêter, supprimer, conteneurs, réseaux, volumes, démonter, nettoyer, détruire]
       command: "docker-compose down"
       explanation: |
         Arrête et supprime les conteneurs, réseaux et volumes définis dans `docker-compose.yml`.
@@ -30,7 +30,7 @@ docker_compose:
 
     - id: docker_compose_ps
       description: Lister les conteneurs en cours d'exécution
-      tags: [docker, compose, ps, lister, conteneurs, statut]
+      tags: [docker, compose, ps, lister, conteneurs, statut, voir, état, actifs, marche]
       command: "docker-compose ps"
       explanation: Affiche la liste des conteneurs démarrés par Docker Compose, avec leur statut.
       options:
@@ -38,7 +38,7 @@ docker_compose:
 
     - id: docker_compose_logs
       description: Afficher les logs des services
-      tags: [docker, compose, logs, afficher, journaux, conteneurs]
+      tags: [docker, compose, logs, afficher, journaux, conteneurs, erreur, sortie, journal, suivre]
       command: "docker-compose logs"
       explanation: Affiche les logs de tous les services.
       options:
@@ -49,38 +49,38 @@ docker_compose:
 
     - id: docker_compose_restart
       description: Redémarrer un ou plusieurs services
-      tags: [docker, compose, restart, redémarrer, service]
+      tags: [docker, compose, restart, redémarrer, service, relancer, reboot]
       command: "docker-compose restart service_name"
       explanation: Redémarre un service spécifique.
       example: "docker-compose restart web db"
 
     - id: docker_compose_start
       description: Démarrer des conteneurs arrêtés
-      tags: [docker, compose, start, démarrer, conteneurs]
+      tags: [docker, compose, start, démarrer, conteneurs, lancer, allumer]
       command: "docker-compose start service_name"
       explanation: Démarre un conteneur arrêté sans le recréer.
 
     - id: docker_compose_stop
       description: Arrêter des conteneurs en cours d'exécution
-      tags: [docker, compose, stop, arrêter, conteneurs]
+      tags: [docker, compose, stop, arrêter, conteneurs, couper, éteindre]
       command: "docker-compose stop service_name"
       explanation: Arrête un conteneur sans le supprimer.
 
     - id: docker_compose_pause
       description: Mettre en pause des conteneurs
-      tags: [docker, compose, pause, mettre en pause, conteneurs]
+      tags: [docker, compose, pause, mettre en pause, conteneurs, suspendre, figer]
       command: "docker-compose pause service_name"
       explanation: Met en pause un conteneur (il reste en mémoire mais ne consomme pas de CPU).
 
     - id: docker_compose_unpause
       description: Reprendre des conteneurs en pause
-      tags: [docker, compose, unpause, reprendre, conteneurs]
+      tags: [docker, compose, unpause, reprendre, conteneurs, réactiver, continuer]
       command: "docker-compose unpause service_name"
       explanation: Reprend un conteneur mis en pause.
 
     - id: docker_compose_build
       description: Construire ou reconstruire les images des services
-      tags: [docker, compose, build, construire, image]
+      tags: [docker, compose, build, construire, image, compilation, fabrication, reconstruire]
       command: "docker-compose build"
       explanation: Construit les images des services définis dans `docker-compose.yml`.
       options:
@@ -90,7 +90,7 @@ docker_compose:
 
     - id: docker_compose_pull
       description: Télécharger les images des services
-      tags: [docker, compose, pull, télécharger, image]
+      tags: [docker, compose, pull, télécharger, image, récupérer, chercher, download]
       command: "docker-compose pull"
       explanation: Télécharge les images des services depuis Docker Hub ou un registry privé.
       options:
@@ -98,7 +98,7 @@ docker_compose:
 
     - id: docker_compose_exec
       description: Exécuter une commande dans un conteneur en cours d'exécution
-      tags: [docker, compose, exec, exécuter, commande, conteneur]
+      tags: [docker, compose, exec, exécuter, commande, conteneur, entrer, console, bash, terminal]
       command: "docker-compose exec service_name commande"
       explanation: Exécute une commande dans un conteneur en cours d'exécution.
       example: "docker-compose exec web bash"
@@ -109,7 +109,7 @@ docker_compose:
 
     - id: docker_compose_run
       description: Exécuter une commande dans un nouveau conteneur
-      tags: [docker, compose, run, exécuter, commande, conteneur]
+      tags: [docker, compose, run, exécuter, commande, conteneur, lancer, temporaire]
       command: "docker-compose run service_name commande"
       explanation: |
         Crée un nouveau conteneur pour le service et exécute une commande dedans.
@@ -121,19 +121,19 @@ docker_compose:
 
     - id: docker_compose_config
       description: Valider et afficher la configuration finale
-      tags: [docker, compose, config, valider, configuration]
+      tags: [docker, compose, config, valider, configuration, vérifier, syntaxe, yaml]
       command: "docker-compose config"
       explanation: Affiche la configuration finale après interpolation des variables et fichiers de configuration.
 
     - id: docker_compose_version
       description: Afficher la version de Docker Compose
-      tags: [docker, compose, version, --version]
+      tags: [docker, compose, version, --version, info]
       command: "docker-compose --version"
       explanation: Affiche la version installée de Docker Compose.
 
     - id: docker_compose_help
       description: Afficher l'aide de Docker Compose
-      tags: [docker, compose, help, aide, manuel]
+      tags: [docker, compose, help, aide, manuel, manuel, options]
       command: "docker-compose --help"
       explanation: Affiche le manuel d'utilisation de Docker Compose.
 
