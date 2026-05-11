@@ -85,13 +85,13 @@ linux_commands:
 
     - id: files_create_directory
       description: Créer un répertoire
-      tags: [fichiers, répertoire, créer, mkdir]
+      tags: [fichiers, répertoire, dossier, créer, mkdir]
       command: "mkdir nom_du_repertoire"
       explanation: Crée un nouveau répertoire.
 
     - id: files_create_directory_recursive
       description: Créer un répertoire et ses sous-répertoires
-      tags: [fichiers, répertoire, créer, récursif, mkdir]
+      tags: [fichiers, répertoire, dossier, créer, récursif, mkdir]
       command: "mkdir -p chemin/vers/le/repertoire"
       explanation: Crée un répertoire et tous ses parents s'ils n'existent pas.
 
