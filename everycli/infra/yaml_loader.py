@@ -46,12 +46,19 @@ class YamlLoader:
         return scenarios
 
     def _parse(self, entry: dict) -> Scenario:
-        cmd = entry["commands"]
-        command = Command(
-            linux=cmd.get("linux", ""),
-            windows=cmd.get("windows", ""),
-            macos=cmd.get("macos", ""),
-        )
+        # Supporte deux formats :
+        # 1. {commands: {linux: ..., windows: ...}}  (format multi-OS)
+        # 2. {command: "..."}                        (format simplifié)
+        if "commands" in entry:
+            cmd = entry["commands"]
+            command = Command(
+                linux=cmd.get("linux", ""),
+                windows=cmd.get("windows", ""),
+                macos=cmd.get("macos", ""),
+            )
+        else:
+            raw_cmd = entry.get("command", "")
+            command = Command(linux=raw_cmd, windows=raw_cmd, macos=raw_cmd)
 
         error_hints = [
             ErrorHint(
@@ -63,12 +70,12 @@ class YamlLoader:
         ]
 
         return Scenario(
-            id=entry["id"],
-            description=entry["description"],
-            tags=entry.get("tags", []),
+            id=str(entry["id"]),
+            description=str(entry["description"]),
+            tags=[str(t) for t in entry.get("tags", [])],
             command=command,
-            explanation=entry["explanation"],
-            warning=entry.get("warning", ""),
+            explanation=str(entry["explanation"]),
+            warning=str(entry.get("warning", "")),
             error_hints=error_hints,
         )
 
