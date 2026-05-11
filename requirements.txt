@@ -6,3 +6,4 @@ pytest
 typer
 torch
 sentence-transformers
+rank_bm25
