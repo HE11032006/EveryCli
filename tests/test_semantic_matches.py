@@ -21,10 +21,10 @@ def scenarios():
         )
 
     return [
-        make("amend", "Modifier le message du dernier commit", ["git", "commit", "modifier", "amend"]),
-        make("stash", "Mettre mes changements de côté temporairement", ["git", "stash", "sauvegarder"]),
-        make("reset", "Annuler mon dernier commit sans perdre les changements", ["git", "reset", "annuler"]),
-        make("replace", "Remplacer un mot dans tous les commits", ["git", "commit", "remplacer"]),
+        make("amend", "Modifier le message du dernier commit", ["git", "commit", "modifier", "amend", "message"]),
+        make("stash", "Mettre mes changements de côté temporairement sans faire de commit", ["git", "stash", "sauvegarder", "temporaire", "travail"]),
+        make("reset", "Annuler ou défaire mon dernier commit sans perdre les changements", ["git", "reset", "annuler", "défaire", "revenir"]),
+        make("replace", "Remplacer un mot dans tous les commits", ["git", "commit", "remplacer", "chercher", "substitution"]),
     ]
 
 
