@@ -71,7 +71,7 @@ class HybridMatcher:
                 + sem_score * self._semantic_weight
             )
 
-            if final_score > 0.05:
+            if final_score >= 0.40:
                 combined.append((scenario, round(final_score, 4)))
 
         combined.sort(key=lambda x: x[1], reverse=True)
