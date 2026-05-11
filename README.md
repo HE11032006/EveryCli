@@ -1,68 +1,92 @@
 # 🚀 EveryCli
 
-**Ne cherchez plus vos commandes, décrivez-les.**
+**Don't look for your commands, describe them.**
 
-EveryCli est un assistant de ligne de commande intelligent qui utilise l'IA pour trouver instantanément la commande exacte dont vous avez besoin, même si vous ne connaissez pas sa syntaxe.
+EveryCli is an intelligent command-line assistant that uses AI to instantly find the exact command you need, even if you don't know its syntax.
 
 ![License](https://img.shields.io/github/license/HE11032006/EveryCli)
 ![Build Status](https://img.shields.io/github/actions/workflow/status/HE11032006/EveryCli/build.yml)
-![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey)
 
-## ✨ Caractéristiques
+## Contents
 
-- **Recherche Sémantique** : Comprend l'intention (ex: "annuler commit" → `git reset HEAD~1`).
-- **Performance Instantanée** : Architecture Daemon/Client pour des réponses en <50ms.
-- **Multi-Plateforme** : Binaires optimisés pour Linux, macOS et Windows.
-- **Zéro Dépendance** : Pas besoin d'installer Python ou des modèles IA pour l'utiliser.
-- **Extensible** : Ajoutez vos propres commandes via de simples fichiers YAML.
-
-## 🏁 Démarrage Rapide (Release)
-
-1. Téléchargez le binaire pour votre OS sur la page [Releases](https://github.com/HE11032006/EveryCli/releases).
-2. Installez le wrapper :
-   ```bash
-   # Linux / macOS
-   sudo ln -s $(pwd)/everycli /usr/local/bin/everycli
-   ```
-3. Lancez votre première recherche :
-   ```bash
-   everycli search "comment modifier mon dernier commit"
-   ```
-
-## 🛠️ Installation pour Développement
-
-Si vous souhaitez contribuer ou compiler depuis les sources :
-
-```bash
-git clone https://github.com/HE11032006/EveryCli.git
-cd EveryCli
-pip install -r requirements.txt
-python3 -m everycli.everycli search "git push"
-```
-
-## 🏗️ Architecture
-
-EveryCli utilise une architecture hybride pour concilier l'intelligence des modèles NLP et la réactivité attendue d'un outil CLI.
-
-```mermaid
-graph TD
-    User([Utilisateur]) --> Wrapper[everycli script/ps1]
-    Wrapper --> Client{Daemon vivant ?}
-    Client -- Oui --> Socket(TCP Socket)
-    Client -- Non --> Binary[everycli-daemon bin]
-    Socket --> Daemon[Daemon Engine]
-    Daemon --> Matcher[Hybrid Matcher IA + TF-IDF]
-    Matcher --> YAML[(YAML Database)]
-```
-
-> [!IMPORTANT]
-> Le premier lancement après un redémarrage démarre automatiquement le Daemon. Les recherches suivantes seront quasi-instantanées car le modèle IA reste chargé en mémoire.
-
-## ⚙️ Configuration
-
-Vous pouvez personnaliser EveryCli via des variables d'environnement :
-- `EVERYCLI_PORT` : Port du daemon (défaut: 51821).
-- `EVERYCLI_DEBUG` : Mode verbeux pour le dépannage.
+- [Getting started](#-getting-started)
+- [Overview](#-overview)
+- [Directory Structure](#directory-structure)
+- [Contributing](#-contributing)
+- [License](#-license)
 
 ---
-*Fait avec ❤️ pour simplifier la vie des développeurs.*
+
+## ✈️ Getting started
+
+### Prerequisites
+
+- **Python** (version 3.10 or greater) - *Only for source installation*.
+- **Git** (to clone and contribute).
+
+### Installation (Source)
+
+1. Clone the repo: `git clone https://github.com/HE11032006/EveryCli.git`.
+2. Go to the root: `cd EveryCli`.
+3. Install dependencies: `pip install -r requirements.txt`.
+
+### Running locally
+
+Run a search directly:
+```bash
+python -m everycli.everycli search "how to undo my last commit"
+```
+
+> [!TIP]
+> To enjoy sub-50ms response times, EveryCli uses a background Daemon. The first search will automatically start it.
+
+---
+
+## 📖 Overview
+
+EveryCli is built for speed and intelligence. Almost all our content is generated from YAML files you can find in the `everycli/data/commands/` directory.
+
+If you would like to contribute an edit or addition to the docs, read through our [Contributing Guide](CONTRIBUTING.md).
+
+### Documentation Sources
+
+For deep dives, check our dedicated documentation files:
+- 📖 [Tutorial: Installation](docs/tutorial_installation.md)
+- 🛠️ [How to Build & Test](docs/how_to_build.md)
+- 🏗️ [Architecture Explanation](docs/explanation_architecture.md)
+- ⚙️ [Reference Configuration](docs/reference_config.md)
+
+### Directory Structure
+
+The following is a high-level overview of relevant files and folders.
+
+```text
+EveryCli/
+├── .github/             # CI/CD Workflows (Auto-build binaries)
+├── docs/                # Detailed Diátaxis documentation
+├── everycli/
+│   ├── core/            # Domain logic (Models, Search Engine, Coordinator)
+│   ├── data/
+│   │   └── commands/    # YAML scenarios database
+│   └── infra/           # Infrastructure (AI Matchers, TCP Daemon, YAML loaders)
+├── everycli.ps1         # Windows PowerShell wrapper
+├── requirements.txt     # Python dependencies
+└── README.md            # You are here
+```
+
+---
+
+## 👏 Contributing
+
+We welcome all contributions! Whether it's adding a new command or improving the AI matcher.
+Please see our [Contributing Guide](CONTRIBUTING.md) for more details.
+
+---
+
+## 📄 License
+
+EveryCli is **MIT licensed**.
+Documentation is Creative Commons licensed.
+
+---
+*Made with ❤️ for developers who hate memorizing flags.*

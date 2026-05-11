@@ -1,18 +1,38 @@
-# Contributing to React Native website
+# Contributing to EveryCli
 
-Thank you for your interest in contributing to the React Native website! From commenting on and triaging issues, to reviewing and sending Pull Requests, all contributions are welcome. We aim to build a vibrant and inclusive [ecosystem of partners, core contributors, and community](https://github.com/facebook/react-native/blob/main/ECOSYSTEM.md) that goes beyond the main React Native GitHub repository.
+Thank you for your interest in contributing to EveryCli! Whether you're fixing bugs, improving documentation, or adding new CLI scenarios, your help is welcome.
 
-The [Open Source Guides](https://opensource.guide/) website has a collection of resources for individuals, communities, and companies who want to learn how to run and contribute to an open source project. Contributors and people new to open source alike will find the following guides especially useful:
+## 📖 Documentation First
 
-- [How to Contribute to Open Source](https://opensource.guide/how-to-contribute/)
-- [Building Welcoming Communities](https://opensource.guide/building-community/)
+Before you start, please take a look at our detailed documentation:
+- [Tutorial: Installation](docs/tutorial_installation.md)
+- [How to Build & Test](docs/how_to_build.md)
+- [Architecture Explanation](docs/explanation_architecture.md)
+- [Reference Configuration](docs/reference_config.md)
 
-## Code of Conduct
+## 🚀 Ways to Contribute
 
-As a reminder, all contributors are expected to adhere to the [Code of Conduct](https://github.com/facebook/react-native-website/blob/main/CODE_OF_CONDUCT.md).
+### 1. Adding New Scenarios
+The easiest way to contribute is by adding new command scenarios to the `everycli/data/commands/` directory. 
+- Scenarios are stored in YAML files.
+- You can use the command `everycli add` to generate a new entry interactively.
 
-## Ways to Contribute
+### 2. Improving the AI Matcher
+If you find that some searches don't return the expected results, you can help us improve the `HybridMatcher` or the `SemanticMatcher` in `everycli/infra/`.
 
-Please see our [Contributing Guide](https://reactnative.dev/contributing/overview) on the React Native website.
+### 3. Reporting Bugs
+Please use GitHub Issues to report any bugs or suggest new features.
 
-If you are interested specifically in contributing to the React Native website check out [Contributing section](https://github.com/facebook/react-native-website#-contributing) in the React Native website repository README file.
+## 🛠️ Development Setup
+
+1. Fork and clone the repository.
+2. Install dependencies: `pip install -r requirements.txt`.
+3. Run the daemon in debug mode: `python -m everycli.everycli daemon --start --debug`.
+4. Test your changes: `python -m everycli.everycli search "your query"`.
+
+## 📜 Code of Conduct
+
+All contributors are expected to adhere to our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+---
+*Thank you for making EveryCli better for everyone!*
