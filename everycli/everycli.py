@@ -40,24 +40,7 @@ def _get_history_manager():
     return _history_manager
 
 
-# ── Fallback local (sans daemon) ──────────────────────────────────────────────
-
-def _search_local(query: str, top_k: int) -> list:
-    """Recherche directe sans daemon — lente mais toujours fonctionnelle."""
-    from everycli.infra.hybrid_matcher import HybridMatcher
-    from everycli.core.search_engine import SearchEngine
-    from everycli.infra.yaml_loader import YamlLoader
-    from everycli.infra.os_resolver import OSResolver
-
-    matcher = HybridMatcher(semantic_weight=0.6)
-    engine = SearchEngine(
-        loader=YamlLoader(DATA_DIR),
-        matcher=matcher,
-        os_resolver=OSResolver(),
-    )
-    with console.status("[dim]Chargement...[/dim]", spinner="dots"):
-        engine.boot()
-        return engine.search(query, top_k=top_k)
+# La logique de recherche (local/daemon) a été déplacée dans core.coordinator.SearchCoordinator
 
 
 # ── search ────────────────────────────────────────────────────────────────────
@@ -98,22 +81,13 @@ def search(
         query = recent[index]["query"]
         console.print(f"\n[bold cyan]✦ Recherche :[/bold cyan] {query}")
 
-    # ── Résolution des résultats (daemon ou fallback local) ───────────────────
-    results = []
+    # ── Résolution des résultats (via le Coordinateur) ────────────────────────
+    from everycli.core.coordinator import SearchCoordinator
+    coordinator = SearchCoordinator(console, str(DATA_DIR))
+    
     # En mode interactif, on demande plus de résultats pour avoir le choix
     search_top = 10 if interactive else top
-    
-    if not no_daemon:
-        daemon_resp = daemon_client.search(query, top_k=search_top)
-
-        if isinstance(daemon_resp, DaemonResult):
-            # Convertir les dicts en objets compatibles RichFormatter
-            results = _daemon_results_to_search_results(daemon_resp.results)
-        else:
-            console.print(f"  [yellow]⚠ Daemon indisponible — mode direct activé.[/yellow]")
-            results = _search_local(query, top_k=search_top)
-    else:
-        results = _search_local(query, top_k=search_top)
+    results = coordinator.execute_search(query, top_k=search_top, no_daemon=no_daemon)
 
     # ── Filtrage environnement ────────────────────────────────────────────────
     if env:
@@ -181,33 +155,7 @@ def _run_command(command: str, result, formatter):
             formatter.format_error_hint(output, result)
 
 
-def _daemon_results_to_search_results(raw: list[dict]) -> list:
-    """
-    Convertit les dicts JSON du daemon en SearchResult compatibles
-    avec RichFormatter — sans recharger le moteur.
-    """
-    from everycli.core.models import (
-        Scenario, Command, SearchResult
-    )
-    from everycli.infra.os_resolver import OSResolver
-
-    out = []
-    for r in raw:
-        cmd = Command(linux=r["command"], windows=r["command"], macos=r["command"])
-        scenario = Scenario(
-            id=r["id"],
-            description=r["description"],
-            tags=r.get("tags", []),
-            command=cmd,
-            explanation=r.get("explanation", ""),
-            warning=r.get("warning", ""),
-        )
-        out.append(SearchResult(
-            scenario=scenario,
-            resolved_command=r["command"],
-            score=r.get("score", 0.0),
-        ))
-    return out
+# Les fonctions de mapping daemon -> results ont été déplacées dans le Coordinateur
 
 
 # ── daemon ────────────────────────────────────────────────────────────────────
@@ -448,7 +396,18 @@ def history(
 
 
 def main():
-    app()
+    from everycli.core.exceptions import EveryCliError
+    try:
+        app()
+    except EveryCliError as e:
+        console.print(f"\n[bold red]✖ Erreur EveryCli :[/bold red] {e}")
+        sys.exit(1)
+    except Exception as e:
+        if os.environ.get("EVERYCLI_DEBUG"):
+            raise e
+        console.print(f"\n[bold red]✖ Une erreur inattendue est survenue :[/bold red] {e}")
+        console.print("[dim]Utilise EVERYCLI_DEBUG=1 pour voir les détails.[/dim]")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
