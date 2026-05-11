@@ -26,7 +26,7 @@
 
 - id: git_merge
   description: Fusionner une branche dans la branche courante
-  tags: [git, fusionner, merger, merge, branche, intégrer]
+  tags: [git, fusionner, merger, merge, branche, intégrer, combiner, réunir, joindre, incorporer]
   commands:
     linux: "git merge nom-branche"
     windows: "git merge nom-branche"
@@ -168,19 +168,6 @@
 
 # ── Commits ───────────────────────────────────────────────────────────────────
 
-- id: git_amend_last_commit
-  description: Modifier le message de mon dernier commit
-  tags: [git, commit, modifier, message, amend, dernier, changer]
-  commands:
-    linux: "git commit --amend -m 'nouveau message'"
-    windows: "git commit --amend -m 'nouveau message'"
-  explanation: Remplace le message du dernier commit. Ne fonctionne que s'il n'a pas été pushé.
-  warning: Si le commit a déjà été pushé, un force push sera nécessaire.
-  errors:
-    - trigger: "nothing to commit"
-      cause: Aucun fichier en staging
-      fix: "Ajoute des fichiers avec : git add <fichier>"
-
 - id: git_undo_last_commit_keep_changes
   description: Annuler mon dernier commit sans perdre mes changements
   tags: [git, annuler, commit, reset, soft, garder, changements, défaire, retirer]
@@ -201,19 +188,6 @@
     windows: "git reset --hard HEAD~1"
   explanation: Supprime le dernier commit ET tous les changements associés. Irréversible.
   warning: Cette action est irréversible. Les changements non commités seront perdus.
-
-- id: git_replace_in_commits
-  description: Remplacer ou modifier un mot dans tous les messages de commits
-  tags: [git, commit, remplacer, modifier, historique, message, réécrire, mot, tous, tout]
-  commands:
-    linux: "git filter-branch --msg-filter 'sed s/ancien/nouveau/g' -- --all"
-    windows: "git filter-branch --msg-filter \"sed 's/ancien/nouveau/g'\" -- --all"
-  explanation: Réécrit l'historique de tous tes commits. Un force push sera nécessaire.
-  warning: Modifie l'historique partagé — préviens ton équipe avant.
-  errors:
-    - trigger: "fatal: bad revision"
-      cause: Tu n'es pas dans un dépôt Git
-      fix: "Vérifie avec : git status"
 
 - id: git_squash_commits
   description: Fusionner plusieurs commits en un seul
