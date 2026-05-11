@@ -24,6 +24,19 @@
       cause: Aucun changement en staging
       fix: "Ajoute des fichiers avec : git add <fichier>"
 
+- id: git_merge
+  description: Fusionner une branche dans la branche courante
+  tags: [git, fusionner, merger, merge, branche, intégrer]
+  commands:
+    linux: "git merge nom-branche"
+    windows: "git merge nom-branche"
+  explanation: Intègre les commits d'une branche dans la branche courante.
+  warning: ""
+  errors:
+    - trigger: "already up to date"
+      cause: La branche est déjà à jour
+      fix: "Vérifie avec : git status"
+
 - id: git_undo_last_commit_keep_changes
   description: Annuler mon dernier commit sans perdre mes changements
   tags: [git, annuler, commit, reset, soft, garder, changements, défaire]
