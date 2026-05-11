@@ -23,8 +23,12 @@ binaries += tmp_ret[1]
 hiddenimports += tmp_ret[2]
 
 # On ajoute le modèle s'il existe localement (téléchargé par le workflow)
-if os.path.exists(model_name):
+# SAUF si on est en mode LITE
+if os.path.exists(model_name) and os.environ.get('EVERYCLI_LITE') != '1':
     datas.append((model_name, f'models/{model_name}'))
+    print("--- Mode FULL : Modèle IA inclus ---")
+else:
+    print("--- Mode LITE : Modèle IA exclu (sera téléchargé au premier run) ---")
 
 a = Analysis(
     ['everycli/everycli.py'],
@@ -32,10 +36,13 @@ a = Analysis(
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
-    hookspath=[],
-    hooksconfig={},
-    runtime_hooks=[],
-    excludes=[],
+    excludes=[
+        'nvidia', 'nvidia-cuda-nvrtc-cu12', 'nvidia-cuda-runtime-cu12',
+        'nvidia-cuda-cupti-cu12', 'nvidia-cudnn-cu12', 'nvidia-cublas-cu12',
+        'nvidia-cufft-cu12', 'nvidia-curand-cu12', 'nvidia-cusolver-cu12',
+        'nvidia-cusparse-cu12', 'nvidia-npp-cu12', 'nvidia-nvjitlink-cu12',
+        'nvidia-nvtx-cu12', 'triton', 'tensorrt'
+    ],
     noarchive=False,
     optimize=0,
 )

@@ -21,11 +21,13 @@ EveryCli is an intelligent command-line assistant that uses AI to instantly find
 
 ### 🚀 Download & Install (Recommended)
 
-The easiest way to use EveryCli is to download the pre-compiled binary for your operating system:
+Two versions are available for each operating system on the [Releases](https://github.com/HE11032006/EveryCli/releases) page:
 
-1. Go to the [Releases](https://github.com/HE11032006/EveryCli/releases) page.
-2. Download the version for your OS (`everycli-linux`, `everycli-macos`, or `everycli-windows.exe`).
-3. (Optional) Add the binary to your system PATH to run it from anywhere.
+- **Full Version** (~300MB): **Ready to use.** Includes the AI model. Perfect for offline use or fast first-run experience.
+- **Lite Version** (~50MB): **Lightweight.** Will automatically download the AI model (~400MB) on the first search. Recommended if you have a good internet connection.
+
+1. Download the version that fits your needs.
+2. (Optional) Add the binary to your system PATH to run it from anywhere.
 
 ### 🛠️ Installation (Source)
 

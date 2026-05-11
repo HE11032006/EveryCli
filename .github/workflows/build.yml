@@ -38,28 +38,39 @@ jobs:
       run: |
         python -c "from sentence_transformers import SentenceTransformer; model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2'); model.save('paraphrase-multilingual-MiniLM-L12-v2')"
 
-    - name: Build with PyInstaller (Linux/macOS)
-      if: matrix.os != 'windows-latest'
+    - name: Build Full Version
       run: |
         pyinstaller everycli-daemon.spec --clean
-        # On prépare le pack de distribution
-        cp dist/everycli dist/everycli-wrapper 2>/dev/null || true
-        # On renomme pour la clarté dans l'artéfact
-        mv dist/everycli-daemon dist/everycli-daemon-bin 2>/dev/null || true
-        mv dist/everycli-wrapper dist/everycli 2>/dev/null || true
+        mkdir -p dist_full
+        cp -r dist/* dist_full/
 
-    - name: Build with PyInstaller (Windows)
-      if: matrix.os == 'windows-latest'
+    - name: Build Lite Version
+      env:
+        EVERYCLI_LITE: "1"
       run: |
         pyinstaller everycli-daemon.spec --clean
-        # On s'assure que le wrapper PowerShell est inclus
-        cp everycli.ps1 dist/everycli.ps1
+        mkdir -p dist_lite
+        cp -r dist/* dist_lite/
+
+    - name: Prepare Artifacts
+      run: |
+        mkdir -p final_dist
+        # Linux/macOS
+        if [ "${{ matrix.os }}" != "windows-latest" ]; then
+          cp dist_full/everycli-daemon final_dist/everycli-full
+          cp dist_lite/everycli-daemon final_dist/everycli-lite
+        # Windows
+        else
+          cp dist_full/everycli-daemon.exe final_dist/everycli-full.exe
+          cp dist_lite/everycli-daemon.exe final_dist/everycli-lite.exe
+          cp everycli.ps1 final_dist/everycli.ps1
+        fi
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: everycli-${{ matrix.os }}
-        path: dist/
+        path: final_dist/
 
   release:
     name: Create Release
@@ -75,20 +86,35 @@ jobs:
       - name: Prepare assets
         run: |
           mkdir -p release_assets
-          # On renomme et on regroupe les binaires de façon propre
-          cp artifacts/everycli-ubuntu-latest/everycli-daemon-bin release_assets/everycli-linux
-          cp artifacts/everycli-macos-latest/everycli-daemon-bin release_assets/everycli-macos
-          cp artifacts/everycli-windows-latest/everycli-daemon.exe release_assets/everycli-windows.exe
+          # Ubuntu
+          cp artifacts/everycli-ubuntu-latest/everycli-full release_assets/everycli-linux-full
+          cp artifacts/everycli-ubuntu-latest/everycli-lite release_assets/everycli-linux-lite
+          # macOS
+          cp artifacts/everycli-macos-latest/everycli-full release_assets/everycli-macos-full
+          cp artifacts/everycli-macos-latest/everycli-lite release_assets/everycli-macos-lite
+          # Windows
+          cp artifacts/everycli-windows-latest/everycli-full.exe release_assets/everycli-windows-full.exe
+          cp artifacts/everycli-windows-latest/everycli-lite.exe release_assets/everycli-windows-lite.exe
           cp artifacts/everycli-windows-latest/everycli.ps1 release_assets/everycli.ps1
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release_assets/everycli-linux
-            release_assets/everycli-macos
-            release_assets/everycli-windows.exe
+            release_assets/everycli-linux-full
+            release_assets/everycli-linux-lite
+            release_assets/everycli-macos-full
+            release_assets/everycli-macos-lite
+            release_assets/everycli-windows-full.exe
+            release_assets/everycli-windows-lite.exe
             release_assets/everycli.ps1
-          body: "🚀 Nouvelle release de EveryCli. Téléchargez le binaire correspondant à votre système."
+          body: |
+            🚀 **EveryCli v1.0.0**
+            
+            Deux versions sont disponibles pour chaque système :
+            - **Full** (~300Mo) : Tout inclus, fonctionne instantanément hors-ligne.
+            - **Lite** (~50Mo) : Télécharge le modèle IA au premier lancement (~400Mo).
+            
+            *Note : La taille des versions Full a été réduite en excluant les bibliothèques GPU inutiles.*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
