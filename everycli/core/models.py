@@ -1,4 +1,4 @@
-﻿"""
+"""
 Core domain models for EveryCLI.
 Pure dataclasses — no external dependencies, no side effects.
 """
@@ -25,24 +25,27 @@ class Command:
         if os == OS.WINDOWS:
             return self.windows
         if os == OS.MACOS:
-            return self.macos or self.linux  # macos fallback vers linux
+            return self.macos or self.linux
         return self.linux
+
+    def to_dict(self) -> dict:
+        return {"linux": self.linux, "windows": self.windows, "macos": self.macos}
 
 
 @dataclass(frozen=True)
 class ErrorHint:
     """A known error with its probable cause and fix."""
-    trigger: str   # le message d'erreur qui déclenche ce hint
-    cause: str     # explication humaine de la cause
-    fix: str       # commande ou action corrective
+    trigger: str
+    cause: str
+    fix: str
+
+    def to_dict(self) -> dict:
+        return {"trigger": self.trigger, "cause": self.cause, "fix": self.fix}
 
 
 @dataclass(frozen=True)
 class Scenario:
-    """
-    A single CLI scenario: what the user wants to do,
-    how to do it, and what can go wrong.
-    """
+    """A single CLI scenario."""
     id: str
     description: str
     tags: list[str]
@@ -51,23 +54,37 @@ class Scenario:
     warning: str = ""
     error_hints: list[ErrorHint] = field(default_factory=list)
 
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "description": self.description,
+            "tags": self.tags,
+            "command": self.command.to_dict(),
+            "explanation": self.explanation,
+            "warning": self.warning,
+            "errors": [e.to_dict() for e in self.error_hints]
+        }
+
 
 @dataclass(frozen=True)
 class SearchResult:
-    """
-    What EveryCLI returns to the user after a search.
-    Carries the scenario + the resolved command for the current OS.
-    """
+    """What EveryCLI returns after a search."""
     scenario: Scenario
-    resolved_command: str  # commande déjà résolue pour l'OS courant
-    score: float           # score de pertinence [0.0 - 1.0]
+    resolved_command: str
+    score: float
+
+    def to_dict(self) -> dict:
+        return {
+            "scenario": self.scenario.to_dict(),
+            "resolved_command": self.resolved_command,
+            "score": self.score
+        }
 
     @property
     def has_warning(self) -> bool:
         return bool(self.scenario.warning)
 
     def hint_for_error(self, error_message: str) -> ErrorHint | None:
-        """Retourne le hint correspondant à un message d'erreur, si trouvé."""
         error_lower = error_message.lower()
         for hint in self.scenario.error_hints:
             if hint.trigger.lower() in error_lower:
