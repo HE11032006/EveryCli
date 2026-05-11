@@ -359,3 +359,53 @@ def show_logs() -> None:
         print("[daemon] Aucun log pour l'instant.")
         return
     print(LOG_FILE.read_text(encoding="utf-8"))
+
+
+def install_systemd_service() -> None:
+    """Installe le daemon en tant que service utilisateur systemd (Linux)."""
+    if sys.platform != "linux":
+        print("[daemon] L'installation systemd n'est disponible que sur Linux.")
+        return
+
+    user_systemd_dir = Path.home() / ".config" / "systemd" / "user"
+    user_systemd_dir.mkdir(parents=True, exist_ok=True)
+    
+    service_file = user_systemd_dir / "everycli.service"
+    
+    python_exe = sys.executable
+    # On suppose que everycli est exécuté via 'python -m everycli.everycli'
+    # ou via un script installé. On utilise le module runner pour le service.
+    project_root = Path(__file__).parent.parent.parent
+    
+    service_content = f"""[Unit]
+Description=EveryCLI Semantic Search Daemon
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory={project_root}
+ExecStart={python_exe} -m everycli.infra.daemon_runner
+Restart=on-failure
+RestartSec=5
+Environment=PYTHONPATH={project_root}
+Environment=EVERYCLI_PORT={SOCKET_PORT}
+
+[Install]
+WantedBy=default.target
+"""
+    
+    try:
+        service_file.write_text(service_content, encoding="utf-8")
+        
+        import subprocess
+        subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
+        
+        print(f"\n[bold green]✔ Service installé :[/bold green] {service_file}")
+        print("\nPour l'activer et le lancer :")
+        print(f"  systemctl --user enable everycli.service")
+        print(f"  systemctl --user start everycli.service")
+        print("\nPour voir les logs systemd :")
+        print(f"  journalctl --user -u everycli.service -f\n")
+        
+    except Exception as e:
+        print(f"[bold red]✖ Erreur lors de l'installation du service :[/bold red] {e}")
