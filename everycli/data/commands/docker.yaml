@@ -2,7 +2,7 @@
 
 - id: docker_build_image
   description: Construire une image Docker depuis un Dockerfile
-  tags: [docker, build, image, construire, créer, dockerfile]
+  tags: [docker, build, image, construire, créer, dockerfile, compilation, fabrication]
   commands:
     linux: "docker build -t nom-image:tag ."
     windows: "docker build -t nom-image:tag ."
@@ -14,7 +14,7 @@
 
 - id: docker_list_images
   description: Voir toutes mes images Docker
-  tags: [docker, images, liste, voir, afficher, toutes]
+  tags: [docker, images, liste, voir, afficher, toutes, inventaire, stockage]
   commands:
     linux: "docker images"
     windows: "docker images"
@@ -22,7 +22,7 @@
 
 - id: docker_remove_image
   description: Supprimer une image Docker
-  tags: [docker, image, supprimer, effacer, delete, remove, rmi]
+  tags: [docker, image, supprimer, effacer, delete, remove, rmi, enlever, détruire]
   commands:
     linux: "docker rmi nom-image:tag"
     windows: "docker rmi nom-image:tag"
@@ -34,7 +34,7 @@
 
 - id: docker_remove_unused_images
   description: Supprimer toutes les images non utilisées
-  tags: [docker, image, nettoyer, supprimer, inutilisées, prune, espace]
+  tags: [docker, image, nettoyer, supprimer, inutilisées, prune, espace, vider, disque]
   commands:
     linux: "docker image prune -a"
     windows: "docker image prune -a"
@@ -43,7 +43,7 @@
 
 - id: docker_pull_image
   description: Télécharger une image depuis Docker Hub
-  tags: [docker, pull, télécharger, hub, image, récupérer]
+  tags: [docker, pull, télécharger, hub, image, récupérer, chercher, download]
   commands:
     linux: "docker pull nom-image:tag"
     windows: "docker pull nom-image:tag"
@@ -51,7 +51,7 @@
 
 - id: docker_push_image
   description: Pousser une image sur Docker Hub
-  tags: [docker, push, pousser, hub, image, publier, registry]
+  tags: [docker, push, pousser, hub, image, publier, registry, envoyer, synchro]
   commands:
     linux: "docker push nom-utilisateur/nom-image:tag"
     windows: "docker push nom-utilisateur/nom-image:tag"
@@ -63,7 +63,7 @@
 
 - id: docker_tag_image
   description: Renommer ou taguer une image Docker
-  tags: [docker, tag, renommer, image, tagger, étiquette]
+  tags: [docker, tag, renommer, image, tagger, étiquette, versionner, nom]
   commands:
     linux: "docker tag image-source:tag nom-utilisateur/image-cible:tag"
     windows: "docker tag image-source:tag nom-utilisateur/image-cible:tag"
@@ -73,7 +73,7 @@
 
 - id: docker_run_container
   description: Lancer un conteneur depuis une image
-  tags: [docker, run, lancer, conteneur, démarrer, créer, container]
+  tags: [docker, run, lancer, conteneur, démarrer, créer, container, exécution]
   commands:
     linux: "docker run -d --name mon-conteneur -p 8080:80 nom-image"
     windows: "docker run -d --name mon-conteneur -p 8080:80 nom-image"
@@ -81,7 +81,7 @@
 
 - id: docker_run_interactive
   description: Lancer un conteneur en mode interactif
-  tags: [docker, run, interactif, terminal, bash, shell, it]
+  tags: [docker, run, interactif, terminal, bash, shell, it, entrer, console]
   commands:
     linux: "docker run -it --rm nom-image bash"
     windows: "docker run -it --rm nom-image bash"
@@ -89,7 +89,7 @@
 
 - id: docker_list_containers
   description: Voir tous les conteneurs en cours d'exécution
-  tags: [docker, conteneurs, liste, voir, afficher, running, ps]
+  tags: [docker, conteneurs, liste, voir, afficher, running, ps, actifs, marche]
   commands:
     linux: "docker ps"
     windows: "docker ps"
@@ -97,7 +97,7 @@
 
 - id: docker_list_all_containers
   description: Voir tous les conteneurs même arrêtés
-  tags: [docker, conteneurs, liste, tous, arrêtés, voir, ps]
+  tags: [docker, conteneurs, liste, tous, arrêtés, voir, ps, historiques, morts]
   commands:
     linux: "docker ps -a"
     windows: "docker ps -a"
@@ -105,7 +105,7 @@
 
 - id: docker_stop_container
   description: Arrêter un conteneur en cours d'exécution
-  tags: [docker, arrêter, stop, conteneur, stopper]
+  tags: [docker, arrêter, stop, conteneur, stopper, quitter, couper]
   commands:
     linux: "docker stop nom-conteneur"
     windows: "docker stop nom-conteneur"
@@ -113,7 +113,7 @@
 
 - id: docker_remove_container
   description: Supprimer un conteneur arrêté
-  tags: [docker, supprimer, effacer, conteneur, remove, rm, delete]
+  tags: [docker, supprimer, effacer, conteneur, remove, rm, delete, détruire, enlever]
   commands:
     linux: "docker rm nom-conteneur"
     windows: "docker rm nom-conteneur"
@@ -125,7 +125,7 @@
 
 - id: docker_remove_all_stopped_containers
   description: Supprimer tous les conteneurs arrêtés
-  tags: [docker, supprimer, nettoyer, conteneurs, arrêtés, prune, tous]
+  tags: [docker, supprimer, nettoyer, conteneurs, arrêtés, prune, tous, vider, espace]
   commands:
     linux: "docker container prune"
     windows: "docker container prune"
@@ -133,7 +133,7 @@
 
 - id: docker_restart_container
   description: Redémarrer un conteneur
-  tags: [docker, redémarrer, restart, conteneur, relancer]
+  tags: [docker, redémarrer, restart, conteneur, relancer, reboot]
   commands:
     linux: "docker restart nom-conteneur"
     windows: "docker restart nom-conteneur"
@@ -141,7 +141,7 @@
 
 - id: docker_logs_container
   description: Voir les logs d'un conteneur
-  tags: [docker, logs, voir, afficher, conteneur, erreur, sortie]
+  tags: [docker, logs, voir, afficher, conteneur, erreur, sortie, journal, journalisation]
   commands:
     linux: "docker logs -f nom-conteneur"
     windows: "docker logs -f nom-conteneur"
@@ -149,7 +149,7 @@
 
 - id: docker_exec_container
   description: Exécuter une commande dans un conteneur actif
-  tags: [docker, exec, exécuter, commande, conteneur, entrer, terminal, bash]
+  tags: [docker, exec, exécuter, commande, conteneur, entrer, terminal, bash, console]
   commands:
     linux: "docker exec -it nom-conteneur bash"
     windows: "docker exec -it nom-conteneur bash"
@@ -161,7 +161,7 @@
 
 - id: docker_inspect_container
   description: Voir les détails complets d'un conteneur
-  tags: [docker, inspect, détails, voir, configuration, conteneur, info]
+  tags: [docker, inspect, détails, voir, configuration, conteneur, info, ip, réseau]
   commands:
     linux: "docker inspect nom-conteneur"
     windows: "docker inspect nom-conteneur"
@@ -169,7 +169,7 @@
 
 - id: docker_copy_file_to_container
   description: Copier un fichier vers un conteneur
-  tags: [docker, copier, fichier, conteneur, cp, envoyer, transférer]
+  tags: [docker, copier, fichier, conteneur, cp, envoyer, transférer, upload]
   commands:
     linux: "docker cp fichier.txt nom-conteneur:/chemin/destination"
     windows: "docker cp fichier.txt nom-conteneur:/chemin/destination"
@@ -177,7 +177,7 @@
 
 - id: docker_copy_file_from_container
   description: Copier un fichier depuis un conteneur vers ma machine
-  tags: [docker, copier, fichier, conteneur, cp, récupérer, extraire]
+  tags: [docker, copier, fichier, conteneur, cp, récupérer, extraire, download]
   commands:
     linux: "docker cp nom-conteneur:/chemin/fichier.txt ./destination"
     windows: "docker cp nom-conteneur:/chemin/fichier.txt ./destination"
@@ -187,7 +187,7 @@
 
 - id: docker_list_volumes
   description: Voir tous les volumes Docker
-  tags: [docker, volumes, liste, voir, afficher]
+  tags: [docker, volumes, liste, voir, afficher, inventaire, stockage]
   commands:
     linux: "docker volume ls"
     windows: "docker volume ls"
@@ -195,7 +195,7 @@
 
 - id: docker_create_volume
   description: Créer un volume Docker
-  tags: [docker, volume, créer, nouveau, persistance, données]
+  tags: [docker, volume, créer, nouveau, persistance, données, stockage]
   commands:
     linux: "docker volume create nom-volume"
     windows: "docker volume create nom-volume"
@@ -203,7 +203,7 @@
 
 - id: docker_remove_volume
   description: Supprimer un volume Docker
-  tags: [docker, volume, supprimer, effacer, delete, remove]
+  tags: [docker, volume, supprimer, effacer, delete, remove, enlever, détruire]
   commands:
     linux: "docker volume rm nom-volume"
     windows: "docker volume rm nom-volume"
@@ -216,81 +216,18 @@
 
 - id: docker_remove_unused_volumes
   description: Nettoyer tous les volumes non utilisés
-  tags: [docker, volumes, nettoyer, supprimer, inutilisés, prune, espace]
+  tags: [docker, volumes, nettoyer, supprimer, inutilisés, prune, espace, vider]
   commands:
     linux: "docker volume prune"
     windows: "docker volume prune"
   explanation: Supprime tous les volumes qui ne sont plus associés à aucun conteneur.
   warning: Toutes les données dans les volumes non utilisés seront perdues.
 
-# ── Docker Compose ────────────────────────────────────────────────────────────
-
-- id: docker_compose_up
-  description: Démarrer tous les services définis dans docker-compose
-  tags: [docker, compose, démarrer, up, services, lancer, stack]
-  commands:
-    linux: "docker compose up -d"
-    windows: "docker compose up -d"
-  explanation: Démarre tous les services en arrière-plan (-d). Crée les conteneurs s'ils n'existent pas.
-  errors:
-    - trigger: "No such file or directory"
-      cause: Aucun fichier docker-compose.yml trouvé dans le dossier courant
-      fix: "Vérifie que tu es dans le bon dossier avec : ls docker-compose.yml"
-
-- id: docker_compose_down
-  description: Arrêter et supprimer tous les services docker-compose
-  tags: [docker, compose, arrêter, down, stopper, supprimer, services]
-  commands:
-    linux: "docker compose down"
-    windows: "docker compose down"
-  explanation: Arrête et supprime les conteneurs, réseaux créés par docker compose up.
-
-- id: docker_compose_down_volumes
-  description: Arrêter docker-compose et supprimer les volumes
-  tags: [docker, compose, arrêter, down, volumes, supprimer, nettoyer]
-  commands:
-    linux: "docker compose down -v"
-    windows: "docker compose down -v"
-  explanation: Arrête tout et supprime aussi les volumes associés.
-  warning: Les données dans les volumes seront perdues définitivement.
-
-- id: docker_compose_logs
-  description: Voir les logs de tous les services docker-compose
-  tags: [docker, compose, logs, voir, afficher, services, erreur]
-  commands:
-    linux: "docker compose logs -f"
-    windows: "docker compose logs -f"
-  explanation: Affiche les logs en temps réel de tous les services. Ajoute le nom du service pour filtrer.
-
-- id: docker_compose_restart_service
-  description: Redémarrer un service spécifique dans docker-compose
-  tags: [docker, compose, redémarrer, service, restart, relancer]
-  commands:
-    linux: "docker compose restart nom-service"
-    windows: "docker compose restart nom-service"
-  explanation: Redémarre uniquement le service spécifié sans toucher aux autres.
-
-- id: docker_compose_build
-  description: Reconstruire les images docker-compose
-  tags: [docker, compose, build, reconstruire, image, rebuild]
-  commands:
-    linux: "docker compose build --no-cache"
-    windows: "docker compose build --no-cache"
-  explanation: Reconstruit toutes les images sans utiliser le cache. Utile après modification du Dockerfile.
-
-- id: docker_compose_scale
-  description: Augmenter le nombre d'instances d'un service
-  tags: [docker, compose, scale, instances, multiplier, répliquer, scaler]
-  commands:
-    linux: "docker compose up -d --scale nom-service=3"
-    windows: "docker compose up -d --scale nom-service=3"
-  explanation: Lance 3 instances du service spécifié. Utile pour tester la scalabilité.
-
 # ── Réseau ────────────────────────────────────────────────────────────────────
 
 - id: docker_list_networks
   description: Voir tous les réseaux Docker
-  tags: [docker, réseau, network, liste, voir, afficher]
+  tags: [docker, réseau, network, liste, voir, afficher, connexions]
   commands:
     linux: "docker network ls"
     windows: "docker network ls"
@@ -298,7 +235,7 @@
 
 - id: docker_create_network
   description: Créer un réseau Docker
-  tags: [docker, réseau, network, créer, nouveau]
+  tags: [docker, réseau, network, créer, nouveau, bridge, connexion]
   commands:
     linux: "docker network create nom-réseau"
     windows: "docker network create nom-réseau"
@@ -306,7 +243,7 @@
 
 - id: docker_connect_container_to_network
   description: Connecter un conteneur à un réseau
-  tags: [docker, réseau, network, connecter, conteneur, rejoindre]
+  tags: [docker, réseau, network, connecter, conteneur, rejoindre, lier]
   commands:
     linux: "docker network connect nom-réseau nom-conteneur"
     windows: "docker network connect nom-réseau nom-conteneur"
@@ -316,7 +253,7 @@
 
 - id: docker_system_prune
   description: Nettoyer tout ce qui est inutilisé dans Docker
-  tags: [docker, nettoyer, prune, system, espace, tout, inutilisé, disque]
+  tags: [docker, nettoyer, prune, system, espace, tout, inutilisé, disque, vider]
   commands:
     linux: "docker system prune -a"
     windows: "docker system prune -a"
@@ -325,7 +262,7 @@
 
 - id: docker_system_df
   description: Voir l'espace disque utilisé par Docker
-  tags: [docker, espace, disque, df, taille, utilisation, stockage]
+  tags: [docker, espace, disque, df, taille, utilisation, stockage, poids]
   commands:
     linux: "docker system df"
     windows: "docker system df"
