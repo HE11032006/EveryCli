@@ -69,13 +69,19 @@ def search(
             raise typer.Exit(0)
         
         from pick import pick
-        title = "✦ Recherches récentes (Espace pour choisir, Esc pour quitter) :"
-        query, index = pick(recent, title, indicator="→")
-        if query is None: raise typer.Exit(0)
-        console.print(f"\n[bold cyan]✦ Recherche :[/bold cyan] {query}")
+        # On prépare les labels pour pick : "Ma recherche -> Description de la commande"
+        options = []
+        for e in recent:
+            label = e["query"]
+            if e["description"]:
+                label += f" [dim]({e['description']})[/dim]"
+            options.append(label)
 
-    # Sauvegarde dans l'historique
-    history_manager.save(query)
+        title = "✦ Recherches récentes (Espace pour choisir, Esc pour quitter) :"
+        _, index = pick(options, title, indicator="→")
+        if index is None: raise typer.Exit(0)
+        query = recent[index]["query"]
+        console.print(f"\n[bold cyan]✦ Recherche :[/bold cyan] {query}")
 
     # ── Résolution des résultats (daemon ou fallback local) ───────────────────
     results = []
@@ -113,6 +119,12 @@ def search(
 
     # ── Affichage & Actions ───────────────────────────────────────────────────
     formatter = RichFormatter()
+    
+    # On sauvegarde le premier résultat dans l'historique pour la prochaine fois
+    if final_results:
+        best = final_results[0]
+        history_manager.save(query, description=best.scenario.description, command=best.resolved_command)
+
     for result in final_results[:top]:
         formatter.format(result)
 
@@ -389,10 +401,23 @@ def history(
         if not recent:
             console.print("[yellow]L'historique est vide.[/yellow]")
         else:
-            console.print("\n[bold cyan]✦ Dernières recherches :[/bold cyan]\n")
-            for i, q in enumerate(recent[:10], 1):
-                console.print(f"  [dim]{i}.[/dim] {q}")
-            console.print()
+            from rich.table import Table
+            from rich.box import ROUNDED
+
+            table = Table(title="\n✦ Historique des recherches", box=ROUNDED, header_style="bold magenta")
+            table.add_column("Recherche", style="cyan", no_wrap=True)
+            table.add_column("Description de la commande", style="white")
+            table.add_column("Commande associée", style="bold green")
+
+            for e in recent[:15]: # On affiche les 15 derniers
+                table.add_row(
+                    e["query"], 
+                    e["description"] or "[dim]N/A[/dim]", 
+                    e["command"] or "[dim]N/A[/dim]"
+                )
+            
+            console.print(table)
+            console.print("\n[dim]Conseil : Tape 'everycli search' sans argument pour naviguer dans l'historique.[/dim]\n")
 
 
 def main():
