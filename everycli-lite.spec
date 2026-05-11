@@ -1,0 +1,51 @@
+# -*- mode: python ; coding: utf-8 -*-
+a = Analysis(
+    ['everycli/everycli.py'],
+    pathex=[],
+    binaries=[],
+    datas=[
+        ('everycli/data/commands/*.yaml', 'everycli/data/commands'),
+    ],
+    hiddenimports=[
+        'everycli.core',
+        'everycli.infra',
+        'rich',
+        'typer',
+        'yaml',
+        'sklearn',
+        'rank_bm25',
+        'pick',
+    ],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[
+        'torch',
+        'sentence_transformers',
+        'transformers',
+        'huggingface_hub',
+    ],
+    noarchive=False,
+    optimize=0,
+)
+pyz = PYZ(a.pure)
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.datas,
+    [],
+    name='everycli-lite',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
