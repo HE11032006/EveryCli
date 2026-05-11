@@ -139,11 +139,14 @@ class SemanticMatcher:
 
         # Cache miss — on charge le modèle, on encode et on sauvegarde
         self._load_model()
+        # On encode en float16 pour économiser 50% de RAM sur les embeddings
         self._embeddings = self._model.encode(
             documents,
             convert_to_numpy=True,
             show_progress_bar=False,
-        )
+            output_value="sentence_embedding"
+        ).astype(np.float16)
+        
         self._save_cache(cache_key, self._embeddings)
         self._fitted = True
 
@@ -191,7 +194,7 @@ class SemanticMatcher:
                 [query],
                 convert_to_numpy=True,
                 show_progress_bar=False,
-            )
+            ).astype(np.float16)
             self._save_query_cache(query, query_embedding)
 
         scores = cosine_similarity(query_embedding, self._embeddings).flatten()
