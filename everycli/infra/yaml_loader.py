@@ -30,17 +30,26 @@ class YamlLoader:
                     for value in data.values():
                         yield from _extract_entries(value)
 
+        import logging
+        from everycli.core.exceptions import YamlFormatError
+
+        loader_class = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+
         for yaml_file in sorted(self._data_dir.glob("*.yaml")):
             raw = yaml_file.read_text(encoding="utf-8")
             try:
-                entries = yaml.safe_load(raw)
-            except Exception:
+                entries = yaml.load(raw, Loader=loader_class)
+            except yaml.YAMLError as e:
+                logging.error(f"Erreur de lecture du fichier {yaml_file} : {e}")
+                # On pourrait choisir de lever une exception ici, ou juste logger
+                # Pour le loader, on loggue l'erreur mais on continue pour les autres fichiers
                 continue
 
             for entry in _extract_entries(entries):
                 try:
                     scenarios.append(self._parse(entry))
-                except (KeyError, TypeError):
+                except (KeyError, TypeError) as e:
+                    logging.warning(f"Entrée mal formée dans {yaml_file} : {e}")
                     continue
 
         return scenarios
