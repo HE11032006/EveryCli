@@ -19,12 +19,17 @@ EveryCli is an intelligent command-line assistant that uses AI to instantly find
 
 ## ✈️ Getting started
 
-### Prerequisites
+### 🚀 Download & Install (Recommended)
 
-- **Python** (version 3.10 or greater) - *Only for source installation*.
-- **Git** (to clone and contribute).
+The easiest way to use EveryCli is to download the pre-compiled binary for your operating system:
 
-### Installation (Source)
+1. Go to the [Releases](https://github.com/HE11032006/EveryCli/releases) page.
+2. Download the version for your OS (`everycli-linux`, `everycli-macos`, or `everycli-windows.exe`).
+3. (Optional) Add the binary to your system PATH to run it from anywhere.
+
+### 🛠️ Installation (Source)
+
+If you want to contribute or build from source:
 
 1. Clone the repo: `git clone https://github.com/HE11032006/EveryCli.git`.
 2. Go to the root: `cd EveryCli`.

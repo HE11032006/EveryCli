@@ -3,6 +3,7 @@ name: Build and Release
 on:
   push:
     branches: [ "main", "improve_daemon" ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
@@ -59,3 +60,35 @@ jobs:
       with:
         name: everycli-${{ matrix.os }}
         path: dist/
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare assets
+        run: |
+          mkdir -p release_assets
+          # On renomme et on regroupe les binaires de façon propre
+          cp artifacts/everycli-ubuntu-latest/everycli-daemon-bin release_assets/everycli-linux
+          cp artifacts/everycli-macos-latest/everycli-daemon-bin release_assets/everycli-macos
+          cp artifacts/everycli-windows-latest/everycli-daemon.exe release_assets/everycli-windows.exe
+          cp artifacts/everycli-windows-latest/everycli.ps1 release_assets/everycli.ps1
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release_assets/everycli-linux
+            release_assets/everycli-macos
+            release_assets/everycli-windows.exe
+            release_assets/everycli.ps1
+          body: "🚀 Nouvelle release de EveryCli. Téléchargez le binaire correspondant à votre système."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
