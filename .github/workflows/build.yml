@@ -62,6 +62,7 @@ jobs:
         if [ "${{ matrix.os }}" != "windows-latest" ]; then
           cp dist_full/everycli-daemon final_dist/everycli-full
           cp dist_lite/everycli-daemon final_dist/everycli-lite
+          cp bin/everycli final_dist/everycli
         # Windows
         else
           cp dist_full/everycli-daemon.exe final_dist/everycli-full.exe
@@ -99,6 +100,8 @@ jobs:
           cp artifacts/everycli-windows-latest/everycli-full.exe release_assets/everycli-windows-full.exe
           cp artifacts/everycli-windows-latest/everycli-lite.exe release_assets/everycli-windows-lite.exe
           cp artifacts/everycli-windows-latest/everycli.ps1 release_assets/everycli.ps1
+          # Shell wrapper (common for Linux/macOS)
+          cp artifacts/everycli-ubuntu-latest/everycli release_assets/everycli
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -111,6 +114,7 @@ jobs:
             release_assets/everycli-windows-full.exe
             release_assets/everycli-windows-lite.exe
             release_assets/everycli.ps1
+            release_assets/everycli
           body: |
             🚀 **EveryCli v1.0.0**
             
