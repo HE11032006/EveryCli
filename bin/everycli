@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# EveryCli Wrapper - Ultra-fast client for the EveryCli daemon
+# Version: 1.0.0
+
+PORT=51821
+HOST="127.0.0.1"
+
+# Check if jq is installed for pretty printing, otherwise fallback to raw text
+HAS_JQ=$(command -v jq)
+
+function usage() {
+    echo "EveryCli - Command Line Interface"
+    echo ""
+    echo "Usage:"
+    echo "  everycli <query>          Search for a command"
+    echo "  everycli search <query>   Search for a command"
+    echo "  everycli --reload         Reload command database"
+    echo "  everycli --ping           Check if daemon is alive"
+    echo ""
+}
+
+if [ $# -eq 0 ]; then
+    usage
+    exit 0
+fi
+
+ACTION="search"
+QUERY=""
+
+# Parse arguments
+case "$1" in
+    --reload)
+        ACTION="reload"
+        ;;
+    --ping)
+        ACTION="ping"
+        ;;
+    search)
+        ACTION="search"
+        shift
+        QUERY="$*"
+        ;;
+    *)
+        ACTION="search"
+        QUERY="$*"
+        ;;
+esac
+
+# Create JSON request
+if [ "$ACTION" == "search" ]; then
+    # Escape quotes for JSON
+    ESCAPED_QUERY=$(echo "$QUERY" | sed 's/"/\\"/g')
+    REQUEST="{\"action\":\"search\", \"query\":\"$ESCAPED_QUERY\", \"top_k\": 5}"
+elif [ "$ACTION" == "reload" ]; then
+    REQUEST="{\"action\":\"reload\"}"
+else
+    REQUEST="{\"action\":\"ping\"}"
+fi
+
+# Send to daemon and get response
+# We use nc (netcat) with a 1s timeout
+RESPONSE=$(echo "$REQUEST" | nc -w 1 $HOST $PORT 2>/dev/null)
+
+if [ $? -ne 0 ] || [ -z "$RESPONSE" ]; then
+    echo "Error: Could not connect to EveryCli daemon on port $PORT."
+    echo "Make sure the daemon is running (e.g., execute: everycli-daemon)"
+    exit 1
+fi
+
+# Process response
+if [ "$HAS_JQ" ]; then
+    if [ "$ACTION" == "search" ]; then
+        # Pretty print results
+        echo "$RESPONSE" | jq -r 'if .ok then .results[] | "\u001b[32m# \(.description)\u001b[0m\n\(.command)\n" else empty end'
+    else
+        echo "$RESPONSE" | jq .
+    fi
+else
+    # Fallback without jq (basic extraction)
+    if [ "$ACTION" == "search" ]; then
+        echo "$RESPONSE" | grep -oP '"description":"\K[^"]+|"command":"\K[^"]+' | sed 'N;s/\n/\n# /;s/^/# /'
+    else
+        echo "$RESPONSE"
+    fi
+fi
