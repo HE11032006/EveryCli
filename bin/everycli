@@ -1,12 +1,13 @@
 #!/bin/bash
 
-# EveryCli Wrapper - Ultra-fast client for the EveryCli daemon
-# Version: 1.0.0
+# EveryCli Wrapper - Intelligent client for the EveryCli daemon
+# Version: 1.1.0
 
 PORT=51821
 HOST="127.0.0.1"
+DAEMON_BIN="everycli-daemon"
 
-# Check if jq is installed for pretty printing, otherwise fallback to raw text
+# Check if jq is installed
 HAS_JQ=$(command -v jq)
 
 function usage() {
@@ -25,31 +26,18 @@ if [ $# -eq 0 ]; then
     exit 0
 fi
 
+# Parse arguments
 ACTION="search"
 QUERY=""
-
-# Parse arguments
 case "$1" in
-    --reload)
-        ACTION="reload"
-        ;;
-    --ping)
-        ACTION="ping"
-        ;;
-    search)
-        ACTION="search"
-        shift
-        QUERY="$*"
-        ;;
-    *)
-        ACTION="search"
-        QUERY="$*"
-        ;;
+    --reload) ACTION="reload" ;;
+    --ping) ACTION="ping" ;;
+    search) ACTION="search"; shift; QUERY="$*" ;;
+    *) ACTION="search"; QUERY="$*" ;;
 esac
 
 # Create JSON request
 if [ "$ACTION" == "search" ]; then
-    # Escape quotes for JSON
     ESCAPED_QUERY=$(echo "$QUERY" | sed 's/"/\\"/g')
     REQUEST="{\"action\":\"search\", \"query\":\"$ESCAPED_QUERY\", \"top_k\": 5}"
 elif [ "$ACTION" == "reload" ]; then
@@ -58,26 +46,49 @@ else
     REQUEST="{\"action\":\"ping\"}"
 fi
 
-# Send to daemon and get response
-# We use nc (netcat) with a 1s timeout
-RESPONSE=$(echo "$REQUEST" | nc -w 1 $HOST $PORT 2>/dev/null)
+# Function to send request
+function send_request() {
+    echo "$REQUEST" | nc -w 1 $HOST $PORT 2>/dev/null
+}
 
+# --- Step 1: Try to send request ---
+RESPONSE=$(send_request)
+
+# --- Step 2: If fail, try to start daemon ---
 if [ $? -ne 0 ] || [ -z "$RESPONSE" ]; then
-    echo "Error: Could not connect to EveryCli daemon on port $PORT."
-    echo "Make sure the daemon is running (e.g., execute: everycli-daemon)"
+    if command -v $DAEMON_BIN >/dev/null 2>&1; then
+        echo -e "\e[2m[everycli] Starting daemon...\e[0m"
+        $DAEMON_BIN --start >/dev/null 2>&1 &
+        
+        # Wait for daemon to be ready (max 10 seconds)
+        MAX_RETRIES=20
+        COUNT=0
+        while [ $COUNT -lt $MAX_RETRIES ]; do
+            sleep 0.5
+            RESPONSE=$(send_request)
+            if [ -n "$RESPONSE" ]; then
+                break
+            fi
+            ((COUNT++))
+        done
+    fi
+fi
+
+# --- Step 3: Final check ---
+if [ -z "$RESPONSE" ]; then
+    echo "Error: Could not connect to EveryCli daemon."
+    echo "Make sure '$DAEMON_BIN' is installed and reachable in your PATH."
     exit 1
 fi
 
-# Process response
+# --- Step 4: Process and display response ---
 if [ "$HAS_JQ" ]; then
     if [ "$ACTION" == "search" ]; then
-        # Pretty print results
-        echo "$RESPONSE" | jq -r 'if .ok then .results[] | "\u001b[32m# \(.description)\u001b[0m\n\(.command)\n" else empty end'
+        echo "$RESPONSE" | jq -r 'if .ok then .results[] | "\u001b[32m# \(.description)\u001b[0m\n\(.command)\n" else .error end'
     else
         echo "$RESPONSE" | jq .
     fi
 else
-    # Fallback without jq (basic extraction)
     if [ "$ACTION" == "search" ]; then
         echo "$RESPONSE" | grep -oP '"description":"\K[^"]+|"command":"\K[^"]+' | sed 'N;s/\n/\n# /;s/^/# /'
     else
