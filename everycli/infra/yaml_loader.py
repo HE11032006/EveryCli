@@ -19,29 +19,55 @@ class YamlLoader:
     def load_all(self) -> list[Scenario]:
         scenarios = []
 
+        def _extract_entries(data):
+            if isinstance(data, list):
+                for item in data:
+                    yield from _extract_entries(item)
+            elif isinstance(data, dict):
+                if "id" in data and "description" in data:
+                    yield data
+                else:
+                    for value in data.values():
+                        yield from _extract_entries(value)
+
+        import logging
+        from everycli.core.exceptions import YamlFormatError
+
+        loader_class = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+
         for yaml_file in sorted(self._data_dir.glob("*.yaml")):
             raw = yaml_file.read_text(encoding="utf-8")
-            entries = yaml.safe_load(raw)
-            if not isinstance(entries, list):
+            try:
+                entries = yaml.load(raw, Loader=loader_class)
+            except yaml.YAMLError as e:
+                logging.error(f"Erreur de lecture du fichier {yaml_file} : {e}")
+                # On pourrait choisir de lever une exception ici, ou juste logger
+                # Pour le loader, on loggue l'erreur mais on continue pour les autres fichiers
                 continue
 
-            for entry in entries:
-                if not isinstance(entry, dict):
-                    continue
+            for entry in _extract_entries(entries):
                 try:
                     scenarios.append(self._parse(entry))
-                except (KeyError, TypeError):
+                except (KeyError, TypeError) as e:
+                    logging.warning(f"Entrée mal formée dans {yaml_file} : {e}")
                     continue
 
         return scenarios
 
     def _parse(self, entry: dict) -> Scenario:
-        cmd = entry["commands"]
-        command = Command(
-            linux=cmd.get("linux", ""),
-            windows=cmd.get("windows", ""),
-            macos=cmd.get("macos", ""),
-        )
+        # Supporte deux formats :
+        # 1. {commands: {linux: ..., windows: ...}}  (format multi-OS)
+        # 2. {command: "..."}                        (format simplifié)
+        if "commands" in entry:
+            cmd = entry["commands"]
+            command = Command(
+                linux=cmd.get("linux", ""),
+                windows=cmd.get("windows", ""),
+                macos=cmd.get("macos", ""),
+            )
+        else:
+            raw_cmd = entry.get("command", "")
+            command = Command(linux=raw_cmd, windows=raw_cmd, macos=raw_cmd)
 
         error_hints = [
             ErrorHint(
@@ -53,12 +79,12 @@ class YamlLoader:
         ]
 
         return Scenario(
-            id=entry["id"],
-            description=entry["description"],
-            tags=entry.get("tags", []),
+            id=str(entry["id"]),
+            description=str(entry["description"]),
+            tags=[str(t) for t in entry.get("tags", [])],
             command=command,
-            explanation=entry["explanation"],
-            warning=entry.get("warning", ""),
+            explanation=str(entry["explanation"]),
+            warning=str(entry.get("warning", "")),
             error_hints=error_hints,
         )
 

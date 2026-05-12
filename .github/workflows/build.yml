@@ -1,0 +1,123 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ "main", "improve_daemon" ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.11"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Download Model
+      run: |
+        python -c "from sentence_transformers import SentenceTransformer; model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2'); model.save('paraphrase-multilingual-MiniLM-L12-v2')"
+
+    - name: Build Full Version
+      shell: bash
+      run: |
+        pyinstaller everycli-daemon.spec --clean
+        mkdir -p dist_full
+        cp -r dist/* dist_full/
+
+    - name: Build Lite Version
+      shell: bash
+      env:
+        EVERYCLI_LITE: "1"
+      run: |
+        pyinstaller everycli-daemon.spec --clean
+        mkdir -p dist_lite
+        cp -r dist/* dist_lite/
+
+    - name: Prepare Artifacts
+      shell: bash
+      run: |
+        mkdir -p final_dist
+        # Linux/macOS
+        if [ "${{ matrix.os }}" != "windows-latest" ]; then
+          cp dist_full/everycli-daemon final_dist/everycli-full
+          cp dist_lite/everycli-daemon final_dist/everycli-lite
+        # Windows
+        else
+          cp dist_full/everycli-daemon.exe final_dist/everycli-full.exe
+          cp dist_lite/everycli-daemon.exe final_dist/everycli-lite.exe
+          cp everycli.ps1 final_dist/everycli.ps1
+        fi
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: everycli-${{ matrix.os }}
+        path: final_dist/
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare assets
+        run: |
+          mkdir -p release_assets
+          # Ubuntu
+          cp artifacts/everycli-ubuntu-latest/everycli-full release_assets/everycli-linux-full
+          cp artifacts/everycli-ubuntu-latest/everycli-lite release_assets/everycli-linux-lite
+          # macOS
+          cp artifacts/everycli-macos-latest/everycli-full release_assets/everycli-macos-full
+          cp artifacts/everycli-macos-latest/everycli-lite release_assets/everycli-macos-lite
+          # Windows
+          cp artifacts/everycli-windows-latest/everycli-full.exe release_assets/everycli-windows-full.exe
+          cp artifacts/everycli-windows-latest/everycli-lite.exe release_assets/everycli-windows-lite.exe
+          cp artifacts/everycli-windows-latest/everycli.ps1 release_assets/everycli.ps1
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release_assets/everycli-linux-full
+            release_assets/everycli-linux-lite
+            release_assets/everycli-macos-full
+            release_assets/everycli-macos-lite
+            release_assets/everycli-windows-full.exe
+            release_assets/everycli-windows-lite.exe
+            release_assets/everycli.ps1
+          body: |
+            🚀 **EveryCli v1.0.0**
+            
+            Deux versions sont disponibles pour chaque système :
+            - **Full** (~300Mo) : Tout inclus, fonctionne instantanément hors-ligne.
+            - **Lite** (~50Mo) : Télécharge le modèle IA au premier lancement (~400Mo).
+            
+            *Note : La taille des versions Full a été réduite en excluant les bibliothèques GPU inutiles.*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

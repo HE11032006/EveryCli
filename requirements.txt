@@ -1,5 +1,11 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 PyYAML
 rich
 scikit-learn
 pytest
 typer
+torch
+sentence-transformers
+rank_bm25
+pick
+pyinstaller
