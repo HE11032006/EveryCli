@@ -27,7 +27,22 @@ Two versions are available for each operating system on the [Releases](https://g
 - **Lite Version** (~50MB): **Lightweight.** Will automatically download the AI model (~400MB) on the first search. Recommended if you have a good internet connection.
 
 1. Download the version that fits your needs.
-2. (Optional) Add the binary to your system PATH to run it from anywhere.
+2. (Optional) Setup for easy access:
+
+   #### 🐧 Linux / 🍎 macOS
+   ```bash
+   chmod +x everycli-linux-full
+   sudo ln -s $(pwd)/everycli-linux-full /usr/local/bin/everycli
+   everycli search "git commit"
+   ```
+
+   #### 🪟 Windows
+   - Put `everycli-windows-full.exe` and `everycli.ps1` in a folder.
+   - Rename the exe to `everycli-daemon.exe`.
+   - Add the folder to your **PATH**.
+   - Run: `everycli search "git commit"`
+
+3. Check our [Detailed Installation Guide](docs/tutorial_installation.md) for more info.
 
 ### 🛠️ Installation (Source)
 
