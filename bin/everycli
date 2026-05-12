@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # EveryCli Wrapper - Intelligent client for the EveryCli daemon
-# Version: 1.1.0
+# Version: 1.2.0
 
 PORT=51821
 HOST="127.0.0.1"
@@ -16,8 +16,9 @@ function usage() {
     echo "Usage:"
     echo "  everycli <query>          Search for a command"
     echo "  everycli search <query>   Search for a command"
-    echo "  everycli --reload         Reload command database"
-    echo "  everycli --ping           Check if daemon is alive"
+    echo "  everycli daemon <cmd>     Manage daemon (start/stop/status/logs)"
+    echo "  everycli add              Add a new scenario"
+    echo "  everycli list             List all scenarios"
     echo ""
 }
 
@@ -26,15 +27,43 @@ if [ $# -eq 0 ]; then
     exit 0
 fi
 
-# Parse arguments
+# Detect if we should use the fast path (TCP) or the direct path (PyInstaller)
+USE_FAST_PATH=true
 ACTION="search"
 QUERY=""
+
 case "$1" in
-    --reload) ACTION="reload" ;;
-    --ping) ACTION="ping" ;;
-    search) ACTION="search"; shift; QUERY="$*" ;;
-    *) ACTION="search"; QUERY="$*" ;;
+    daemon|add|list|export|import|update|--help)
+        USE_FAST_PATH=false
+        ;;
+    --reload)
+        ACTION="reload"
+        ;;
+    --ping)
+        ACTION="ping"
+        ;;
+    search)
+        ACTION="search"
+        shift
+        QUERY="$*"
+        ;;
+    *)
+        ACTION="search"
+        QUERY="$*"
+        ;;
 esac
+
+# --- DIRECT PATH (Management commands) ---
+if [ "$USE_FAST_PATH" = false ]; then
+    if command -v $DAEMON_BIN >/dev/null 2>&1; then
+        exec $DAEMON_BIN "$@"
+    else
+        echo "Error: '$DAEMON_BIN' not found. Cannot execute management command."
+        exit 1
+    fi
+fi
+
+# --- FAST PATH (Search/Reload/Ping) ---
 
 # Create JSON request
 if [ "$ACTION" == "search" ]; then
@@ -46,42 +75,35 @@ else
     REQUEST="{\"action\":\"ping\"}"
 fi
 
-# Function to send request
 function send_request() {
     echo "$REQUEST" | nc -w 1 $HOST $PORT 2>/dev/null
 }
 
-# --- Step 1: Try to send request ---
 RESPONSE=$(send_request)
 
-# --- Step 2: If fail, try to start daemon ---
+# Auto-start daemon if search fails
 if [ $? -ne 0 ] || [ -z "$RESPONSE" ]; then
     if command -v $DAEMON_BIN >/dev/null 2>&1; then
         echo -e "\e[2m[everycli] Starting daemon...\e[0m"
         $DAEMON_BIN --start >/dev/null 2>&1 &
         
-        # Wait for daemon to be ready (max 10 seconds)
         MAX_RETRIES=20
         COUNT=0
         while [ $COUNT -lt $MAX_RETRIES ]; do
             sleep 0.5
             RESPONSE=$(send_request)
-            if [ -n "$RESPONSE" ]; then
-                break
-            fi
+            if [ -n "$RESPONSE" ]; then break; fi
             ((COUNT++))
         done
     fi
 fi
 
-# --- Step 3: Final check ---
 if [ -z "$RESPONSE" ]; then
     echo "Error: Could not connect to EveryCli daemon."
-    echo "Make sure '$DAEMON_BIN' is installed and reachable in your PATH."
     exit 1
 fi
 
-# --- Step 4: Process and display response ---
+# Process response
 if [ "$HAS_JQ" ]; then
     if [ "$ACTION" == "search" ]; then
         echo "$RESPONSE" | jq -r 'if .ok then .results[] | "\u001b[32m# \(.description)\u001b[0m\n\(.command)\n" else .error end'
