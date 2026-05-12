@@ -1,20 +1,22 @@
-# everycli.ps1 — Wrapper haute performance pour Windows
-# Ce script permet une recherche instantanée sur Windows en parlant au daemon via TCP.
+# everycli.ps1 — Intelligent High-Performance Wrapper for Windows
+# Version: 1.1.0
 
 $DAEMON_PORT = if ($env:EVERYCLI_PORT) { $env:EVERYCLI_PORT } else { 51821 }
 $EVERYCLI_BIN = Join-Path $PSScriptRoot "everycli-daemon.exe"
-$PID_FILE = Join-Path $HOME ".everycli\daemon.pid"
 
-function Test-DaemonRunning {
-    if (Test-Path $PID_FILE) {
-        $pidVal = Get-Content $PID_FILE -ErrorAction SilentlyContinue
-        if ($pidVal) {
-            try {
-                return Get-Process -Id $pidVal -ErrorAction SilentlyContinue
-            } catch {
-                return $false
-            }
+function Test-PortOpen {
+    param($port)
+    $tcpClient = New-Object System.Net.Sockets.TcpClient
+    try {
+        $asyncResult = $tcpClient.BeginConnect("127.0.0.1", $port, $null, $null)
+        $wait = $asyncResult.AsyncWaitHandle.WaitOne(200, $false)
+        if ($wait -and $tcpClient.Connected) {
+            return $true
         }
+    } catch {
+        return $false
+    } finally {
+        $tcpClient.Close()
     }
     return $false
 }
@@ -27,7 +29,7 @@ function Invoke-FastSearch {
         $client.Connect("127.0.0.1", $DAEMON_PORT)
         $stream = $client.GetStream()
         
-        $payload = @{ action = "search"; query = $query; top_k = 3 } | ConvertTo-Json -Compress
+        $payload = @{ action = "search"; query = $query; top_k = 5 } | ConvertTo-Json -Compress
         $data = [System.Text.Encoding]::UTF8.GetBytes($payload + "`n")
         $stream.Write($data, 0, $data.Length)
         
@@ -42,7 +44,7 @@ function Invoke-FastSearch {
             foreach ($r in $response.results) {
                 Write-Host "✦ $($r.description)" -ForegroundColor Cyan
                 Write-Host "  $($r.command)" -ForegroundColor Green
-                if ($r.explanation) { Write-Host "  $($r.explanation)" -ForegroundColor Gray }
+                # if ($r.explanation) { Write-Host "  $($r.explanation)" -ForegroundColor Gray }
                 Write-Host ""
             }
             return $true
@@ -55,9 +57,14 @@ function Invoke-FastSearch {
     return $false
 }
 
-# --- Logique principale ---
+# --- Main Logic ---
 if ($args.Count -eq 0) {
-    Start-Process -FilePath $EVERYCLI_BIN -ArgumentList "--help" -NoNewWindow -Wait
+    if (Test-Path $EVERYCLI_BIN) {
+        & $EVERYCLI_BIN --help
+    } else {
+        Write-Host "EveryCli - Command Line Interface"
+        Write-Host "Usage: everycli <query>"
+    }
     exit 0
 }
 
@@ -68,11 +75,31 @@ if ($firstArg -eq "search") {
 }
 $fullQuery = $queryArgs -join " "
 
-# Si c'est une recherche et que le daemon tourne -> FAST PATH
-if ($firstArg -ne "daemon" -and $firstArg -ne "add" -and (Test-DaemonRunning)) {
-    if (Invoke-FastSearch $fullQuery) { exit 0 }
+# --- Step 1: Check if it's a search command ---
+if ($firstArg -eq "daemon" -or $firstArg -eq "add" -or $firstArg -eq "list" -or $firstArg -eq "export" -or $firstArg -eq "import" -or $firstArg -eq "update" -or $firstArg -eq "--help") {
+    if (Test-Path $EVERYCLI_BIN) {
+        & $EVERYCLI_BIN $args
+        exit 0
+    }
 }
 
-# Fallback sur le binaire complet (PyInstaller)
-# Note: On utilise Start-Process pour une meilleure gestion des signaux sur Windows
-& $EVERYCLI_BIN $args
+# --- Step 2: Try Fast Search ---
+if (-not (Test-PortOpen $DAEMON_PORT)) {
+    if (Test-Path $EVERYCLI_BIN) {
+        Write-Host "[everycli] Starting daemon..." -ForegroundColor Gray
+        Start-Process -FilePath $EVERYCLI_BIN -ArgumentList "--start" -WindowStyle Hidden
+        
+        # Wait for daemon (max 10 seconds)
+        for ($i=0; $i -lt 20; $i++) {
+            Start-Sleep -Milliseconds 500
+            if (Test-PortOpen $DAEMON_PORT) { break }
+        }
+    }
+}
+
+if (Invoke-FastSearch $fullQuery) {
+    exit 0
+} else {
+    Write-Error "Could not connect to EveryCli daemon."
+    exit 1
+}
