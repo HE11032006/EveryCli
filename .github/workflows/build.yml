@@ -39,12 +39,14 @@ jobs:
         python -c "from sentence_transformers import SentenceTransformer; model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2'); model.save('paraphrase-multilingual-MiniLM-L12-v2')"
 
     - name: Build Full Version
+      shell: bash
       run: |
         pyinstaller everycli-daemon.spec --clean
         mkdir -p dist_full
         cp -r dist/* dist_full/
 
     - name: Build Lite Version
+      shell: bash
       env:
         EVERYCLI_LITE: "1"
       run: |
@@ -53,6 +55,7 @@ jobs:
         cp -r dist/* dist_lite/
 
     - name: Prepare Artifacts
+      shell: bash
       run: |
         mkdir -p final_dist
         # Linux/macOS
