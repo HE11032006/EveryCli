@@ -12,23 +12,29 @@ Rendez-vous sur la page des [Releases](https://github.com/HE11032006/EveryCli/re
 
 ## 2. Installation et Configuration
 
-### 🐧 Linux / 🍎 macOS
+### 🐧 Linux / 🍎 macOS (Installation Rapide)
 
-1. Donnez les droits d'exécution au fichier téléchargé :
+Pour obtenir des performances optimales (réponse en moins de 10ms), nous recommandons d'utiliser le **wrapper shell**.
 
-   ```bash
-   chmod +x everycli-linux-full  # Remplacez par le nom du fichier téléchargé
-   ```
-2. Créez un lien symbolique pour pouvoir l'utiliser partout :
-
-   ```bash
-   sudo ln -s $(pwd)/everycli-linux-full /usr/local/bin/everycli
-   ```
-3. Testez l'installation :
-
-   ```bash
-   everycli search "comment faire un commit"
-   ```
+1.  Donnez les droits d'exécution au daemon et au wrapper :
+    ```bash
+    chmod +x everycli-linux-full bin/everycli
+    ```
+2.  Créez les liens symboliques :
+    ```bash
+    # Le daemon (le "cerveau")
+    sudo ln -s $(pwd)/everycli-linux-full /usr/local/bin/everycli-daemon
+    # Le wrapper (le "messager" ultra-rapide)
+    sudo ln -s $(pwd)/bin/everycli /usr/local/bin/everycli
+    ```
+3.  Lancez le daemon une première fois :
+    ```bash
+    everycli-daemon --start
+    ```
+4.  Testez la recherche instantanée :
+    ```bash
+    everycli "comment faire un commit"
+    ```
 
 ### 🪟 Windows
 

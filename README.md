@@ -30,10 +30,18 @@ Two versions are available for each operating system on the [Releases](https://g
 2. (Optional) Setup for easy access:
 
    #### 🐧 Linux / 🍎 macOS
+   1. Download `everycli-linux-full` (the daemon).
+   2. Place the `bin/everycli` wrapper in your PATH.
    ```bash
-   chmod +x everycli-linux-full
-   sudo ln -s $(pwd)/everycli-linux-full /usr/local/bin/everycli
-   everycli search "git commit"
+   chmod +x everycli-linux-full bin/everycli
+   sudo ln -s $(pwd)/everycli-linux-full /usr/local/bin/everycli-daemon
+   sudo ln -s $(pwd)/bin/everycli /usr/local/bin/everycli
+   
+   # Start the daemon once
+   everycli-daemon --start
+   
+   # Search instantly!
+   everycli "git commit"
    ```
 
    #### 🪟 Windows
@@ -85,6 +93,7 @@ The following is a high-level overview of relevant files and folders.
 ```text
 EveryCli/
 ├── .github/             # CI/CD Workflows (Auto-build binaries)
+├── bin/                 # Fast shell wrappers (Linux/macOS)
 ├── docs/                # Detailed Diátaxis documentation
 ├── everycli/
 │   ├── core/            # Domain logic (Models, Search Engine, Coordinator)
