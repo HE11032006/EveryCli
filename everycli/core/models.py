@@ -53,6 +53,12 @@ class Scenario:
     explanation: str
     warning: str = ""
     error_hints: list[ErrorHint] = field(default_factory=list)
+    namespace: str = ""
+    """
+    The ecosystem this scenario belongs to (git, docker, composer, npm...).
+    Always derived from the source YAML filename — never from tags or id —
+    so it's guaranteed present and consistent, unlike free-text tags.
+    """
 
     def to_dict(self) -> dict:
         return {
@@ -62,7 +68,8 @@ class Scenario:
             "command": self.command.to_dict(),
             "explanation": self.explanation,
             "warning": self.warning,
-            "errors": [e.to_dict() for e in self.error_hints]
+            "errors": [e.to_dict() for e in self.error_hints],
+            "namespace": self.namespace,
         }
 
 
