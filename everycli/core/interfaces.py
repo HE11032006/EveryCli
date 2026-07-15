@@ -34,5 +34,12 @@ class ResultFormatter(Protocol):
     def format_error_hint(self, error_message: str, result: SearchResult) -> str: ...
 
 
+@runtime_checkable
+class ContextDetector(Protocol):
+    """Detects the likely command namespace(s) from the current working directory
+    (e.g. a composer.json present implies the 'composer' namespace)."""
+    def detect(self) -> list[str]: ...
+
+
 from .command_runner import CommandRunner
 from .clipboard import ClipboardWriter
