@@ -37,6 +37,7 @@ class SearchCoordinator:
         from everycli.core.search_engine import SearchEngine
         from everycli.infra.yaml_loader import YamlLoader
         from everycli.infra.os_resolver import OSResolver
+        from everycli.infra.context_detector import ProjectContextDetector
         from pathlib import Path
 
         matcher = HybridMatcher(semantic_weight=0.6)
@@ -44,6 +45,9 @@ class SearchCoordinator:
             loader=YamlLoader(Path(self.data_dir)),
             matcher=matcher,
             os_resolver=OSResolver(),
+            # Ici on tourne dans le même process que l'utilisateur, donc le
+            # cwd est bien le sien — contrairement au daemon (voir daemon.py).
+            context_detector=ProjectContextDetector(),
         )
         
         with self.console.status("[dim]Chargement local...[/dim]", spinner="dots"):
@@ -63,6 +67,7 @@ class SearchCoordinator:
                 command=cmd,
                 explanation=r.get("explanation", ""),
                 warning=r.get("warning", ""),
+                namespace=r.get("namespace", ""),
             )
             results.append(SearchResult(
                 scenario=scenario,
