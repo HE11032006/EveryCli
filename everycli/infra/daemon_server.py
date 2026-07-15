@@ -6,7 +6,7 @@ import asyncio
 import json
 import logging
 import sys
-from typing import Any
+from typing import Any, Optional
 from everycli.core.search_engine import SearchEngine
 
 logger = logging.getLogger("everycli.daemon")
@@ -63,9 +63,14 @@ class DaemonServer:
     def _do_search(self, request: dict) -> dict:
         query = request.get("query", "").strip()
         top_k = int(request.get("top_k", 1))
-        
+        # Le daemon est un process résident: son propre cwd n'a aucun rapport
+        # avec le dossier où l'utilisateur tape sa commande. Le client détecte
+        # le contexte (composer.json, .git, ...) dans SON cwd et le transmet
+        # ici — voir daemon_client.py.
+        context = request.get("context", None)
+
         try:
-            results = self.engine.search(query, top_k=top_k)
+            results = self.engine.search(query, top_k=top_k, context_override=context)
             return {
                 "ok": True,
                 "results": [
@@ -74,6 +79,7 @@ class DaemonServer:
                         "description": r.scenario.description,
                         "command": r.resolved_command,
                         "explanation": r.scenario.explanation,
+                        "namespace": r.scenario.namespace,
                         "score": r.score,
                     } for r in results
                 ]

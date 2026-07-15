@@ -92,7 +92,7 @@ def engine(scenario):
     return SearchEngine(loader, matcher, resolver)
 
 
-# ── Tests ─────────────────────────────────────────────────────────────────────
+# Tests
 
 class TestSearchEngine:
     def test_raises_if_search_called_before_boot(self, engine):
