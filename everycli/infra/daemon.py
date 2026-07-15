@@ -24,6 +24,10 @@ def _build_engine():
     else:
         data_dir = Path(__file__).parent.parent / "data" / "commands"
 
+    # Pas de ContextDetector injecté ici : le daemon est un process résident
+    # dont le cwd ne reflète pas le dossier réel de l'utilisateur au moment
+    # de chaque requête. Le contexte est détecté côté client et transmis
+    # dans le payload (voir daemon_client.py / daemon_server.py).
     return SearchEngine(
         loader=YamlLoader(data_dir),
         matcher=HybridMatcher(semantic_weight=0.6),
