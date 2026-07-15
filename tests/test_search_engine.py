@@ -5,7 +5,7 @@ from everycli.core.models import Command, OS, Scenario, SearchResult
 from everycli.core.search_engine import SearchEngine
 
 
-# Fakes
+# ── Fakes ────────────────────────────────────────────────────────────────────
 
 class FakeLoader:
     def __init__(self, scenarios):
