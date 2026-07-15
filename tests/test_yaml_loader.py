@@ -78,3 +78,22 @@ class TestYamlLoader:
             )
             scenarios = YamlLoader(path).load_all()
             assert len(scenarios) == 2
+
+    def test_scenario_namespace_matches_filename(self, yaml_dir):
+        """The namespace must come from the source filename (test.yaml -> 'test'),
+        not from tags or the id, so it's always present and reliable."""
+        scenarios = YamlLoader(yaml_dir).load_all()
+        assert scenarios[0].namespace == "test"
+
+    def test_different_files_produce_different_namespaces(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir)
+            (path / "docker.yaml").write_text(
+                yaml.dump(SAMPLE_YAML, allow_unicode=True), encoding="utf-8"
+            )
+            (path / "composer.yaml").write_text(
+                yaml.dump(SAMPLE_YAML, allow_unicode=True), encoding="utf-8"
+            )
+            scenarios = YamlLoader(path).load_all()
+            namespaces = {s.namespace for s in scenarios}
+            assert namespaces == {"docker", "composer"}
