@@ -45,16 +45,18 @@ class YamlLoader:
                 # Pour le loader, on loggue l'erreur mais on continue pour les autres fichiers
                 continue
 
+            namespace = yaml_file.stem
+
             for entry in _extract_entries(entries):
                 try:
-                    scenarios.append(self._parse(entry))
+                    scenarios.append(self._parse(entry, namespace=namespace))
                 except (KeyError, TypeError) as e:
                     logging.warning(f"Entrée mal formée dans {yaml_file} : {e}")
                     continue
 
         return scenarios
 
-    def _parse(self, entry: dict) -> Scenario:
+    def _parse(self, entry: dict, namespace: str = "") -> Scenario:
         # Supporte deux formats :
         # 1. {commands: {linux: ..., windows: ...}}  (format multi-OS)
         # 2. {command: "..."}                        (format simplifié)
@@ -86,6 +88,7 @@ class YamlLoader:
             explanation=str(entry["explanation"]),
             warning=str(entry.get("warning", "")),
             error_hints=error_hints,
+            namespace=namespace,
         )
 
 
