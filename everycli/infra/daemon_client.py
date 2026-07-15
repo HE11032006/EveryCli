@@ -145,8 +145,13 @@ def _respawn_daemon() -> bool:
 
 
 def search(query: str, top_k: int = 1) -> DaemonResult | DaemonError:
-    # Tente directement — pas de ping() préalable qui consomme la connexion
-    resp = _send_request({"action": "search", "query": query, "top_k": top_k})
+    from everycli.infra.context_detector import ProjectContextDetector
+    # Détecté ICI, côté client, car c'est le seul endroit où le cwd correspond
+    # réellement au dossier de l'utilisateur au moment de cette requête précise.
+    context = ProjectContextDetector().detect()
+
+    payload = {"action": "search", "query": query, "top_k": top_k, "context": context}
+    resp = _send_request(payload)
 
     if resp is None:
         from rich.console import Console
@@ -160,7 +165,7 @@ def search(query: str, top_k: int = 1) -> DaemonResult | DaemonError:
                 reason="Impossible de démarrer le daemon. Lance 'everycli daemon --start'.",
                 code="RESPAWN_FAILED",
             )
-        resp = _send_request({"action": "search", "query": query, "top_k": top_k})
+        resp = _send_request(payload)
 
     if resp is None:
         return DaemonError(reason="Le daemon ne répond pas (timeout).", code="TIMEOUT")
