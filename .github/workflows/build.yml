@@ -38,6 +38,11 @@ jobs:
       run: |
         python -c "from sentence_transformers import SentenceTransformer; model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2'); model.save('paraphrase-multilingual-MiniLM-L12-v2')"
 
+    - name: Validate corpus and run tests
+      run: |
+        python tools/validate_corpus.py
+        python -m pytest -q --ignore=tests/test_semantic_matches.py
+
     - name: Build Full Version
       shell: bash
       run: |

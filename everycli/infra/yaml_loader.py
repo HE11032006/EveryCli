@@ -48,6 +48,13 @@ class YamlLoader:
             namespace = yaml_file.stem
 
             for entry in _extract_entries(entries):
+                # `kind` distingue les vraies commandes (recherchables) des
+                # tips/troubleshooting (autre type de contenu, pas encore
+                # supporté par SearchEngine). On les ignore SANS les traiter
+                # comme des entrées cassées — ce n'est pas une erreur.
+                kind = entry.get("kind", "command")
+                if kind != "command":
+                    continue
                 try:
                     scenarios.append(self._parse(entry, namespace=namespace))
                 except (KeyError, TypeError) as e:

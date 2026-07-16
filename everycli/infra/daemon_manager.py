@@ -14,7 +14,7 @@ PID_FILE     = EVERYCLI_DIR / "daemon.pid"
 class DaemonManager:
     def __init__(self, pid_file: Path = PID_FILE):
         self.pid_file = pid_file
-        EVERYCLI_DIR.mkdir(parents=True, exist_ok=True)
+        self.pid_file.parent.mkdir(parents=True, exist_ok=True)
 
     def write_pid(self, pid: int):
         self.pid_file.write_text(str(pid), encoding="utf-8")
