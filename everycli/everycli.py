@@ -23,7 +23,16 @@ if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
     DATA_DIR = Path(sys._MEIPASS) / "everycli" / "data" / "commands"
 else:
     DATA_DIR = Path(__file__).parent / "data" / "commands"
-ENVIRONMENTS = ["git", "linux", "docker", "npm", "ssh", "other"]
+
+
+def available_environments(data_dir: Path = DATA_DIR) -> list[str]:
+    """Return the corpus namespaces accepted by the interactive add flow.
+
+    The choices follow the YAML files, so adding a new ecosystem cannot leave
+    the CLI menu stale (as happened with composer and docker_compose).
+    """
+    namespaces = sorted(path.stem for path in data_dir.glob("*.yaml"))
+    return [*namespaces, "other"]
 
 def _get_history():
     from everycli.core.history import History
@@ -130,6 +139,54 @@ def search(
     console.print()
 
 
+@app.command()
+def plan(
+    query: str = typer.Argument(..., help="Objectif décrit en langage naturel."),
+    top: int = typer.Option(5, "--top", "-t", min=1, max=10, help="Nombre de candidats examinés."),
+    local: bool = typer.Option(False, "--local", help="Ne pas utiliser GPT-5.6, même si une clé est configurée."),
+):
+    """Préparer une commande vérifiable avant de la copier ou de l'exécuter.
+
+    Cette commande ne lance jamais de shell. GPT-5.6, lorsqu'il est configuré,
+    explique et départage les candidats issus du corpus; la commande finale et
+    son niveau de risque restent ancrés dans le corpus local.
+    """
+    from everycli.core.coordinator import SearchCoordinator
+    from everycli.core.command_plan import LocalCommandPlanner
+    from everycli.infra.openai_command_planner import OpenAICommandPlanner
+    from rich.panel import Panel
+
+    coordinator = SearchCoordinator(console, str(DATA_DIR))
+    results = coordinator.execute_search(query, top_k=top)
+    if not results:
+        console.print("[yellow]Aucune commande candidate trouvée.[/yellow]")
+        raise typer.Exit(1)
+
+    planner_name = "local"
+    if not local and OpenAICommandPlanner.available():
+        try:
+            command_plan = OpenAICommandPlanner().plan(query, results)
+            planner_name = command_plan.planner
+        except Exception as error:
+            console.print(f"[yellow]Planificateur IA indisponible : {error}. Basculement local.[/yellow]")
+            command_plan = LocalCommandPlanner().plan(results[0])
+    else:
+        command_plan = LocalCommandPlanner().plan(results[0])
+
+    checks = "\n".join(f"  • {check}" for check in command_plan.preflight_checks)
+    confirmation = "Oui — relis et confirme avant exécution." if command_plan.confirmation_required else "Non, mais relis la commande."
+    content = (
+        f"[bold]{command_plan.title}[/bold]\n\n"
+        f"[cyan]{command_plan.command}[/cyan]\n\n"
+        f"{command_plan.explanation}\n\n"
+        f"[bold]Risque :[/bold] {command_plan.risk.value.upper()} — {command_plan.risk_reason}\n"
+        f"[bold]Confirmation requise :[/bold] {confirmation}\n\n"
+        f"[bold]À vérifier avant de continuer :[/bold]\n{checks}\n\n"
+        f"[dim]Source : {command_plan.source_id} · Planificateur : {planner_name} · Aucune commande n'a été exécutée.[/dim]"
+    )
+    console.print(Panel(content, title="EveryCli Sentinel", border_style="cyan"))
+
+
 def _copy_to_clipboard(command: str):
     from everycli.infra.clipboard_copy import ClipboardCopy
     clipboard = ClipboardCopy()
@@ -200,7 +257,7 @@ def add():
     from rich.prompt import Prompt, Confirm
     console.print("\n[bold cyan]✦ Ajouter un scénario[/bold cyan]\n")
 
-    env = Prompt.ask("  Environnement", choices=ENVIRONMENTS, default="git")
+    env = Prompt.ask("  Environnement", choices=available_environments(), default="git")
     description = Prompt.ask("  Ce que ça fait (en français naturel)")
     tags_raw = Prompt.ask("  Tags (séparés par des virgules)")
     tags = [t.strip() for t in tags_raw.split(",")]

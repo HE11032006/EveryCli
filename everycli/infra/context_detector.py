@@ -14,6 +14,9 @@ from everycli.core.interfaces import ContextDetector as ContextDetectorProtocol
 _MARKERS: dict[str, list[str]] = {
     "composer.json": ["composer"],
     "package.json": ["npm"],
+    "pyproject.toml": ["python"],
+    "requirements.txt": ["python"],
+    "pytest.ini": ["python"],
     ".git": ["git"],
     "docker-compose.yml": ["docker_compose", "docker"],
     "docker-compose.yaml": ["docker_compose", "docker"],

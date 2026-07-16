@@ -1,0 +1,85 @@
+- id: ssh_connect
+  description: Se connecter à un serveur SSH
+  tags: [ssh, connect, login, remote, server, connexion, serveur]
+  command: "ssh utilisateur@hote"
+  explanation: Ouvre une session chiffrée vers un hôte distant.
+  example: "ssh deploy@server.example.com"
+
+- id: ssh_connect_port
+  description: Se connecter à SSH sur un port personnalisé
+  tags: [ssh, port, connect, remote, server, custom]
+  command: "ssh -p port utilisateur@hote"
+  explanation: Utilise un port SSH différent du port 22 par défaut.
+  example: "ssh -p 2222 deploy@server.example.com"
+
+- id: ssh_generate_key
+  description: Générer une clé SSH moderne ed25519
+  tags: [ssh, keygen, key, ed25519, generate, authentication]
+  command: "ssh-keygen -t ed25519 -C \"votre-email@example.com\""
+  explanation: Crée une paire de clés SSH ed25519 protégée par une passphrase si tu en choisis une.
+  warning: "Ne partage jamais la clé privée ; seule la clé .pub peut être copiée sur un serveur."
+
+- id: ssh_copy_key
+  description: Installer sa clé publique sur un serveur
+  tags: [ssh, copy-id, public key, authentication, server, key]
+  command: "ssh-copy-id utilisateur@hote"
+  explanation: Ajoute la clé publique locale aux clés autorisées du compte distant.
+  warning: "Cette commande est surtout disponible sur Linux/macOS ; sous Windows, ajoute la clé publique manuellement."
+
+- id: ssh_use_identity_file
+  description: Se connecter avec une clé SSH précise
+  tags: [ssh, identity, key, private key, connect, authentication]
+  command: "ssh -i ~/.ssh/ma_cle utilisateur@hote"
+  explanation: Indique explicitement le fichier de clé privée à utiliser pour la connexion.
+
+- id: ssh_run_remote_command
+  description: Exécuter une commande sur un serveur distant
+  tags: [ssh, remote command, execute, server, run, distant]
+  command: "ssh utilisateur@hote 'commande'"
+  explanation: Exécute une commande sur le serveur distant sans ouvrir de session interactive.
+  example: "ssh deploy@server.example.com 'uptime'"
+
+- id: ssh_local_forward
+  description: Créer un tunnel SSH de port local
+  tags: [ssh, tunnel, local forward, port, database, forwarding]
+  command: "ssh -L port_local:hote_cible:port_cible utilisateur@hote"
+  explanation: Rend un service distant accessible via un port local à travers le tunnel SSH.
+  example: "ssh -L 5432:localhost:5432 deploy@server.example.com"
+
+- id: ssh_remote_forward
+  description: Créer un tunnel SSH de port distant
+  tags: [ssh, tunnel, remote forward, port, forwarding]
+  command: "ssh -R port_distant:hote_cible:port_cible utilisateur@hote"
+  explanation: Expose un service local ou accessible depuis le client à travers le serveur SSH distant.
+  warning: "L'exposition du port dépend de la configuration du serveur SSH et peut ouvrir un accès réseau non désiré."
+
+- id: ssh_jump_host
+  description: Se connecter via un bastion SSH
+  tags: [ssh, jump, bastion, proxyjump, connect, server]
+  command: "ssh -J utilisateur@bastion utilisateur@serveur"
+  explanation: Passe par un hôte bastion pour atteindre un serveur non exposé directement.
+
+- id: ssh_add_agent_key
+  description: Ajouter une clé au ssh-agent
+  tags: [ssh, agent, add, key, passphrase, authentication]
+  command: "ssh-add ~/.ssh/ma_cle"
+  explanation: Charge une clé privée dans ssh-agent pour éviter de saisir sa passphrase à chaque connexion.
+
+- id: ssh_list_agent_keys
+  description: Lister les clés chargées dans ssh-agent
+  tags: [ssh, agent, list, keys, identity, authentication]
+  command: "ssh-add -l"
+  explanation: Affiche les empreintes des clés actuellement chargées dans l'agent SSH.
+
+- id: ssh_verbose_connect
+  description: Diagnostiquer une connexion SSH en mode verbeux
+  tags: [ssh, verbose, debug, troubleshoot, connection, diagnostic]
+  command: "ssh -vvv utilisateur@hote"
+  explanation: Affiche des détails sur la négociation, les clés essayées et l'authentification.
+  warning: "Les logs peuvent révéler des noms d'hôtes, utilisateurs et chemins de clés ; ne les publie pas sans les relire."
+
+- id: ssh_config_host
+  description: Configurer un alias SSH dans ~/.ssh/config
+  tags: [ssh, config, alias, host, identity file, configuration]
+  command: "nano ~/.ssh/config"
+  explanation: Ouvre le fichier de configuration SSH afin de définir un alias, un utilisateur, un port ou une clé par défaut.

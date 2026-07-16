@@ -18,6 +18,7 @@ dependencies = [
     "sentence-transformers",
     "rank_bm25",
     "pick",
+    "openai>=1.0",
 ]
 
 [project.scripts]

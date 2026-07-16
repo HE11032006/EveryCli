@@ -4,6 +4,10 @@
 
 EveryCli is an intelligent command-line assistant that uses AI to instantly find the exact command you need, even if you don't know its syntax.
 
+EveryCli now also includes **Sentinel**: a review-first command planner. It
+turns an intent into a corpus-grounded command, a risk level, and checks to
+complete before you run anything. It never executes a command for you.
+
 ![License](https://img.shields.io/github/license/HE11032006/EveryCli)
 ![Build Status](https://img.shields.io/github/actions/workflow/status/HE11032006/EveryCli/build.yml)
 
@@ -67,6 +71,15 @@ Run a search directly:
 python -m everycli.everycli search "how to undo my last commit"
 ```
 
+Plan a command safely before you paste it into a terminal:
+```bash
+python -m everycli.everycli plan "remove unused Docker images safely"
+```
+
+With `OPENAI_API_KEY` configured, Sentinel uses GPT-5.6 to select and explain
+one of the commands already retrieved from the local corpus. Use `--local` to
+force the fully offline safety planner.
+
 > [!TIP]
 > To enjoy sub-50ms response times, EveryCli uses a background Daemon. The first search will automatically start it.
 
@@ -85,6 +98,7 @@ For deep dives, check our dedicated documentation files:
 - 🛠️ [How to Build & Test](docs/how_to_build.md)
 - 🏗️ [Architecture Explanation](docs/explanation_architecture.md)
 - ⚙️ [Reference Configuration](docs/reference_config.md)
+- 🛡️ [Build Week / Sentinel](docs/BUILD_WEEK.md)
 
 ### Directory Structure
 

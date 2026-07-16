@@ -1,0 +1,98 @@
+- id: npm_init
+  description: Initialiser un projet Node.js
+  tags: [npm, node, init, projet, package.json, create, initialize]
+  command: "npm init"
+  explanation: Crée un fichier package.json de manière interactive dans le dossier courant.
+  example: "npm init -y"
+
+- id: npm_install
+  description: Installer les dépendances du projet Node.js
+  tags: [npm, install, dependencies, node_modules, package.json, installer]
+  command: "npm install"
+  explanation: Installe les dépendances déclarées dans package.json et met à jour le lockfile si nécessaire.
+
+- id: npm_install_package
+  description: Ajouter une dépendance npm au projet
+  tags: [npm, install, add, package, dependency, bibliothèque, library]
+  command: "npm install nom-du-paquet"
+  explanation: Ajoute un paquet aux dépendances du projet puis l'installe.
+  example: "npm install express"
+
+- id: npm_install_dev_dependency
+  description: Ajouter une dépendance de développement npm
+  tags: [npm, install, dev, dependency, development, test, build]
+  command: "npm install --save-dev nom-du-paquet"
+  explanation: Ajoute un paquet dans devDependencies, pour les outils de test, lint ou build.
+  example: "npm install --save-dev eslint"
+
+- id: npm_ci
+  description: Installer exactement les dépendances verrouillées
+  tags: [npm, ci, clean, install, lockfile, continuous integration, reproducible]
+  command: "npm ci"
+  explanation: Réinstalle les dépendances depuis package-lock.json dans un état propre, pratique en CI.
+  warning: "Supprime node_modules avant l'installation. Utilise un package-lock.json fiable."
+
+- id: npm_run_script
+  description: Exécuter un script défini dans package.json
+  tags: [npm, run, script, start, build, test, execute]
+  command: "npm run nom-du-script"
+  explanation: Lance le script demandé dans la section scripts de package.json.
+  example: "npm run build"
+
+- id: npm_test
+  description: Lancer les tests npm
+  tags: [npm, test, tests, testing, verify, verify project]
+  command: "npm test"
+  explanation: Exécute le script test défini dans package.json.
+
+- id: npm_start
+  description: Démarrer l'application Node.js
+  tags: [npm, start, run, server, application, development]
+  command: "npm start"
+  explanation: Exécute le script start défini dans package.json.
+
+- id: npm_uninstall
+  description: Supprimer une dépendance npm
+  tags: [npm, uninstall, remove, delete, dependency, package]
+  command: "npm uninstall nom-du-paquet"
+  explanation: Retire le paquet de node_modules et de package.json.
+  warning: "Vérifie que le paquet n'est plus importé avant de le supprimer."
+
+- id: npm_update
+  description: Mettre à jour les dépendances npm compatibles
+  tags: [npm, update, upgrade, dependencies, package-lock]
+  command: "npm update"
+  explanation: Met à jour les dépendances vers les versions autorisées par package.json.
+  warning: "Relance les tests après la mise à jour des dépendances."
+
+- id: npm_outdated
+  description: Voir les dépendances npm obsolètes
+  tags: [npm, outdated, list, versions, update, audit]
+  command: "npm outdated"
+  explanation: Affiche la version installée, la version demandée et la dernière version disponible pour chaque paquet.
+
+- id: npm_audit
+  description: Auditer les vulnérabilités des dépendances npm
+  tags: [npm, audit, security, vulnerabilities, dependencies, scan]
+  command: "npm audit"
+  explanation: Analyse les dépendances connues pour signaler des vulnérabilités de sécurité.
+
+- id: npm_audit_fix
+  description: Appliquer les correctifs npm audit non cassants
+  tags: [npm, audit, fix, security, vulnerabilities, update]
+  command: "npm audit fix"
+  explanation: Tente de mettre à jour les dépendances afin de corriger les vulnérabilités automatiquement.
+  warning: "Examine le diff et relance les tests ; un correctif automatique peut modifier le lockfile."
+
+- id: npm_list
+  description: Lister les dépendances npm installées
+  tags: [npm, list, ls, dependencies, packages, node_modules]
+  command: "npm list --depth=0"
+  explanation: Affiche les dépendances directes installées dans le projet.
+
+- id: npm_exec
+  description: Exécuter temporairement un outil npm
+  tags: [npm, exec, npx, run, package, command, temporary]
+  command: "npm exec -- nom-de-l-outil"
+  explanation: Exécute le binaire d'un paquet sans devoir l'installer globalement.
+  example: "npm exec -- eslint ."

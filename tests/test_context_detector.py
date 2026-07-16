@@ -26,6 +26,13 @@ class TestProjectContextDetector:
             detector = ProjectContextDetector(cwd=path)
             assert detector.detect() == ["npm"]
 
+    def test_pyproject_detects_python(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir)
+            (path / "pyproject.toml").write_text("[project]", encoding="utf-8")
+            detector = ProjectContextDetector(cwd=path)
+            assert detector.detect() == ["python"]
+
     def test_git_directory_detects_git(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir)
