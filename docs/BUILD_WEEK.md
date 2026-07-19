@@ -44,6 +44,22 @@ The required Build Week submission field should contain the `/feedback` session
 ID from the Codex session where the main implementation was completed. Do not
 invent this ID; copy it from Codex at submission time.
 
+## Retrieval quality gate
+
+The repository now contains `eval/confusion_set.yaml`: 64 maintained French
+and English requests spanning Git, Docker, Compose, Composer, npm, SSH,
+Python and Linux. Run the same hybrid matcher as the product with:
+
+```bash
+python tools/evaluate_confusion.py
+```
+
+The current local baseline is **62/64 top-1 and 64/64 top-3**. This is an
+internal regression set, not an external benchmark or a promise about every
+possible CLI question. `--show-top1-misses` makes the remaining ambiguities
+visible, and `--fail-under <percent>` can be used in CI once the team agrees
+on a threshold.
+
 ## Demo script (under 3 minutes)
 
 1. Start with a real Linux task: "remove unused Docker images safely".
@@ -58,6 +74,7 @@ invent this ID; copy it from Codex at submission time.
 ## Submission checklist
 
 - [ ] Run the corpus validator and test suite in a working Python environment.
+- [ ] Run `python tools/evaluate_confusion.py` and retain its output as demo evidence.
 - [ ] Add the public repository URL to Devpost.
 - [ ] Record a public video under three minutes, including a spoken explanation
       of Codex and GPT-5.6 usage.
