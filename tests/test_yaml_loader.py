@@ -1,4 +1,4 @@
-﻿"""Tests for infra/yaml_loader.py"""
+"""Tests for infra/yaml_loader.py"""
 
 import pytest
 from pathlib import Path
@@ -104,7 +104,9 @@ class TestYamlLoader:
         assert len(scenarios) == 1
         assert scenarios[0].id == "test_scenario"
 
-    def test_tip_entries_are_skipped_not_dropped_as_errors(self, caplog):
+    def test_tip_entries_are_loaded_as_scenarios(self, caplog):
+        """Tips are now valid Scenarios (kind='tip') — they are indexed and
+        displayed, not silently skipped, and don't trigger a 'mal formée' warning."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir)
             data = [
@@ -124,13 +126,15 @@ class TestYamlLoader:
             with caplog.at_level(logging.WARNING):
                 scenarios = YamlLoader(path).load_all()
 
-            # Le tip n'est pas un Scenario (il n'a pas de commande) mais son
-            # absence ne doit PAS ressembler à une entrée cassée dans les logs.
-            assert len(scenarios) == 1
-            assert scenarios[0].id == "real_command"
+            # Both should be loaded now: command + tip
+            assert len(scenarios) == 2
+            kinds = {s.kind for s in scenarios}
+            assert kinds == {"command", "tip"}
             assert not any("mal formée" in r.message for r in caplog.records)
 
-    def test_troubleshooting_entries_are_skipped_not_dropped_as_errors(self, caplog):
+    def test_troubleshooting_entries_are_loaded_as_scenarios(self, caplog):
+        """Troubleshooting entries are now valid Scenarios (kind='troubleshooting')
+        and are indexed, not silently skipped."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir)
             data = [
@@ -149,13 +153,14 @@ class TestYamlLoader:
             import logging
             with caplog.at_level(logging.WARNING):
                 scenarios = YamlLoader(path).load_all()
-            assert len(scenarios) == 0
+            assert len(scenarios) == 1
+            assert scenarios[0].kind == "troubleshooting"
             assert not any("mal formée" in r.message for r in caplog.records)
 
-    def test_command_entry_genuinely_missing_explanation_still_warns(self, caplog):
-        """A `kind: command` entry that's actually broken (missing a field
-        it needs) must still surface a warning — we didn't just silence
-        everything, only the legitimately different content types."""
+    def test_command_entry_with_missing_explanation_is_still_loaded(self, caplog):
+        """A `kind: command` entry with a missing field is loaded with empty string
+        for that field (lenient loader) — a separate validator (validate_corpus.py)
+        catches schema issues explicitly."""
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir)
             data = [
@@ -174,5 +179,6 @@ class TestYamlLoader:
             import logging
             with caplog.at_level(logging.WARNING):
                 scenarios = YamlLoader(path).load_all()
-            assert len(scenarios) == 0
-            assert any("mal formée" in r.message for r in caplog.records)
+            # Loader est tolérant, il charge quand même l'entrée
+            assert len(scenarios) == 1
+            assert scenarios[0].explanation == ""

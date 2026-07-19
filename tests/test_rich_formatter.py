@@ -41,13 +41,8 @@ class TestRichFormatter:
         """Helper : capture Rich output to string."""
         buffer = StringIO()
         capture_console = Console(file=buffer, highlight=False)
-        original = RichFormatter()
-        # on remplace temporairement le console global
-        import everycli.infra.rich_formatter as mod
-        original_console = mod.console
-        mod.console = capture_console
-        fn(original)
-        mod.console = original_console
+        formatter = RichFormatter(capture_console)
+        fn(formatter)
         return buffer.getvalue()
 
     def test_format_contains_command(self, result):

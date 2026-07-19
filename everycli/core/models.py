@@ -54,6 +54,10 @@ class Scenario:
     warning: str = ""
     error_hints: list[ErrorHint] = field(default_factory=list)
     namespace: str = ""
+    kind: str = "command"
+    content: str = ""
+    causes: list[str] = field(default_factory=list)
+    solutions: list[str] = field(default_factory=list)
     """
     The ecosystem this scenario belongs to (git, docker, composer, npm...).
     Always derived from the source YAML filename — never from tags or id —
