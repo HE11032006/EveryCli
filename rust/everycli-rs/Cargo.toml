@@ -1,0 +1,7 @@
+[package]
+name = "everycli-rs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+everycli-core = { path = "../everycli-core" }

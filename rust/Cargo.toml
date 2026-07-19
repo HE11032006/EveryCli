@@ -1,0 +1,3 @@
+[workspace]
+members = ["everycli-core", "everycli-rs"]
+resolver = "3"
