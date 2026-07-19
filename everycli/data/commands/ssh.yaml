@@ -15,7 +15,7 @@
 - id: ssh_generate_key
   description: Générer une clé SSH moderne ed25519
   tags: [ssh, keygen, key, ed25519, generate, authentication]
-  command: "ssh-keygen -t ed25519 -C \"votre-email@example.com\""
+  command: 'ssh-keygen -t ed25519 -C "votre-email@example.com"'
   explanation: Crée une paire de clés SSH ed25519 protégée par une passphrase si tu en choisis une.
   warning: "Ne partage jamais la clé privée ; seule la clé .pub peut être copiée sur un serveur."
 
@@ -48,7 +48,19 @@
 
 - id: ssh_remote_forward
   description: Créer un tunnel SSH de port distant
-  tags: [ssh, tunnel, remote forward, port, forwarding]
+  tags:
+    [
+      ssh,
+      tunnel,
+      remote forward,
+      port,
+      forwarding,
+      exposer,
+      expose,
+      via,
+      serveur,
+      server,
+    ]
   command: "ssh -R port_distant:hote_cible:port_cible utilisateur@hote"
   explanation: Expose un service local ou accessible depuis le client à travers le serveur SSH distant.
   warning: "L'exposition du port dépend de la configuration du serveur SSH et peut ouvrir un accès réseau non désiré."
@@ -77,6 +89,20 @@
   command: "ssh -vvv utilisateur@hote"
   explanation: Affiche des détails sur la négociation, les clés essayées et l'authentification.
   warning: "Les logs peuvent révéler des noms d'hôtes, utilisateurs et chemins de clés ; ne les publie pas sans les relire."
+
+- id: ssh_copy_file_to_server
+  description: Copy a local file to a server with scp
+  tags: [ssh, scp, copy, file, upload, remote, server]
+  command: "scp local_file user@host:remote_path/"
+  explanation: Uploads a local file over SSH without opening an interactive session.
+  example: "scp .env deploy@server.example.com:/srv/app/.env"
+
+- id: ssh_copy_file_from_server
+  description: Copy a file from a server with scp
+  tags: [ssh, scp, copy, file, download, remote, server]
+  command: "scp user@host:remote_file local_path/"
+  explanation: Downloads a remote file over SSH to the local machine.
+  example: "scp deploy@server.example.com:/srv/app/logs/app.log ./logs/"
 
 - id: ssh_config_host
   description: Configurer un alias SSH dans ~/.ssh/config

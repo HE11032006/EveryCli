@@ -4,12 +4,12 @@ docker_compose:
   # ===== Commandes de Base =====
   basic_commands:
     - id: docker_compose_up
-      description: Démarrer les services définis dans docker-compose.yml
-      tags: [docker, compose, up, démarrer, services, conteneurs, lancer, stack, monter, déploiement]
+      description: Lancer tous les services en arrière-plan avec docker-compose
+      tags: [docker, compose, up, démarrer, services, conteneurs, lancer, stack, monter, déploiement, arrière-plan, background, detached, tous, all, containers]
       command: "docker-compose up -d"
       explanation: |
-        Démarre tous les services définis dans le fichier `docker-compose.yml`.
-        - `-d` : Mode détaché (en arrière-plan).
+        Lance tous les services définis dans le fichier `docker-compose.yml` en arrière-plan.
+        - `-d` : Mode détaché (en arrière-plan), les conteneurs tournent sans bloquer le terminal.
         - Sans `-d` : Affiche les logs en temps réel.
       options:
         - "--build": "Reconstruit les images avant de démarrer les conteneurs."
@@ -19,7 +19,7 @@ docker_compose:
 
     - id: docker_compose_down
       description: Arrêter et supprimer les conteneurs, réseaux et volumes
-      tags: [docker, compose, down, arrêter, supprimer, conteneurs, réseaux, volumes, démonter, nettoyer, détruire]
+      tags: [docker, compose, down, arrêter, stop, supprimer, remove, conteneurs, containers, réseaux, volumes, services, project, démonter, nettoyer, détruire]
       command: "docker-compose down"
       explanation: |
         Arrête et supprime les conteneurs, réseaux et volumes définis dans `docker-compose.yml`.
@@ -80,7 +80,7 @@ docker_compose:
 
     - id: docker_compose_build
       description: Construire ou reconstruire les images des services
-      tags: [docker, compose, build, construire, image, compilation, fabrication, reconstruire]
+      tags: [docker, compose, build, construire, reconstruire, rebuild, image, images, application, compilation, fabrication]
       command: "docker-compose build"
       explanation: Construit les images des services définis dans `docker-compose.yml`.
       options:
@@ -98,7 +98,7 @@ docker_compose:
 
     - id: docker_compose_exec
       description: Exécuter une commande dans un conteneur en cours d'exécution
-      tags: [docker, compose, exec, exécuter, commande, conteneur, entrer, console, bash, terminal]
+      tags: [docker, compose, exec, exécuter, execute, commande, command, conteneur, container, existing, running, inside, entrer, console, bash, terminal]
       command: "docker-compose exec service_name commande"
       explanation: Exécute une commande dans un conteneur en cours d'exécution.
       example: "docker-compose exec web bash"
@@ -108,7 +108,7 @@ docker_compose:
       example: "docker-compose exec -it -u root web bash"
     - id: docker_compose_run
       description: Exécuter une commande dans un nouveau conteneur
-      tags: [docker, compose, run, exécuter, commande, conteneur, lancer, temporaire]
+      tags: [docker, compose, run, exécuter, execute, commande, command, conteneur, container, lancer, launch, temporaire, temporary, one-off, new, service]
       command: "docker-compose run service_name commande"
       explanation: |
         Crée un nouveau conteneur pour le service et exécute une commande dedans.

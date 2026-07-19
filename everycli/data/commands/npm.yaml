@@ -13,7 +13,7 @@
 
 - id: npm_install_package
   description: Ajouter une dépendance npm au projet
-  tags: [npm, install, add, package, dependency, bibliothèque, library]
+  tags: [npm, install, add, package, dependency, bibliothèque, library, express]
   command: "npm install nom-du-paquet"
   explanation: Ajoute un paquet aux dépendances du projet puis l'installe.
   example: "npm install express"
@@ -67,7 +67,7 @@
 
 - id: npm_outdated
   description: Voir les dépendances npm obsolètes
-  tags: [npm, outdated, list, versions, update, audit]
+  tags: [npm, outdated, obsolètes, obsolete, non, plus, jour, list, lister, paquets, packages, node, versions, update, audit]
   command: "npm outdated"
   explanation: Affiche la version installée, la version demandée et la dernière version disponible pour chaque paquet.
 
@@ -92,7 +92,7 @@
 
 - id: npm_exec
   description: Exécuter temporairement un outil npm
-  tags: [npm, exec, npx, run, package, command, temporary]
+  tags: [npm, exec, npx, run, package, command, temporary, without, global, globally]
   command: "npm exec -- nom-de-l-outil"
   explanation: Exécute le binaire d'un paquet sans devoir l'installer globalement.
   example: "npm exec -- eslint ."

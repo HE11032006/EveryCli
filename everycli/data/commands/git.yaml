@@ -74,17 +74,17 @@
       fix: "Vérifie ton historique avec : git log --oneline"
 
 - id: git_undo_last_commit_discard_changes
-  description: Annuler mon dernier commit et supprimer les changements
-  tags: [git, annuler, commit, reset, hard, supprimer, effacer, perdre, réinitialiser, nettoyer]
+  description: Revenir au commit précédent en annulant complètement les changements
+  tags: [git, annuler, commit, reset, hard, supprimer, effacer, perdre, réinitialiser, nettoyer, revenir, précédent, retour, complètement, annuler, défaire]
   commands:
     linux: "git reset --hard HEAD~1"
     windows: "git reset --hard HEAD~1"
-  explanation: Supprime le dernier commit ET tous les changements associés. Irréversible.
+  explanation: Revient au commit précédent en supprimant complètement le dernier commit et tous les changements associés. Irréversible.
   warning: Cette action est irréversible. Les changements non commités seront perdus.
 
 - id: git_stash_changes
   description: Sauvegarder mon travail sans commiter (mettre de côté)
-  tags: [git, stash, sauvegarder, temporaire, côté, mettre, suspendre, ranger, sans, commiter, cachette, planquer]
+  tags: [git, stash, sauvegarder, temporaire, côté, mettre, suspendre, ranger, sans, commiter, cachette, planquer, uncommitted, changes, work, temporary]
   commands:
     linux: "git stash"
     windows: "git stash"
@@ -241,7 +241,7 @@
 
 - id: git_create_branch
   description: Créer une nouvelle branche
-  tags: [git, branche, créer, nouvelle, branch, nouveau, début]
+  tags: [git, branche, créer, nouvelle, branch, nouveau, début, feature]
   commands:
     linux: "git checkout -b nom-de-la-branche"
     windows: "git checkout -b nom-de-la-branche"
@@ -286,7 +286,7 @@
 
 - id: git_push_new_branch
   description: Pousser une nouvelle branche sur le remote
-  tags: [git, push, branche, remote, origin, pousser, publier, envoyer, synchro]
+  tags: [git, push, branche, remote, origin, pousser, publier, envoyer, synchro, first, upstream, tracking]
   commands:
     linux: "git push -u origin nom-de-la-branche"
     windows: "git push -u origin nom-de-la-branche"
@@ -347,7 +347,7 @@
 
 - id: git_accept_ours
   description: Résoudre un conflit en gardant ma version
-  tags: [git, conflit, résoudre, garder, notre, ours, version, mien, local]
+  tags: [git, conflit, résoudre, garder, notre, ours, version, mien, local, current, merge]
   commands:
     linux: "git checkout --ours <fichier>"
     windows: "git checkout --ours <fichier>"
@@ -355,7 +355,7 @@
 
 - id: git_accept_theirs
   description: Résoudre un conflit en gardant la version distante
-  tags: [git, conflit, résoudre, garder, leur, theirs, version, remote, distant]
+  tags: [git, conflit, résoudre, garder, leur, theirs, version, remote, distant, incoming, merge, accept, conflicted, file]
   commands:
     linux: "git checkout --theirs <fichier>"
     windows: "git checkout --theirs <fichier>"
@@ -387,7 +387,7 @@
 
 - id: git_diff_staged
   description: Voir les changements en staging avant de commiter
-  tags: [git, diff, staging, voir, changements, staged, cached, index, vérifier]
+  tags: [git, diff, staging, voir, changements, staged, cached, index, vérifier, inclus, included, prochain, next, avant, commit]
   commands:
     linux: "git diff --cached"
     windows: "git diff --cached"

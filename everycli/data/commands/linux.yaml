@@ -197,7 +197,7 @@ linux_commands:
   processes:
     - id: processes_list
       description: Lister les processus en cours
-      tags: [processus, lister, ps, aux, courantes, tâches, système]
+      tags: [processus, processes, lister, list, ps, aux, courantes, running, tâches, système]
       command: "ps aux"
       explanation: Affiche tous les processus en cours avec leur PID, utilisation CPU/mémoire, et commande.
 
@@ -253,7 +253,7 @@ linux_commands:
 
     - id: network_ss
       description: Voir les connexions réseau et ports ouverts
-      tags: [réseau, ss, netstat, connexions, ports, écoute, socket, tcp, udp]
+      tags: [réseau, network, ss, netstat, connexions, connections, ports, écoute, listening, open, socket, tcp, udp]
       command: "ss -tuln"
       explanation: Affiche les connexions réseau actives et les ports ouverts (plus rapide que `netstat`).
 
@@ -367,7 +367,7 @@ linux_commands:
 
     - id: services_restart
       description: Redémarrer un service
-      tags: [services, redémarrer, restart, systemctl, relancer]
+      tags: [services, service, redémarrer, restart, systemctl, systemd, relancer]
       command: "sudo systemctl restart nom_du_service"
       explanation: Redémarre un service système.
 

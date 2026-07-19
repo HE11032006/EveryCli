@@ -12,7 +12,7 @@
 
 - id: composer_update
   description: Mettre à jour les dépendances
-  tags: [composer, update, mise à jour, dépendances, php, bibliothèque, rafraîchir, nouveau, version]
+  tags: [composer, update, mise à jour, dépendances, php, bibliothèque, rafraîchir, nouveau, version, lock, lockfile]
   command: "composer update"
   explanation: Met à jour toutes les dépendances vers leurs dernières versions compatibles avec `composer.json`.
   warning: "Peut casser votre projet si les mises à jour introduisent des changements incompatibles."

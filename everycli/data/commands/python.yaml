@@ -77,7 +77,7 @@
 
 - id: pytest_verbose
   description: Lancer pytest avec les noms de tests détaillés
-  tags: [python, pytest, verbose, test, tests, debug]
+  tags: [python, pytest, verbose, test, tests, debug, show, each, name, names]
   command: "python -m pytest -v"
   explanation: Exécute les tests en affichant chaque nom et son résultat.
 

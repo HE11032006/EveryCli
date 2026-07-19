@@ -81,7 +81,7 @@
 
 - id: docker_run_interactive
   description: Lancer un conteneur en mode interactif
-  tags: [docker, run, interactif, terminal, bash, shell, it, entrer, console]
+  tags: [docker, run, interactif, interactive, terminal, bash, shell, it, entrer, console, open, inside, new]
   commands:
     linux: "docker run -it --rm nom-image bash"
     windows: "docker run -it --rm nom-image bash"
@@ -149,7 +149,7 @@
 
 - id: docker_exec_container
   description: Exécuter une commande dans un conteneur actif
-  tags: [docker, exec, exécuter, commande, conteneur, entrer, terminal, bash, console]
+  tags: [docker, exec, exécuter, execute, commande, command, conteneur, container, actif, active, running, existing, already, entrer, terminal, bash, console]
   commands:
     linux: "docker exec -it nom-conteneur bash"
     windows: "docker exec -it nom-conteneur bash"
@@ -169,7 +169,7 @@
 
 - id: docker_copy_file_to_container
   description: Copier un fichier vers un conteneur
-  tags: [docker, copier, fichier, conteneur, cp, envoyer, transférer, upload]
+  tags: [docker, copier, copy, fichier, file, conteneur, container, cp, envoyer, transférer, upload, local, dans, into, to]
   commands:
     linux: "docker cp fichier.txt nom-conteneur:/chemin/destination"
     windows: "docker cp fichier.txt nom-conteneur:/chemin/destination"
@@ -177,7 +177,7 @@
 
 - id: docker_copy_file_from_container
   description: Copier un fichier depuis un conteneur vers ma machine
-  tags: [docker, copier, fichier, conteneur, cp, récupérer, extraire, download]
+  tags: [docker, copier, copy, fichier, file, conteneur, container, cp, récupérer, extraire, download, from, local, machine, computer]
   commands:
     linux: "docker cp nom-conteneur:/chemin/fichier.txt ./destination"
     windows: "docker cp nom-conteneur:/chemin/fichier.txt ./destination"
@@ -243,7 +243,7 @@
 
 - id: docker_connect_container_to_network
   description: Connecter un conteneur à un réseau
-  tags: [docker, réseau, network, connecter, conteneur, rejoindre, lier]
+  tags: [docker, réseau, network, connecter, connect, attacher, attach, conteneur, container, existing, existant, rejoindre, lier]
   commands:
     linux: "docker network connect nom-réseau nom-conteneur"
     windows: "docker network connect nom-réseau nom-conteneur"
@@ -253,7 +253,7 @@
 
 - id: docker_system_prune
   description: Nettoyer tout ce qui est inutilisé dans Docker
-  tags: [docker, nettoyer, prune, system, espace, tout, inutilisé, disque, vider]
+  tags: [docker, nettoyer, prune, system, espace, tout, inutilisé, inutilisées, unused, resources, ressources, disque, vider]
   commands:
     linux: "docker system prune -a"
     windows: "docker system prune -a"
