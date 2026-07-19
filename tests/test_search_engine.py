@@ -290,3 +290,67 @@ class TestContextDetection:
         results = engine.search("npm: mettre à jour", context_override=["composer"])
         assert len(results) == 1
         assert results[0].scenario.namespace == "npm"
+    def test_natural_namespace_beats_context_and_stays_strict(self):
+        python = Scenario(
+            "python_venv", "Create a virtual environment", ["python"],
+            Command("python -m venv .venv", "python -m venv .venv"), "", namespace="python",
+        )
+        docker = Scenario(
+            "docker_build", "Build a Docker image", ["docker"],
+            Command("docker build .", "docker build ."), "", namespace="docker",
+        )
+        compose = Scenario(
+            "compose_build", "Build Compose services", ["docker", "compose"],
+            Command("docker compose build", "docker compose build"), "", namespace="docker_compose",
+        )
+        engine = SearchEngine(
+            FakeLoader([python, docker, compose]),
+            FakeMatcher([(python, 0.9), (docker, 0.8), (compose, 0.7)]),
+            FakeOSResolver(OS.LINUX),
+            context_detector=FakeContextDetector(["python"]),
+        )
+        engine.boot()
+
+        assert [r.scenario.namespace for r in engine.search("docker build an image")] == ["docker"]
+        assert [r.scenario.namespace for r in engine.search("docker-compose build services")] == ["docker_compose"]
+        assert [r.scenario.namespace for r in engine.search("docker: build")] == ["docker"]
+
+    def test_aliases_override_project_context(self):
+        python = Scenario(
+            "pip_install", "Install a Python package", ["python", "pip"],
+            Command("python -m pip install package", "python -m pip install package"), "", namespace="python",
+        )
+        linux = Scenario(
+            "restart_service", "Restart a service", ["linux", "systemd"],
+            Command("systemctl restart service", "systemctl restart service"), "", namespace="linux",
+        )
+        engine = SearchEngine(
+            FakeLoader([python, linux]),
+            FakeMatcher([(linux, 0.9), (python, 0.8)]),
+            FakeOSResolver(OS.LINUX),
+            context_detector=FakeContextDetector(["linux"]),
+        )
+        engine.boot()
+
+        assert [r.scenario.namespace for r in engine.search("pip install requests")] == ["python"]
+        assert [r.scenario.namespace for r in engine.search("restart a systemctl service")] == ["linux"]
+
+    def test_context_does_not_hide_a_clearly_better_other_ecosystem(self):
+        python = Scenario(
+            "python_venv", "Create a virtual environment", ["python"],
+            Command("python -m venv .venv", "python -m venv .venv"), "", namespace="python",
+        )
+        linux = Scenario(
+            "list_processes", "List running processes", ["linux", "processes"],
+            Command("ps aux", "Get-Process"), "", namespace="linux",
+        )
+        engine = SearchEngine(
+            FakeLoader([python, linux]),
+            FakeMatcher([(linux, 0.95), (python, 0.2)]),
+            FakeOSResolver(OS.LINUX),
+            context_detector=FakeContextDetector(["python"]),
+        )
+        engine.boot()
+
+        results = engine.search("list all running processes")
+        assert [r.scenario.namespace for r in results] == ["linux", "python"]

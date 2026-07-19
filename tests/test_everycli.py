@@ -34,3 +34,31 @@ def test_plan_command_uses_the_local_safety_planner():
     assert "git status" in result.output
     assert "Source : git_status" in result.output
     assert "Planificateur : local" in result.output
+
+def _shell_search_result():
+    scenario = Scenario(
+        id="git_status",
+        description="Show repository status",
+        tags=["git"],
+        command=Command(linux="git status", windows="git status"),
+        explanation="Displays the working tree status.",
+        namespace="git",
+    )
+    return SearchResult(scenario=scenario, resolved_command="git status", score=0.9)
+
+
+def test_shell_mode_emits_only_the_confirmed_command_on_stdout():
+    coordinator = MagicMock()
+    coordinator.execute_search.return_value = [_shell_search_result()]
+    history = MagicMock()
+
+    with patch("everycli.core.coordinator.SearchCoordinator", return_value=coordinator), \
+         patch("everycli.everycli._get_history_manager", return_value=history), \
+         patch("everycli.everycli.Confirm.ask", return_value=True), \
+         patch("everycli.everycli.console"):
+        result = CliRunner().invoke(app, ["search", "repository status", "-s", "--no-daemon"])
+
+    assert result.exit_code == 0
+    assert "git status" in result.stdout
+    assert "git status" in result.stderr
+
