@@ -16,6 +16,7 @@ complete before you run anything. It never executes a command for you.
 - [Getting started](#-getting-started)
 - [Overview](#-overview)
 - [Directory Structure](#directory-structure)
+- [Status & Roadmap](#-status--roadmap)
 - [Contributing](#-contributing)
 - [License](#-license)
 
@@ -80,6 +81,25 @@ With `OPENAI_API_KEY` configured, Sentinel uses GPT-5.6 to select and explain
 one of the commands already retrieved from the local corpus. Use `--local` to
 force the fully offline safety planner.
 
+### Measuring retrieval quality
+
+`eval/confusion_set.yaml` is a bilingual set of natural-language queries for
+Git, Docker, Compose, npm, Composer, SSH, Python, and Linux. It deliberately
+stores no fictional score: measure the current corpus before a demo or release.
+
+```bash
+python tools/evaluate_confusion.py
+```
+
+Use `--fail-under 80` only after agreeing on a baseline for the target
+environment. `--matcher lexical` is available to diagnose the BM25-only
+baseline; the default is the same hybrid matcher used by EveryCli. The
+evaluator never runs a returned command.
+
+For a portable demo with no network, set `EVERYCLI_OFFLINE=1`; EveryCli uses a
+cached semantic model when available and otherwise falls back to local lexical
+signals instead of waiting for download retries.
+
 > [!TIP]
 > To enjoy sub-50ms response times, EveryCli uses a background Daemon. The first search will automatically start it.
 
@@ -118,6 +138,24 @@ EveryCli/
 ├── requirements.txt     # Python dependencies
 └── README.md            # You are here
 ```
+
+---
+
+## 🗺️ Status & Roadmap
+
+### ✅ Completed Features
+*   **Semantic Precision Tuning**: High semantic weight combined with a local semantic model (`paraphrase-multilingual-MiniLM-L12-v2`) guarantees highly relevant results.
+*   **Interactive Disambiguation (O4)**: When the semantic gap between top results is too narrow, EveryCli asks you to clarify your intent before running anything.
+*   **Tips & Troubleshooting Integration**: The search UI now distinctively displays contextual tips (💡) and troubleshooting advice (🔧), preventing errors before they happen.
+*   **Seamless Shell Integration**: Support for Bash (`everycli.bash`), Zsh (`everycli.zsh` with ZLE widget), and PowerShell (`everycli.ps1`) for frictionless workflow.
+*   **Sub-100ms Performance**: A background daemon keeps the embedding model loaded, ensuring warm-path query latencies under 10ms in pure Python.
+*   **Sentinel Planner**: Safe planning and verification powered by LLMs for complex, multi-step actions.
+
+### 🚧 Planned / Future Improvements
+*   **Boost par Historique (History Boosting)**: Up-rank commands based on the user's execution history to adapt to individual workflows.
+*   **Index ANN (Approximate Nearest Neighbors)**: Migrate from flat similarity search to an ANN index (e.g., FAISS) to maintain sub-10ms latencies even with a corpus of 10,000+ commands.
+*   **Client Rust**: Compile a fully native Rust client (`everycli-rs`) for zero-dependency distribution and instant cold-boots (currently blocked on standard installation environments).
+*   **Model Fine-Tuning**: Fine-tune the MiniLM model directly on EveryCli's bilingual YAML corpus to further improve retrieval precision on CLI-specific jargon.
 
 ---
 
