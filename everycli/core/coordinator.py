@@ -24,7 +24,7 @@ class SearchCoordinator:
         Tente une recherche via le daemon, bascule en local si besoin.
         """
         if not no_daemon:
-            resp = daemon_client.search(query, top_k=top_k)
+            resp = daemon_client.search(query, top_k=top_k, console=self.console)
             if isinstance(resp, DaemonResult):
                 return self._map_daemon_results(resp.results)
             
@@ -40,7 +40,7 @@ class SearchCoordinator:
         from everycli.infra.context_detector import ProjectContextDetector
         from pathlib import Path
 
-        matcher = HybridMatcher(semantic_weight=0.6)
+        matcher = HybridMatcher(semantic_weight=0.85)
         engine = SearchEngine(
             loader=YamlLoader(Path(self.data_dir)),
             matcher=matcher,

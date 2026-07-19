@@ -18,15 +18,30 @@ class HybridMatcher:
         self,
         semantic_weight: float = 0.6,
         fast_threshold: float = 0.55,
+        ambiguity_margin: float = 0.12,
     ):
         self._semantic_weight = semantic_weight
         self._fast_threshold = fast_threshold
+        self._ambiguity_margin = ambiguity_margin
         self._tfidf = TFIDFMatcher()
         self._semantic = SemanticMatcher()
         self._scenarios: list[Scenario] = []
         self._fitted = False
         # Signal for the caller to display a loading message
         self.used_semantic: bool = False
+
+    def _can_use_fast_path(self, results: list[tuple[Scenario, float]]) -> bool:
+        """Use lexical-only only when it is both strong *and* unambiguous.
+
+        A high BM25 score is not sufficient: terms shared by two commands can
+        rank the wrong command first with high confidence.  A small gap between
+        the first two candidates is therefore sent to the semantic reranker.
+        """
+        if not results or results[0][1] < self._fast_threshold:
+            return False
+        if len(results) == 1:
+            return True
+        return results[0][1] - results[1][1] >= self._ambiguity_margin
 
     def fit(self, scenarios: list[Scenario]) -> None:
         """
@@ -50,7 +65,7 @@ class HybridMatcher:
         # ── Fast path — TF-IDF only ───────────────────────────────────────────
         tfidf_results = self._tfidf.match(query, top_k=20)
 
-        if tfidf_results and tfidf_results[0][1] >= self._fast_threshold:
+        if self._can_use_fast_path(tfidf_results):
             return tfidf_results[:top_k]
 
         # ── Slow path — combine TF-IDF + Semantic ────────────────────────────

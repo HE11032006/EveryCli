@@ -1,0 +1,83 @@
+# Jeu de tests bilingue de retrieval. Les requêtes sont naturelles, pas des commandes.
+# Lance `python tools/evaluate_confusion.py` pour mesurer la baseline réelle.
+version: 1
+cases:
+  # Git
+  - {id: git_stash_fr, locale: fr, query: "Je veux mettre mon travail de côté sans faire de commit", expected_id: git_stash_changes}
+  - {id: git_stash_en, locale: en, query: "temporarily save my uncommitted work", expected_id: git_stash_changes}
+  - {id: git_pop_fr, locale: fr, query: "Récupérer les modifications que j'avais mises dans le stash", expected_id: git_stash_pop}
+  - {id: git_amend_en, locale: en, query: "change the message of my latest commit", expected_id: git_amend_last_commit}
+  - {id: git_reset_keep_fr, locale: fr, query: "Annuler le dernier commit mais garder les fichiers modifiés", expected_id: git_undo_last_commit_keep_changes}
+  - {id: git_reset_discard_fr, locale: fr, query: "Supprimer complètement mon dernier commit et ses changements", expected_id: git_undo_last_commit_discard_changes}
+  - {id: git_branch_en, locale: en, query: "create a new feature branch", expected_id: git_create_branch}
+  - {id: git_switch_fr, locale: fr, query: "Aller sur une autre branche existante", expected_id: git_switch_branch}
+  - {id: git_ours_en, locale: en, query: "during a merge conflict keep my current version", expected_id: git_accept_ours}
+  - {id: git_theirs_en, locale: en, query: "accept the incoming version for a conflicted file", expected_id: git_accept_theirs}
+  - {id: git_diff_staged_fr, locale: fr, query: "Voir ce qui sera inclus dans mon prochain commit", expected_id: git_diff_staged}
+  - {id: git_push_branch_en, locale: en, query: "publish my local branch to origin for the first time", expected_id: git_push_new_branch}
+
+  # Docker
+  - {id: docker_build_fr, locale: fr, query: "Construire une image Docker depuis le Dockerfile", expected_id: docker_build_image}
+  - {id: docker_run_en, locale: en, query: "open an interactive shell inside a new container", expected_id: docker_run_interactive}
+  - {id: docker_logs_fr, locale: fr, query: "Afficher les logs d'un conteneur Docker", expected_id: docker_logs_container}
+  - {id: docker_exec_en, locale: en, query: "execute a command in an already running container", expected_id: docker_exec_container}
+  - {id: docker_copy_to_fr, locale: fr, query: "Copier un fichier local dans un conteneur", expected_id: docker_copy_file_to_container}
+  - {id: docker_copy_from_en, locale: en, query: "copy a file from a container to my computer", expected_id: docker_copy_file_from_container}
+  - {id: docker_prune_fr, locale: fr, query: "Nettoyer les ressources Docker inutilisées", expected_id: docker_system_prune}
+  - {id: docker_remove_stopped_en, locale: en, query: "remove every stopped Docker container", expected_id: docker_remove_all_stopped_containers}
+  - {id: docker_volume_fr, locale: fr, query: "Créer un volume Docker persistant", expected_id: docker_create_volume}
+  - {id: docker_network_en, locale: en, query: "attach a container to an existing Docker network", expected_id: docker_connect_container_to_network}
+
+  # Docker Compose
+  - {id: compose_up_fr, locale: fr, query: "Démarrer les services définis dans mon docker compose", expected_id: docker_compose_up}
+  - {id: compose_down_en, locale: en, query: "stop and remove the services of this compose project", expected_id: docker_compose_down}
+  - {id: compose_logs_fr, locale: fr, query: "Suivre les logs de tous les services compose", expected_id: docker_compose_logs}
+  - {id: compose_exec_en, locale: en, query: "run a shell command inside an existing compose service", expected_id: docker_compose_exec}
+  - {id: compose_build_fr, locale: fr, query: "Reconstruire les images de mon application compose", expected_id: docker_compose_build}
+  - {id: compose_config_en, locale: en, query: "validate and print the resolved compose configuration", expected_id: docker_compose_config}
+  - {id: compose_ps_fr, locale: fr, query: "Voir l'état des conteneurs de mon projet compose", expected_id: docker_compose_ps}
+  - {id: compose_run_en, locale: en, query: "launch a one-off command for a compose service", expected_id: docker_compose_run}
+
+  # Composer et npm
+  - {id: composer_install_fr, locale: fr, query: "Installer les dépendances PHP verrouillées du projet", expected_id: composer_install}
+  - {id: composer_update_en, locale: en, query: "update PHP dependencies and refresh the lock file", expected_id: composer_update}
+  - {id: composer_require_fr, locale: fr, query: "Ajouter une bibliothèque PHP à composer", expected_id: composer_require}
+  - {id: composer_autoload_en, locale: en, query: "regenerate Composer autoloader after changing classes", expected_id: composer_dump_autoload}
+  - {id: composer_validate_fr, locale: fr, query: "Vérifier que mon composer json est valide", expected_id: composer_validate}
+  - {id: composer_why_en, locale: en, query: "find out why a package is installed in Composer", expected_id: composer_why}
+  - {id: npm_ci_fr, locale: fr, query: "Réinstaller exactement les dépendances Node du lockfile en CI", expected_id: npm_ci}
+  - {id: npm_package_en, locale: en, query: "add the express package to my Node project", expected_id: npm_install_package}
+  - {id: npm_dev_fr, locale: fr, query: "Ajouter eslint seulement pour le développement", expected_id: npm_install_dev_dependency}
+  - {id: npm_run_en, locale: en, query: "run the build script from package json", expected_id: npm_run_script}
+  - {id: npm_audit_fr, locale: fr, query: "Chercher les vulnérabilités dans mes dépendances npm", expected_id: npm_audit}
+  - {id: npm_audit_fix_en, locale: en, query: "automatically fix safe npm security issues", expected_id: npm_audit_fix}
+  - {id: npm_outdated_fr, locale: fr, query: "Lister les paquets Node qui ne sont plus à jour", expected_id: npm_outdated}
+  - {id: npm_exec_en, locale: en, query: "run a package binary without globally installing it", expected_id: npm_exec}
+
+  # SSH
+  - {id: ssh_connect_fr, locale: fr, query: "Me connecter à mon serveur distant en SSH", expected_id: ssh_connect}
+  - {id: ssh_keygen_en, locale: en, query: "generate a modern ed25519 SSH key pair", expected_id: ssh_generate_key}
+  - {id: ssh_copy_id_fr, locale: fr, query: "Installer ma clé publique sur le serveur", expected_id: ssh_copy_key}
+  - {id: ssh_local_tunnel_en, locale: en, query: "make a remote database available on my local port through SSH", expected_id: ssh_local_forward}
+  - {id: ssh_remote_tunnel_fr, locale: fr, query: "Exposer un port local via mon serveur SSH", expected_id: ssh_remote_forward}
+  - {id: ssh_jump_en, locale: en, query: "connect to a private server through a bastion host", expected_id: ssh_jump_host}
+  - {id: ssh_agent_fr, locale: fr, query: "Ajouter ma clé privée à ssh-agent", expected_id: ssh_add_agent_key}
+  - {id: ssh_debug_en, locale: en, query: "debug an SSH authentication failure with verbose logs", expected_id: ssh_verbose_connect}
+
+  # Python
+  - {id: python_venv_fr, locale: fr, query: "Créer un environnement virtuel Python dans ce projet", expected_id: python_create_venv}
+  - {id: python_activate_win_en, locale: en, query: "activate my virtual environment in PowerShell", expected_id: python_activate_venv_windows}
+  - {id: pip_requirements_fr, locale: fr, query: "Installer tous les paquets du fichier requirements txt", expected_id: pip_install_requirements}
+  - {id: pip_upgrade_en, locale: en, query: "upgrade a Python dependency with pip", expected_id: pip_upgrade_package}
+  - {id: pip_check_fr, locale: fr, query: "Vérifier les conflits entre mes dépendances Python", expected_id: pip_check}
+  - {id: pytest_one_en, locale: en, query: "run one specific pytest test by its node id", expected_id: pytest_single_test}
+  - {id: pytest_failed_fr, locale: fr, query: "Relancer seulement les tests qui ont échoué", expected_id: pytest_last_failed}
+  - {id: pytest_verbose_en, locale: en, query: "show each test name while pytest runs", expected_id: pytest_verbose}
+
+  # Linux
+  - {id: linux_disk_fr, locale: fr, query: "Voir l'espace disque disponible sur Linux", expected_id: system_check_disk}
+  - {id: linux_process_en, locale: en, query: "list processes that are currently running", expected_id: processes_list}
+  - {id: linux_service_fr, locale: fr, query: "Redémarrer un service systemd", expected_id: services_restart}
+  - {id: linux_ports_en, locale: en, query: "see which ports are listening on Linux", expected_id: network_ss}
+  - {id: ssh_scp_upload_en, locale: en, query: "copy a local file to a server with scp", expected_id: ssh_copy_file_to_server}
+  - {id: ssh_scp_download_en, locale: en, query: "download a file from a server with scp", expected_id: ssh_copy_file_from_server}

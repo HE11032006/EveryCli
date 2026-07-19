@@ -20,6 +20,13 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
 
+# Hugging Face reads these flags while its libraries are imported. Set them
+# before the lazy sentence-transformers import so EVERYCLI_OFFLINE=1 means
+# truly no network attempt, not merely a failed request after several retries.
+if os.environ.get("EVERYCLI_OFFLINE") == "1":
+    os.environ["HF_HUB_OFFLINE"] = "1"
+    os.environ["TRANSFORMERS_OFFLINE"] = "1"
+
 warnings.filterwarnings("ignore")
 logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
 logging.getLogger("transformers").setLevel(logging.ERROR)
@@ -68,7 +75,14 @@ class SemanticMatcher:
                             model_path = str(candidate)
                             break
                 
-                self._model = SentenceTransformer(model_path)
+                # `EVERYCLI_OFFLINE=1` is useful for portable/offline demos:
+                # load a cached model if present, otherwise immediately use the
+                # deterministic fallback rather than spending a minute retrying
+                # a network request that cannot succeed.
+                model_options = {}
+                if os.environ.get("EVERYCLI_OFFLINE") == "1":
+                    model_options["local_files_only"] = True
+                self._model = SentenceTransformer(model_path, **model_options)
             except Exception:
                 # Environnements sans accès réseau ou sans modèle disponible :
                 # on bascule sur un modèle de secours déterministe très léger
@@ -76,6 +90,13 @@ class SemanticMatcher:
                 import re
                 import unicodedata
                 class DummyModel:
+                    """Offline deterministic fallback for a missing embedding model.
+
+                    It mirrors the small part of SentenceTransformer's ``encode``
+                    interface used below.  In particular, ``fit`` passes
+                    ``output_value``; accepting it here keeps offline startup
+                    functional instead of crashing after the model download fails.
+                    """
                     def __init__(self, dimension=512):
                         self.dimension = dimension
 
@@ -85,13 +106,26 @@ class SemanticMatcher:
                         tokens = re.findall(r"\w+", text.lower(), flags=re.UNICODE)
                         return tokens
 
-                    def encode(self, texts, convert_to_numpy=True, show_progress_bar=False):
+                    def encode(
+                        self,
+                        texts,
+                        convert_to_numpy=True,
+                        show_progress_bar=False,
+                        output_value=None,
+                        **_ignored,
+                    ):
                         import numpy as _np
                         vectors = _np.zeros((len(texts), self.dimension), dtype=_np.float32)
                         for i, t in enumerate(texts):
                             for tok in self._tokenize(t):
-                                # Hashing simple pour une dimension stable
-                                idx = abs(hash(tok)) % self.dimension
+                                # `hash()` is salted for every Python process.
+                                # A cryptographic digest is stable, so cached
+                                # corpus and query vectors remain compatible
+                                # across daemon/client restarts.
+                                digest = hashlib.blake2b(
+                                    tok.encode("utf-8"), digest_size=8
+                                ).digest()
+                                idx = int.from_bytes(digest, "big") % self.dimension
                                 vectors[i, idx] += 1.0
                         return vectors
 

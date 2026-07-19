@@ -4,8 +4,24 @@ Depends only on interfaces, never on concrete implementations.
 This is the heart of EveryCLI.
 """
 
+import re
+
 from everycli.core.interfaces import ContextDetector, Matcher, OSResolver, ScenarioLoader
 from everycli.core.models import SearchResult
+
+_NAMESPACE_ALIASES: dict[str, tuple[str, ...]] = {
+    "bash_command": ("bash", "shell script"),
+    "composer": ("composer", "php"),
+    "docker": ("docker",),
+    "docker_compose": ("docker compose", "compose"),
+    "git": ("git",),
+    "linux": ("linux", "systemd", "systemctl"),
+    "npm": ("npm", "node", "nodejs"),
+    "python": ("python", "pip", "pytest", "venv", "virtualenv"),
+    "ssh": ("ssh", "scp", "sftp"),
+}
+
+_CONTEXT_COMPETITIVE_RATIO = 0.85
 
 
 class SearchEngine:
@@ -54,9 +70,30 @@ class SearchEngine:
         """A scenario matches a scope if its namespace matches directly (reliable,
         always present) or, failing that, if one of its tags matches (fallback, for
         entries whose namespace doesn't line up 1:1 with how a user might scope)."""
-        if scenario.namespace and scenario.namespace.lower() in scopes:
-            return True
-        return any(tag in scenario.tags for tag in scopes)
+        if scenario.namespace:
+            return scenario.namespace.lower() in scopes
+        return any(tag.lower() in scopes for tag in scenario.tags)
+
+    def _query_namespace_scopes(self, query: str) -> list[str]:
+        """Recognize an ecosystem explicitly named in natural language."""
+        normalized_query = re.sub(r"[_-]+", " ", query.lower())
+        namespaces = {scenario.namespace.lower() for scenario in self._scenarios if scenario.namespace}
+        candidates: list[tuple[str, str]] = []
+        for namespace in namespaces:
+            candidates.append((re.sub(r"[_-]+", " ", namespace), namespace))
+            candidates.extend((alias, namespace) for alias in _NAMESPACE_ALIASES.get(namespace, ()))
+        for phrase, namespace in sorted(candidates, key=lambda item: len(item[0]), reverse=True):
+            if re.search(rf"(?<!\w){re.escape(phrase)}(?!\w)", normalized_query):
+                return [namespace]
+        return []
+
+    @staticmethod
+    def _context_is_competitive(matches: list[tuple], context_matches: list[tuple]) -> bool:
+        """Keep context only when it is close to the best global candidate."""
+        if not matches or not context_matches:
+            return False
+        best_score = matches[0][1]
+        return best_score > 0 and context_matches[0][1] >= best_score * _CONTEXT_COMPETITIVE_RATIO
 
     def search(
         self,
@@ -83,16 +120,20 @@ class SearchEngine:
         implicit_scope = False
 
         if not scopes:
-            if context_override is not None:
-                detected = context_override
-            elif self._context_detector is not None:
-                detected = self._context_detector.detect()
-            else:
-                detected = []
-            if detected:
-                scopes = [d.strip().lower() for d in detected]
+            scopes = self._query_namespace_scopes(query)
+            if scopes:
                 clean_query = query
-                implicit_scope = True
+            else:
+                if context_override is not None:
+                    detected = context_override
+                elif self._context_detector is not None:
+                    detected = self._context_detector.detect()
+                else:
+                    detected = []
+                if detected:
+                    scopes = [d.strip().lower() for d in detected]
+                    clean_query = query
+                    implicit_scope = True
 
         # Filtrage par scope si nécessaire (explicite ou déduit du contexte)
         if scopes:
@@ -106,10 +147,14 @@ class SearchEngine:
                 # Pour garder la perf, on va laisser le matcher faire son travail 
                 # et filtrer les résultats ensuite, MAIS en demandant plus de candidats.
                 matches = self._matcher.match(clean_query, top_k=top_k * 5)
-                matches = [
+                scoped_matches = [
                     (s, score) for s, score in matches
                     if self._matches_scope(s, scopes)
                 ]
+                if implicit_scope:
+                    matches = scoped_matches if self._context_is_competitive(matches, scoped_matches) else matches
+                else:
+                    matches = scoped_matches
             elif implicit_scope:
                 # Contexte détecté mais aucun scénario ne correspond : on ignore
                 # silencieusement le contexte plutôt que de renvoyer une liste vide.
