@@ -6,6 +6,7 @@ As thin as possible: wire dependencies, boot, run.
 from pathlib import Path
 import typer
 from rich.console import Console
+from rich.prompt import Confirm, Prompt
 
 # On garde uniquement les imports légers pour le mode client
 from everycli.infra import daemon_client
@@ -63,9 +64,36 @@ def search(
     copy: bool = typer.Option(False, "--copy", "-c", help="Copier la commande dans le presse-papier."),
     run: bool = typer.Option(False, "--run", "-r", help="Exécuter la commande directement."),
     interactive: bool = typer.Option(False, "--interactive", "-i", help="Mode interactif avec sélection."),
+    shell: bool = typer.Option(
+        False,
+        "--shell",
+        "-s",
+        help="Demande confirmation puis imprime la commande retenue sur stdout.",
+    ),
     no_daemon: bool = typer.Option(False, "--no-daemon", help="Forcer le mode direct (sans daemon)."),
 ):
     """Trouve la commande CLI dont tu as besoin."""
+    global console
+    # In shell mode, stdout is a tiny protocol: the confirmed command only.
+    # Rich output and prompts stay visible on stderr for the human user.
+    if shell:
+        console = Console(stderr=True)
+        if interactive:
+            console.print("[yellow]-s ne se combine pas avec -i.[/yellow]")
+            raise typer.Exit(2)
+        if run or copy:
+            console.print("[yellow]-s ne se combine pas avec --run ou --copy.[/yellow]")
+            raise typer.Exit(2)
+        if error:
+            console.print("[yellow]-s ne se combine pas avec --error.[/yellow]")
+            raise typer.Exit(2)
+        if top != 1:
+            console.print("[yellow]-s retourne une seule commande ; utilise --top 1.[/yellow]")
+            raise typer.Exit(2)
+        if not query:
+            console.print("[yellow]Le mode -s necessite une requete explicite.[/yellow]")
+            raise typer.Exit(2)
+
 
     # ── Gestion de l'historique si pas de query ───────────────────────────────
     if not query:
@@ -94,8 +122,8 @@ def search(
     from everycli.core.coordinator import SearchCoordinator
     coordinator = SearchCoordinator(console, str(DATA_DIR))
     
-    # En mode interactif, on demande plus de résultats pour avoir le choix
-    search_top = 10 if interactive else top
+    # En mode interactif, ou pour la désambiguïsation (O4), on demande plus de résultats
+    search_top = 10 if interactive else max(top, 3)
     results = coordinator.execute_search(query, top_k=search_top, no_daemon=no_daemon)
 
     # ── Filtrage environnement ────────────────────────────────────────────────
@@ -106,7 +134,7 @@ def search(
         console.print("\n[yellow]Aucun résultat trouvé.[/yellow] Essaie d'autres mots-clés.")
         raise typer.Exit(1)
 
-    # ── Mode Interactif ───────────────────────────────────────────────────────
+    # ── Mode Interactif & O4 ──────────────────────────────────────────────────
     final_results = results
     if interactive and len(results) > 1:
         from pick import pick
@@ -114,10 +142,27 @@ def search(
         title = f"✦ Résultats pour '{query}' (Espace pour choisir) :"
         _, index = pick(options, title, indicator="→")
         final_results = [results[index]]
+    elif not interactive and len(results) > 1:
+        # Désambiguïsation automatique (O4)
+        score_diff = results[0].score - results[1].score
+        # Si le modèle hésite vraiment (écart < 0.05 ou 5%)
+        if score_diff < 0.05 and results[0].score > 0:
+            console.print(f"\n[bold yellow]🤔 J'hésite entre deux commandes très proches.[/bold yellow]")
+            console.print("Quelle est ton intention ?\n")
+            
+            console.print(f"  [bold cyan]1.[/bold cyan] {results[0].scenario.description} [dim]({results[0].scenario.namespace or 'general'})[/dim]")
+            console.print(f"  [dim]> {results[0].resolved_command}[/dim]\n")
+            
+            console.print(f"  [bold cyan]2.[/bold cyan] {results[1].scenario.description} [dim]({results[1].scenario.namespace or 'general'})[/dim]")
+            console.print(f"  [dim]> {results[1].resolved_command}[/dim]\n")
+            
+            choice = Prompt.ask("Choix", choices=["1", "2"], default="1", console=console)
+            if choice == "2":
+                final_results = [results[1]] + [results[0]] + results[2:]
 
     # ── Affichage & Actions ───────────────────────────────────────────────────
     from everycli.infra.rich_formatter import RichFormatter
-    formatter = RichFormatter()
+    formatter = RichFormatter(console)
     
     # On sauvegarde le premier résultat dans l'historique pour la prochaine fois
     if final_results:
@@ -130,11 +175,19 @@ def search(
         if error:
             formatter.format_error_hint(error, result)
 
-        if copy:
-            _copy_to_clipboard(result.resolved_command)
+        if result.scenario.kind == "command":
+            if copy:
+                _copy_to_clipboard(result.resolved_command)
 
-        if run:
-            _run_command(result.resolved_command, result, formatter)
+            if run:
+                _run_command(result.resolved_command, result, formatter)
+
+    if shell and final_results and final_results[0].scenario.kind == "command":
+        selected = final_results[0]
+        # Dans un pipe, on écrit juste la commande sur stdout
+        sys.stdout.write(selected.resolved_command)
+        sys.stdout.flush()
+        return
 
     console.print()
 
