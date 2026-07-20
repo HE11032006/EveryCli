@@ -74,6 +74,13 @@ class SemanticMatcher:
                         if candidate.exists():
                             model_path = str(candidate)
                             break
+
+                # Explicit override for evaluating a fine-tuned model without
+                # a code change — wins over both the default name and the
+                # PyInstaller bundle lookup above.
+                override = os.environ.get("EVERYCLI_MODEL_PATH")
+                if override:
+                    model_path = override
                 
                 # `EVERYCLI_OFFLINE=1` is useful for portable/offline demos:
                 # load a cached model if present, otherwise immediately use the
