@@ -11,6 +11,8 @@ use std::fmt::{Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+pub mod daemon;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Platform {
     Linux,
@@ -48,6 +50,13 @@ impl Commands {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ErrorHint {
+    pub trigger: String,
+    pub cause: String,
+    pub fix: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Scenario {
     pub id: String,
     pub description: String,
@@ -55,7 +64,19 @@ pub struct Scenario {
     pub commands: Commands,
     pub explanation: String,
     pub warning: String,
+    pub error_hints: Vec<ErrorHint>,
     pub namespace: String,
+}
+
+/// Find the first hint whose trigger appears in `error_message`
+/// (case-insensitive substring match), mirroring
+/// `everycli/core/models.py::SearchResult.hint_for_error`.
+pub fn find_error_hint<'a>(scenario: &'a Scenario, error_message: &str) -> Option<&'a ErrorHint> {
+    let error_lower = error_message.to_lowercase();
+    scenario
+        .error_hints
+        .iter()
+        .find(|hint| error_lower.contains(&hint.trigger.to_lowercase()))
 }
 
 #[derive(Clone, Debug)]
@@ -100,9 +121,20 @@ struct ScenarioBuilder {
     macos: String,
     explanation: String,
     warning: String,
+    error_hints: Vec<ErrorHint>,
+    current_hint: Option<ErrorHint>,
     namespace: String,
     base_indent: usize,
     in_commands: bool,
+    in_errors: bool,
+}
+
+impl ScenarioBuilder {
+    fn flush_current_hint(&mut self) {
+        if let Some(hint) = self.current_hint.take() {
+            self.error_hints.push(hint);
+        }
+    }
 }
 
 impl ScenarioBuilder {
@@ -119,6 +151,7 @@ impl ScenarioBuilder {
         if self.windows.is_empty() {
             self.windows = self.linux.clone();
         }
+        self.flush_current_hint();
         Scenario {
             id: self.id,
             description: self.description,
@@ -130,6 +163,7 @@ impl ScenarioBuilder {
             },
             explanation: self.explanation,
             warning: self.warning,
+            error_hints: self.error_hints,
             namespace: self.namespace,
         }
     }
@@ -191,8 +225,16 @@ fn parse_corpus_file(path: &Path) -> Result<Vec<Scenario>, CoreError> {
 
         if indent == builder.base_indent + 2 {
             builder.in_commands = false;
+            if builder.in_errors {
+                builder.flush_current_hint();
+                builder.in_errors = false;
+            }
             if trimmed == "commands:" {
                 builder.in_commands = true;
+                continue;
+            }
+            if trimmed == "errors:" {
+                builder.in_errors = true;
                 continue;
             }
             if let Some(value) = yaml_value(trimmed, "description") {
@@ -217,6 +259,30 @@ fn parse_corpus_file(path: &Path) -> Result<Vec<Scenario>, CoreError> {
                 builder.windows = value;
             } else if let Some(value) = yaml_value(trimmed, "macos") {
                 builder.macos = value;
+            }
+            continue;
+        }
+
+        if builder.in_errors && indent == builder.base_indent + 4 {
+            if let Some(value) = trimmed.strip_prefix("- trigger:") {
+                builder.flush_current_hint();
+                builder.current_hint = Some(ErrorHint {
+                    trigger: clean_scalar(value),
+                    cause: String::new(),
+                    fix: String::new(),
+                });
+            }
+            continue;
+        }
+
+        if builder.in_errors
+            && indent == builder.base_indent + 6
+            && let Some(hint) = builder.current_hint.as_mut()
+        {
+            if let Some(value) = yaml_value(trimmed, "cause") {
+                hint.cause = value;
+            } else if let Some(value) = yaml_value(trimmed, "fix") {
+                hint.fix = value;
             }
         }
     }
@@ -439,5 +505,41 @@ mod tests {
         let results = search(&corpus(), "pip install package", 1, Platform::Windows);
         assert_eq!(results[0].scenario.namespace, "python");
         assert!(!results[0].command.is_empty());
+    }
+
+    #[test]
+    fn parses_error_hints_from_the_real_corpus() {
+        let scenario = corpus()
+            .into_iter()
+            .find(|scenario| scenario.id == "git_replace_in_commits")
+            .expect("fixture scenario must exist in the checked-in corpus");
+        assert_eq!(
+            scenario.error_hints,
+            vec![ErrorHint {
+                trigger: "fatal: bad revision".to_owned(),
+                cause: "Tu n'es pas dans un dépôt Git".to_owned(),
+                fix: "Vérifie avec : git status".to_owned(),
+            }]
+        );
+    }
+
+    #[test]
+    fn find_error_hint_matches_case_insensitively() {
+        let scenario = corpus()
+            .into_iter()
+            .find(|scenario| scenario.id == "git_replace_in_commits")
+            .unwrap();
+        let hint = find_error_hint(&scenario, "ERROR: Fatal: Bad Revision 'HEAD'")
+            .expect("trigger should match case-insensitively");
+        assert_eq!(hint.fix, "Vérifie avec : git status");
+    }
+
+    #[test]
+    fn find_error_hint_returns_none_when_nothing_matches() {
+        let scenario = corpus()
+            .into_iter()
+            .find(|scenario| scenario.id == "git_replace_in_commits")
+            .unwrap();
+        assert!(find_error_hint(&scenario, "permission denied").is_none());
     }
 }

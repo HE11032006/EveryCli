@@ -1,7 +1,39 @@
-use everycli_core::{Platform, load_corpus, search};
+use everycli_core::{Platform, Scenario, daemon, find_error_hint, load_corpus, search};
 use std::env;
-use std::path::PathBuf;
-use std::process::ExitCode;
+use std::io::{self, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Command, ExitCode, Stdio};
+
+/// A search hit ready to render, regardless of whether it came from the
+/// daemon or the local lexical fallback.
+#[derive(Clone)]
+struct DisplayHit {
+    id: String,
+    namespace: String,
+    command: String,
+    explanation: String,
+    warning: String,
+    tags: Vec<String>,
+    score: f32,
+}
+
+/// Keep only hits whose `tags` contain `env`, case-insensitively — mirrors
+/// `everycli.py`'s `env.lower() in r.scenario.tags` filter.
+fn filter_by_env<'a>(hits: &'a [DisplayHit], env: &str) -> Vec<&'a DisplayHit> {
+    let env = env.to_lowercase();
+    hits.iter()
+        .filter(|hit| hit.tags.iter().any(|tag| tag.to_lowercase() == env))
+        .collect()
+}
+
+/// True when the top two scores are within 5% of each other and the top
+/// score is nonzero — mirrors `everycli.py`'s auto-disambiguation (O4) rule.
+fn should_disambiguate(hits: &[DisplayHit]) -> bool {
+    match hits {
+        [first, second, ..] => first.score > 0.0 && (first.score - second.score) < 0.05,
+        _ => false,
+    }
+}
 
 fn main() -> ExitCode {
     match run(env::args().skip(1).collect()) {
@@ -27,6 +59,13 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
     let mut top_k = 1usize;
     let mut platform = default_platform();
     let mut json = false;
+    let mut error_message: Option<String> = None;
+    let mut env_filter: Option<String> = None;
+    let mut copy = false;
+    let mut run_it = false;
+    let mut interactive = false;
+    let mut shell = false;
+    let mut no_daemon = false;
     let mut index = 0;
 
     while index < arguments.len() {
@@ -49,7 +88,20 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
                 platform = Platform::parse(required_value(&arguments, index, "--platform")?)
                     .ok_or_else(|| "--platform must be linux, windows, or macos".to_owned())?;
             }
+            "--error" | "-e" => {
+                index += 1;
+                error_message = Some(required_value(&arguments, index, "--error")?.to_owned());
+            }
+            "--env" => {
+                index += 1;
+                env_filter = Some(required_value(&arguments, index, "--env")?.to_owned());
+            }
             "--json" => json = true,
+            "--copy" | "-c" => copy = true,
+            "--run" | "-r" => run_it = true,
+            "--interactive" | "-i" => interactive = true,
+            "--shell" | "-s" => shell = true,
+            "--no-daemon" => no_daemon = true,
             "--help" | "-h" => {
                 print_help();
                 return Ok(());
@@ -60,31 +112,276 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
         index += 1;
     }
 
+    // --shell is a strict machine-readable protocol: only the resolved
+    // command may reach stdout, so it cannot combine with anything that
+    // also wants to own stdout or the terminal. Mirrors everycli.py's
+    // `search` validation block.
+    if shell {
+        if interactive {
+            return Err("-s ne se combine pas avec -i.".to_owned());
+        }
+        if run_it || copy {
+            return Err("-s ne se combine pas avec --run ou --copy.".to_owned());
+        }
+        if error_message.is_some() {
+            return Err("-s ne se combine pas avec --error.".to_owned());
+        }
+        if top_k != 1 {
+            return Err("-s retourne une seule commande ; utilise --top 1.".to_owned());
+        }
+        if query.is_empty() {
+            return Err("Le mode -s necessite une requete explicite.".to_owned());
+        }
+    }
+
     if query.is_empty() {
         return Err("provide a natural-language query".to_owned());
     }
     let query = query.join(" ");
-    let corpus = load_corpus(data_dir.unwrap_or_else(default_data_dir))
-        .map_err(|error| error.to_string())?;
-    let results = search(&corpus, &query, top_k, platform);
-    if results.is_empty() {
+    let data_dir = data_dir.unwrap_or_else(default_data_dir);
+    let corpus = load_corpus(&data_dir).map_err(|error| error.to_string())?;
+
+    // Fetch extra candidates so disambiguation/interactive selection has
+    // something to choose from, same as everycli.py's `search_top`.
+    let search_top = if interactive { 10 } else { top_k.max(3) };
+
+    let mut hits: Vec<DisplayHit> = if no_daemon {
+        local_search(&corpus, &query, search_top, platform)
+    } else {
+        let config = daemon::DaemonConfig::default();
+        let repo_root = repo_root_from_data_dir(&data_dir);
+        match daemon::search(&config, &repo_root, &query, search_top) {
+            Ok(daemon_hits) => daemon_hits
+                .into_iter()
+                .map(|hit| DisplayHit {
+                    id: hit.id,
+                    namespace: hit.namespace,
+                    command: hit.command,
+                    explanation: hit.explanation,
+                    warning: hit.warning,
+                    tags: hit.tags,
+                    score: hit.score,
+                })
+                .collect(),
+            Err(error) => {
+                eprintln!(
+                    "everycli-rs: daemon fallback ({}), using local search",
+                    daemon_error_message(&error)
+                );
+                local_search(&corpus, &query, search_top, platform)
+            }
+        }
+    };
+
+    if let Some(env_name) = &env_filter {
+        hits = filter_by_env(&hits, env_name)
+            .into_iter()
+            .cloned()
+            .collect();
+    }
+
+    if hits.is_empty() {
         return Err("no command matched this query".to_owned());
     }
 
-    if json {
-        print_json(&results);
+    let mut ordered = hits;
+    if interactive && ordered.len() > 1 {
+        let choice = pick_interactive(&ordered).unwrap_or(0);
+        ordered = vec![ordered[choice].clone()];
+    } else if !interactive && should_disambiguate(&ordered) {
+        let choice = pick_disambiguation(&ordered);
+        if choice == 1 {
+            ordered.swap(0, 1);
+        }
+    }
+
+    let shown_count = top_k.min(ordered.len());
+    let shown = &ordered[..shown_count];
+
+    // --shell is a machine-readable protocol: stdout may only ever carry the
+    // resolved command. Every diagnostic that would normally go to stdout
+    // goes to stderr instead, mirroring everycli.py's `Console(stderr=True)`
+    // switch for shell mode.
+    if shell {
+        if let Some(first) = shown.first() {
+            eprintln!("{} | {}", first.namespace, first.id);
+            eprintln!("> {}", first.command);
+            eprintln!("  {}", first.explanation);
+            eprintln!("  score {:.2}", first.score);
+        }
+    } else if json {
+        println!("{}", render_json(shown));
     } else {
-        for (index, result) in results.iter().enumerate() {
+        for (index, hit) in shown.iter().enumerate() {
             if index > 0 {
                 println!();
             }
-            println!("{} | {}", result.scenario.namespace, result.scenario.id);
-            println!("> {}", result.command);
-            println!("  {}", result.scenario.explanation);
-            println!("  score {:.2}", result.score);
+            println!("{} | {}", hit.namespace, hit.id);
+            println!("> {}", hit.command);
+            println!("  {}", hit.explanation);
+            println!("  score {:.2}", hit.score);
+        }
+
+        if let Some(message) = &error_message
+            && let Some(first) = shown.first()
+            && let Some(hint) = find_hint_for(&corpus, first, message)
+        {
+            println!("  cause: {}", hint.cause);
+            println!("  fix:   {}", hint.fix);
+        }
+
+        if let Some(first) = shown.first() {
+            if copy {
+                if clipboard_copy(&first.command) {
+                    eprintln!("Commande copiee dans le presse-papier.");
+                } else {
+                    eprintln!("Impossible de copier dans le presse-papier.");
+                }
+            }
+            if run_it {
+                run_confirmed(&first.command);
+            }
         }
     }
+
+    if shell && let Some(first) = shown.first() {
+        print!("{}", first.command);
+        io::stdout().flush().ok();
+    }
+
     Ok(())
+}
+
+fn local_search(
+    corpus: &[Scenario],
+    query: &str,
+    top_k: usize,
+    platform: Platform,
+) -> Vec<DisplayHit> {
+    search(corpus, query, top_k, platform)
+        .into_iter()
+        .map(|result| DisplayHit {
+            id: result.scenario.id,
+            namespace: result.scenario.namespace,
+            command: result.command,
+            explanation: result.scenario.explanation,
+            warning: result.scenario.warning,
+            tags: result.scenario.tags,
+            score: result.score,
+        })
+        .collect()
+}
+
+/// `data_dir` is `<repo_root>/everycli/data/commands`.
+fn repo_root_from_data_dir(data_dir: &Path) -> PathBuf {
+    data_dir
+        .ancestors()
+        .nth(3)
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| data_dir.to_path_buf())
+}
+
+fn find_hint_for<'a>(
+    corpus: &'a [Scenario],
+    hit: &DisplayHit,
+    error_message: &str,
+) -> Option<&'a everycli_core::ErrorHint> {
+    corpus
+        .iter()
+        .find(|scenario| scenario.id == hit.id)
+        .and_then(|scenario| find_error_hint(scenario, error_message))
+}
+
+fn pick_interactive(hits: &[DisplayHit]) -> Option<usize> {
+    eprintln!("Resultats (tape un numero) :");
+    for (index, hit) in hits.iter().enumerate() {
+        eprintln!("  {}. {} ({})", index + 1, hit.explanation, hit.command);
+    }
+    let mut answer = String::new();
+    io::stdin().read_line(&mut answer).ok()?;
+    let choice: usize = answer.trim().parse().ok()?;
+    (choice >= 1 && choice <= hits.len()).then_some(choice - 1)
+}
+
+fn pick_disambiguation(hits: &[DisplayHit]) -> usize {
+    eprintln!("J'hesite entre deux commandes tres proches. Quelle est ton intention ?");
+    eprintln!("  1. {} > {}", hits[0].explanation, hits[0].command);
+    eprintln!("  2. {} > {}", hits[1].explanation, hits[1].command);
+    let mut answer = String::new();
+    let _ = io::stdin().read_line(&mut answer);
+    if answer.trim() == "2" { 1 } else { 0 }
+}
+
+fn clipboard_copy(text: &str) -> bool {
+    let spawned = if cfg!(target_os = "windows") {
+        Command::new("clip").stdin(Stdio::piped()).spawn()
+    } else if cfg!(target_os = "macos") {
+        Command::new("pbcopy").stdin(Stdio::piped()).spawn()
+    } else {
+        Command::new("xclip")
+            .args(["-selection", "clipboard"])
+            .stdin(Stdio::piped())
+            .spawn()
+            .or_else(|_| {
+                Command::new("xsel")
+                    .args(["--clipboard", "--input"])
+                    .stdin(Stdio::piped())
+                    .spawn()
+            })
+    };
+
+    let Ok(mut child) = spawned else {
+        return false;
+    };
+    if let Some(mut stdin) = child.stdin.take()
+        && stdin.write_all(text.as_bytes()).is_err()
+    {
+        return false;
+    }
+    child.wait().map(|status| status.success()).unwrap_or(false)
+}
+
+fn run_confirmed(command: &str) {
+    eprint!("Executer `{command}` ? [y/N] ");
+    io::stderr().flush().ok();
+    let mut answer = String::new();
+    if io::stdin().read_line(&mut answer).is_err() {
+        return;
+    }
+    if !matches!(
+        answer.trim().to_lowercase().as_str(),
+        "y" | "yes" | "o" | "oui"
+    ) {
+        return;
+    }
+
+    let output = if cfg!(target_os = "windows") {
+        Command::new("cmd").args(["/C", command]).output()
+    } else {
+        Command::new("sh").args(["-c", command]).output()
+    };
+
+    match output {
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let text = if !stdout.trim().is_empty() {
+                stdout.trim()
+            } else {
+                stderr.trim()
+            };
+            if !text.is_empty() {
+                println!("{text}");
+            }
+            if !output.status.success() {
+                eprintln!(
+                    "Commande terminee avec le code {}.",
+                    output.status.code().unwrap_or(1)
+                );
+            }
+        }
+        Err(error) => eprintln!("Echec de l'execution : {error}"),
+    }
 }
 
 fn required_value<'a>(
@@ -123,29 +420,59 @@ fn default_data_dir() -> PathBuf {
         .join("commands")
 }
 
-fn print_help() {
-    println!("EveryCli Rust fast path");
-    println!(
-        "Usage: everycli-rs search <query> [--top N] [--platform linux|windows|macos] [--data DIR] [--json]"
-    );
+fn daemon_error_message(error: &everycli_core::daemon::DaemonError) -> String {
+    use everycli_core::daemon::DaemonError;
+    match error {
+        DaemonError::Unavailable => "daemon indisponible (unavailable)".to_owned(),
+        DaemonError::RespawnFailed => "impossible de demarrer le daemon automatiquement".to_owned(),
+        DaemonError::Timeout => "le daemon ne repond pas (timeout)".to_owned(),
+        DaemonError::Server { code, message } => format!("{code}: {message}"),
+    }
 }
 
-fn print_json(results: &[everycli_core::SearchHit]) {
-    print!("[");
-    for (index, result) in results.iter().enumerate() {
+fn print_help() {
+    println!("EveryCli Rust fast path");
+    println!("Usage: everycli-rs search <query> [options]");
+    println!();
+    println!("Options:");
+    println!("  --top N, -t N            Number of results (default 1)");
+    println!("  --platform linux|windows|macos");
+    println!("  --data DIR               Corpus directory override");
+    println!("  --json                   Machine-readable output");
+    println!("  --error MSG, -e MSG      Diagnose an error message against known hints");
+    println!("  --env NAME               Filter results by environment tag");
+    println!("  --copy, -c               Copy the resolved command to the clipboard");
+    println!("  --run, -r                Confirm and execute the resolved command");
+    println!("  --interactive, -i        Pick a result from a numbered list");
+    println!("  --shell, -s              Print only the resolved command to stdout");
+    println!("  --no-daemon              Skip the daemon and search the local corpus directly");
+}
+
+fn render_json(hits: &[DisplayHit]) -> String {
+    let mut out = String::from("[");
+    for (index, hit) in hits.iter().enumerate() {
         if index > 0 {
-            print!(",");
+            out.push(',');
         }
-        print!(
-            "{{\"id\":\"{}\",\"namespace\":\"{}\",\"command\":\"{}\",\"explanation\":\"{}\",\"score\":{:.4}}}",
-            json_escape(&result.scenario.id),
-            json_escape(&result.scenario.namespace),
-            json_escape(&result.command),
-            json_escape(&result.scenario.explanation),
-            result.score,
-        );
+        let tags = hit
+            .tags
+            .iter()
+            .map(|tag| format!("\"{}\"", json_escape(tag)))
+            .collect::<Vec<_>>()
+            .join(",");
+        out.push_str(&format!(
+            "{{\"id\":\"{}\",\"namespace\":\"{}\",\"command\":\"{}\",\"explanation\":\"{}\",\"warning\":\"{}\",\"tags\":[{}],\"score\":{:.4}}}",
+            json_escape(&hit.id),
+            json_escape(&hit.namespace),
+            json_escape(&hit.command),
+            json_escape(&hit.explanation),
+            json_escape(&hit.warning),
+            tags,
+            hit.score,
+        ));
     }
-    println!("]");
+    out.push(']');
+    out
 }
 
 fn json_escape(value: &str) -> String {
@@ -172,5 +499,84 @@ mod tests {
     #[test]
     fn escapes_json_control_characters() {
         assert_eq!(json_escape("a\"b\n"), "a\\\"b\\n");
+    }
+
+    fn hit(id: &str, tags: &[&str], score: f32) -> DisplayHit {
+        DisplayHit {
+            id: id.to_owned(),
+            namespace: "docker".to_owned(),
+            command: format!("cmd-{id}"),
+            explanation: "explanation".to_owned(),
+            warning: String::new(),
+            tags: tags.iter().map(|tag| tag.to_string()).collect(),
+            score,
+        }
+    }
+
+    #[test]
+    fn filter_by_env_keeps_only_matching_tags_case_insensitively() {
+        let hits = vec![
+            hit("a", &["Docker", "compose"], 0.9),
+            hit("b", &["git"], 0.8),
+        ];
+        let filtered = filter_by_env(&hits, "docker");
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].id, "a");
+    }
+
+    #[test]
+    fn filter_by_env_returns_empty_when_nothing_matches() {
+        let hits = vec![hit("a", &["git"], 0.9)];
+        assert!(filter_by_env(&hits, "npm").is_empty());
+    }
+
+    #[test]
+    fn should_disambiguate_true_when_top_two_scores_are_close() {
+        let hits = vec![hit("a", &[], 0.80), hit("b", &[], 0.78)];
+        assert!(should_disambiguate(&hits));
+    }
+
+    #[test]
+    fn should_disambiguate_false_when_gap_is_large() {
+        let hits = vec![hit("a", &[], 0.90), hit("b", &[], 0.10)];
+        assert!(!should_disambiguate(&hits));
+    }
+
+    #[test]
+    fn should_disambiguate_false_when_top_score_is_zero() {
+        let hits = vec![hit("a", &[], 0.0), hit("b", &[], 0.0)];
+        assert!(!should_disambiguate(&hits));
+    }
+
+    #[test]
+    fn should_disambiguate_false_with_fewer_than_two_hits() {
+        let hits = vec![hit("a", &[], 0.9)];
+        assert!(!should_disambiguate(&hits));
+    }
+
+    #[test]
+    fn render_json_includes_tags_and_warning() {
+        let mut single = hit("docker_build_image", &["docker", "build"], 0.91);
+        single.warning = "careful".to_owned();
+        let json = render_json(&[single]);
+        assert!(json.contains("\"tags\":[\"docker\",\"build\"]"));
+        assert!(json.contains("\"warning\":\"careful\""));
+        assert!(json.contains("\"id\":\"docker_build_image\""));
+    }
+
+    #[test]
+    fn daemon_error_message_reports_unavailable() {
+        let message = daemon_error_message(&everycli_core::daemon::DaemonError::Unavailable);
+        assert!(message.contains("indisponible") || message.contains("unavailable"));
+    }
+
+    #[test]
+    fn daemon_error_message_includes_server_reason() {
+        let error = everycli_core::daemon::DaemonError::Server {
+            code: "EMPTY_QUERY".to_owned(),
+            message: "vide".to_owned(),
+        };
+        let message = daemon_error_message(&error);
+        assert!(message.contains("vide"));
     }
 }
