@@ -1,0 +1,1 @@
+C:\Users\kahin\Desktop\Devjobs\EveryCli\rust\target\release\everycli-rs.exe: C:\Users\kahin\Desktop\Devjobs\EveryCli\rust\everycli-core\src\daemon.rs C:\Users\kahin\Desktop\Devjobs\EveryCli\rust\everycli-core\src\lib.rs C:\Users\kahin\Desktop\Devjobs\EveryCli\rust\everycli-rs\src\main.rs
