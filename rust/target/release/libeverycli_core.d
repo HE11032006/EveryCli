@@ -1,1 +1,0 @@
-C:\Users\kahin\Desktop\Devjobs\EveryCli\rust\target\release\libeverycli_core.rlib: C:\Users\kahin\Desktop\Devjobs\EveryCli\rust\everycli-core\src\daemon.rs C:\Users\kahin\Desktop\Devjobs\EveryCli\rust\everycli-core\src\lib.rs
