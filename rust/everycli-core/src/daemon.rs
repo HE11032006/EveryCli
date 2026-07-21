@@ -147,7 +147,15 @@ fn search_with(
     match search_once(config, query, top_k) {
         Err(DaemonError::Unavailable) => {
             if respawn() {
-                search_once_no_ping(config, query, top_k)
+                // The very first real search right after a cold respawn
+                // commonly needs several seconds (semantic model load is
+                // deferred to the first query — see POST_RESPAWN_SEARCH_TIMEOUT)
+                // — governing it by the caller's normal steady-state
+                // per-request timeout would report a spurious failure even
+                // though the daemon is genuinely up and about to answer.
+                let mut warm_config = *config;
+                warm_config.timeout = POST_RESPAWN_SEARCH_TIMEOUT;
+                search_once_no_ping(&warm_config, query, top_k)
             } else {
                 Err(DaemonError::RespawnFailed)
             }
@@ -177,12 +185,34 @@ fn poll_until_ready(
 
 const RESPAWN_POLL_INTERVAL: Duration = Duration::from_millis(200);
 const RESPAWN_TIMEOUT: Duration = Duration::from_secs(10);
+// The daemon defers loading the actual ML model until the first real query
+// (see semantic_matcher.py's `fit()` — a corpus-embeddings cache hit skips
+// `_load_model()` entirely, so `ping` succeeding is not a signal that the
+// model itself is ready). That first-query model load is normally ~3s but
+// can take much longer depending on the machine (disk/AV scanning torch's
+// files for the first time) — 30s gives real headroom without hanging the
+// CLI indefinitely if the daemon is genuinely broken.
+const POST_RESPAWN_SEARCH_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Conventional sibling binary names to look for next to the running
-/// `everycli-rs` exe — matches the Full/Lite PyInstaller release asset
-/// naming (see `everycli-daemon.spec`'s output name and `build.yml`'s
-/// renamed artifacts).
-const SIBLING_DAEMON_NAMES: &[&str] = &["everycli-daemon", "everycli-full", "everycli-lite"];
+/// `everycli-rs` exe. Includes both the generic names (matching
+/// `everycli-daemon.spec`'s raw output name, useful if someone renames a
+/// download to the simple convention already documented in `bin/everycli`)
+/// and the actual OS-prefixed names `build.yml`'s release job really ships
+/// (`everycli-windows-full.exe`, `everycli-linux-full`,
+/// `everycli-macos-full`, and their `-lite` counterparts) — a real,
+/// as-downloaded release asset only ever matches the latter.
+const SIBLING_DAEMON_NAMES: &[&str] = &[
+    "everycli-daemon",
+    "everycli-full",
+    "everycli-lite",
+    "everycli-windows-full",
+    "everycli-windows-lite",
+    "everycli-linux-full",
+    "everycli-linux-lite",
+    "everycli-macos-full",
+    "everycli-macos-lite",
+];
 
 /// Sentinel argument recognized by `everycli.everycli:main` before Typer/
 /// Click or Rich ever run — must match `daemon_client.DAEMON_RUNNER_ARG`
@@ -381,6 +411,30 @@ mod tests {
     }
 
     #[test]
+    fn daemon_binary_candidates_recognizes_the_real_os_prefixed_release_asset_name() {
+        // build.yml's release job actually ships `everycli-windows-full.exe`,
+        // `everycli-linux-full`, `everycli-macos-full` (and `-lite` variants)
+        // — not the unprefixed `everycli-full` name. A user who downloads the
+        // release as-is, without renaming anything, must still be found.
+        let dir = tempdir();
+        let os_prefix = if cfg!(target_os = "windows") {
+            "windows"
+        } else if cfg!(target_os = "macos") {
+            "macos"
+        } else {
+            "linux"
+        };
+        let sibling_name = if cfg!(windows) {
+            format!("everycli-{os_prefix}-full.exe")
+        } else {
+            format!("everycli-{os_prefix}-full")
+        };
+        touch(&dir, &sibling_name);
+        let candidates = super::daemon_binary_candidates(&dir, None);
+        assert_eq!(candidates, vec![dir.join(&sibling_name)]);
+    }
+
+    #[test]
     fn ping_returns_false_when_nothing_listens() {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
@@ -510,6 +564,42 @@ mod tests {
             true
         })
         .expect("search should succeed after respawn");
+
+        assert_eq!(hits[0].id, "docker_build_image");
+    }
+
+    #[test]
+    fn search_with_uses_a_longer_timeout_for_the_first_search_after_respawn() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+
+        // The passed-in config's timeout (200ms) is deliberately too short
+        // for the 600ms-delayed reply below — the very first real search
+        // right after a cold respawn commonly needs several seconds
+        // (semantic model warm-up), so it must not be governed by the
+        // caller's normal steady-state per-request timeout.
+        let config = super::DaemonConfig {
+            host: "127.0.0.1",
+            port,
+            timeout: Duration::from_millis(200),
+        };
+
+        let hits = super::search_with(&config, "docker build", 1, || {
+            let listener = TcpListener::bind(("127.0.0.1", port)).unwrap();
+            thread::spawn(move || {
+                if let Ok((mut stream, _)) = listener.accept() {
+                    let mut reader = BufReader::new(stream.try_clone().unwrap());
+                    let mut request = String::new();
+                    let _ = reader.read_line(&mut request);
+                    thread::sleep(Duration::from_millis(600));
+                    let reply = r#"{"ok":true,"results":[{"id":"docker_build_image","description":"Build","command":"docker build .","explanation":"e","warning":"","tags":[],"namespace":"docker","score":0.5}]}"#;
+                    let _ = stream.write_all(format!("{reply}\n").as_bytes());
+                }
+            });
+            true
+        })
+        .expect("search should still succeed despite a slow first reply after respawn");
 
         assert_eq!(hits[0].id, "docker_build_image");
     }

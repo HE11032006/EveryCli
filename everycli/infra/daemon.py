@@ -13,6 +13,14 @@ from everycli.infra.daemon_server import DaemonServer
 
 logger = logging.getLogger("everycli.daemon")
 
+
+def _daemon_port() -> int:
+    """Read fresh at call time (not module import time) so tests and a
+    changed environment both see the current value, matching the client's
+    own `EVERYCLI_PORT` convention (`daemon_client.SOCKET_PORT`)."""
+    return int(os.environ.get("EVERYCLI_PORT", "51821"))
+
+
 def _build_engine():
     from everycli.core.search_engine import SearchEngine
     from everycli.infra.os_resolver import OSResolver
@@ -44,7 +52,7 @@ def start_daemon(debug: bool = False):
     engine = _build_engine()
     engine.boot()
 
-    server = DaemonServer(engine)
+    server = DaemonServer(engine, port=_daemon_port())
     
     manager.write_pid(os.getpid())
     try:

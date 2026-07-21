@@ -14,7 +14,28 @@ from everycli.infra.daemon_client import DaemonResult, DaemonError
 
 import sys
 import os
-import os
+
+
+def _configure_console_encoding(stream) -> None:
+    """Make output resilient to legacy Windows codepages (cp1252, etc.).
+
+    Rich crashes with `UnicodeEncodeError` instead of the actual error being
+    reported when stdout/stderr aren't UTF-8-capable — e.g. redirected to a
+    file, or launched detached with no real console — masking the real
+    failure behind a confusing secondary crash. Replacing unencodable
+    characters instead of raising keeps error reporting working everywhere.
+    """
+    reconfigure = getattr(stream, "reconfigure", None)
+    if reconfigure is None:
+        return
+    try:
+        reconfigure(errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
+
+_configure_console_encoding(sys.stdout)
+_configure_console_encoding(sys.stderr)
 
 app = typer.Typer(add_completion=False, help="Find the exact CLI command you need.")
 console = Console()
