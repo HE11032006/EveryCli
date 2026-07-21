@@ -1,10 +1,28 @@
+import io
+
 from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
 from everycli.core.models import Command, Scenario, SearchResult
-from everycli.everycli import app, available_environments, main
+from everycli.everycli import _configure_console_encoding, app, available_environments, main
 from everycli.infra.daemon_client import DAEMON_RUNNER_ARG
+
+
+def test_configure_console_encoding_prevents_unicode_crash_on_restrictive_encodings():
+    # Rich crashes with UnicodeEncodeError (masking the real error) instead
+    # of degrading gracefully when stdout/stderr use a legacy Windows
+    # codepage (cp1252) — e.g. redirected to a file, or launched via Task
+    # Scheduler with no real console. This must not raise.
+    stream = io.TextIOWrapper(io.BytesIO(), encoding="cp1252")
+    _configure_console_encoding(stream)
+    stream.write("✖ boom")
+    stream.flush()
+
+
+def test_configure_console_encoding_ignores_streams_without_reconfigure():
+    stream = object()
+    _configure_console_encoding(stream)  # must not raise
 
 
 def test_main_calls_start_daemon_directly_for_the_runner_sentinel():

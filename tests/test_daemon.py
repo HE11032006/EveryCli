@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from everycli.core.models import Command, Scenario, SearchResult
+from everycli.infra import daemon as daemon_module
 from everycli.infra.daemon_manager import DaemonManager
 from everycli.infra.daemon_server import DaemonServer
 
@@ -67,3 +68,21 @@ def test_search_reports_engine_failures():
     engine.search.side_effect = RuntimeError("engine failed")
     response = server._do_search({"query": "status"})
     assert response == {"ok": False, "code": "SEARCH_ERROR", "error": "engine failed"}
+
+
+def test_start_daemon_binds_the_everycli_port_env_var(monkeypatch):
+    # start_daemon() used to hardcode DaemonServer's default port (51821),
+    # silently ignoring EVERYCLI_PORT even though the client respects it —
+    # any client pointed at a non-default port could never reach a daemon
+    # started this way.
+    monkeypatch.setenv("EVERYCLI_PORT", "51999")
+    manager = MagicMock()
+    manager.is_running.return_value = False
+
+    with patch("everycli.infra.daemon.DaemonManager", return_value=manager), \
+         patch("everycli.infra.daemon._build_engine") as mock_build_engine, \
+         patch("everycli.infra.daemon.DaemonServer") as mock_server_cls, \
+         patch("everycli.infra.daemon.asyncio.run"):
+        daemon_module.start_daemon()
+
+    mock_server_cls.assert_called_once_with(mock_build_engine.return_value, port=51999)

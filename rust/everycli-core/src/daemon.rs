@@ -179,10 +179,24 @@ const RESPAWN_POLL_INTERVAL: Duration = Duration::from_millis(200);
 const RESPAWN_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Conventional sibling binary names to look for next to the running
-/// `everycli-rs` exe — matches the Full/Lite PyInstaller release asset
-/// naming (see `everycli-daemon.spec`'s output name and `build.yml`'s
-/// renamed artifacts).
-const SIBLING_DAEMON_NAMES: &[&str] = &["everycli-daemon", "everycli-full", "everycli-lite"];
+/// `everycli-rs` exe. Includes both the generic names (matching
+/// `everycli-daemon.spec`'s raw output name, useful if someone renames a
+/// download to the simple convention already documented in `bin/everycli`)
+/// and the actual OS-prefixed names `build.yml`'s release job really ships
+/// (`everycli-windows-full.exe`, `everycli-linux-full`,
+/// `everycli-macos-full`, and their `-lite` counterparts) — a real,
+/// as-downloaded release asset only ever matches the latter.
+const SIBLING_DAEMON_NAMES: &[&str] = &[
+    "everycli-daemon",
+    "everycli-full",
+    "everycli-lite",
+    "everycli-windows-full",
+    "everycli-windows-lite",
+    "everycli-linux-full",
+    "everycli-linux-lite",
+    "everycli-macos-full",
+    "everycli-macos-lite",
+];
 
 /// Sentinel argument recognized by `everycli.everycli:main` before Typer/
 /// Click or Rich ever run — must match `daemon_client.DAEMON_RUNNER_ARG`
@@ -378,6 +392,30 @@ mod tests {
     fn daemon_binary_candidates_is_empty_when_nothing_exists() {
         let dir = tempdir();
         assert!(super::daemon_binary_candidates(&dir, None).is_empty());
+    }
+
+    #[test]
+    fn daemon_binary_candidates_recognizes_the_real_os_prefixed_release_asset_name() {
+        // build.yml's release job actually ships `everycli-windows-full.exe`,
+        // `everycli-linux-full`, `everycli-macos-full` (and `-lite` variants)
+        // — not the unprefixed `everycli-full` name. A user who downloads the
+        // release as-is, without renaming anything, must still be found.
+        let dir = tempdir();
+        let os_prefix = if cfg!(target_os = "windows") {
+            "windows"
+        } else if cfg!(target_os = "macos") {
+            "macos"
+        } else {
+            "linux"
+        };
+        let sibling_name = if cfg!(windows) {
+            format!("everycli-{os_prefix}-full.exe")
+        } else {
+            format!("everycli-{os_prefix}-full")
+        };
+        touch(&dir, &sibling_name);
+        let candidates = super::daemon_binary_candidates(&dir, None);
+        assert_eq!(candidates, vec![dir.join(&sibling_name)]);
     }
 
     #[test]
