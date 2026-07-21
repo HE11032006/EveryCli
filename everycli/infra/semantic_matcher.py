@@ -35,7 +35,10 @@ logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 from everycli.core.models import Scenario
 from everycli.core.interfaces import Matcher as MatcherProtocol
 
-MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
+# Fine-tuned on the EveryCli corpus from the paraphrase-multilingual-MiniLM-L12-v2
+# base model (see training/) — validated against eval/confusion_set.yaml before
+# adoption (66/66 top-1, 66/66 top-3, no regression from the base model).
+MODEL_NAME = "Karmelkke/everycli-minilm-ft"
 CACHE_DIR = Path.home() / ".everycli" / "cache"
 
 
@@ -74,6 +77,13 @@ class SemanticMatcher:
                         if candidate.exists():
                             model_path = str(candidate)
                             break
+
+                # Explicit override for evaluating a fine-tuned model without
+                # a code change — wins over both the default name and the
+                # PyInstaller bundle lookup above.
+                override = os.environ.get("EVERYCLI_MODEL_PATH")
+                if override:
+                    model_path = override
                 
                 # `EVERYCLI_OFFLINE=1` is useful for portable/offline demos:
                 # load a cached model if present, otherwise immediately use the
