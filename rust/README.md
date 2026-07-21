@@ -17,14 +17,22 @@ cargo run --manifest-path rust/Cargo.toml -p everycli-rs -- search "docker build
 
 By default `search` pings the daemon, sends the query, and prints whatever the
 daemon (semantic + lexical hybrid) returns. If the daemon isn't running, it
-spawns `python -m everycli.infra.daemon_runner` detached, waits up to 10s for
-it to answer a ping, retries once, and — if that also fails — falls back to
-the local lexical search built into `everycli-core`, printing one line to
-stderr explaining why. Pass `--no-daemon` to skip the daemon entirely and go
-straight to the local search.
+tries to start one detached, waits up to 10s for it to answer a ping, retries
+once, and — if that also fails — falls back to the local lexical search built
+into `everycli-core`, printing one line to stderr explaining why. Pass
+`--no-daemon` to skip the daemon entirely and go straight to the local
+search.
+
+To start the daemon it first looks for a sibling Full/Lite binary next to
+the running `everycli-rs` exe (`everycli-daemon`, `everycli-full`, or
+`everycli-lite`, `.exe` on Windows) — set `EVERYCLI_DAEMON_BIN` to point at a
+specific binary instead. If none is found, it falls back to `python`/`python3`
+on `PATH` running `-m everycli.everycli daemon --start` (dev/source installs
+only).
 
 Environment overrides: `EVERYCLI_PORT` (default `51821`), `EVERYCLI_TIMEOUT`
-(default `1.0` seconds), `EVERYCLI_DATA_DIR` (corpus directory).
+(default `1.0` seconds), `EVERYCLI_DATA_DIR` (corpus directory),
+`EVERYCLI_DAEMON_BIN` (explicit path to the daemon binary to spawn).
 
 ## `search` options
 

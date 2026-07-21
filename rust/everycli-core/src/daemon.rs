@@ -3,7 +3,7 @@
 
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpStream, ToSocketAddrs};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
@@ -178,14 +178,73 @@ fn poll_until_ready(
 const RESPAWN_POLL_INTERVAL: Duration = Duration::from_millis(200);
 const RESPAWN_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// Launch `python -m everycli.infra.daemon_runner` detached from this
-/// process, with `PYTHONPATH` set to `repo_root` — mirrors
-/// `daemon_client.py::_respawn_daemon`'s `subprocess.Popen(...)` call.
+/// Conventional sibling binary names to look for next to the running
+/// `everycli-rs` exe — matches the Full/Lite PyInstaller release asset
+/// naming (see `everycli-daemon.spec`'s output name and `build.yml`'s
+/// renamed artifacts).
+const SIBLING_DAEMON_NAMES: &[&str] = &["everycli-daemon", "everycli-full", "everycli-lite"];
+
+/// Sentinel argument recognized by `everycli.everycli:main` before Typer/
+/// Click or Rich ever run — must match `daemon_client.DAEMON_RUNNER_ARG`
+/// exactly. A fully detached process (no console at all) with stdio
+/// redirected to null crashes the instant Rich's `console.print` tries to
+/// probe terminal capabilities; `start_daemon()`'s plain `print()` calls
+/// don't have that problem, so respawn must reach it directly rather than
+/// going through the normal `daemon --start` Typer subcommand.
+const DAEMON_RUNNER_ARG: &str = "__internal_daemon_runner__";
+
+/// Binaries to try spawning as `<candidate> <DAEMON_RUNNER_ARG>`, in priority
+/// order: an explicit override (`EVERYCLI_DAEMON_BIN`, mirrors
+/// `bin/everycli`'s `DAEMON_BIN` and `everycli.ps1`'s `$env:EVERYCLI_BIN`),
+/// then conventional sibling names in `dir` (the directory the current
+/// `everycli-rs` exe lives in). Only entries that exist on disk are kept —
+/// a caller who downloaded only the Rust binary correctly gets an empty
+/// list rather than attempting to spawn a nonexistent file.
+fn daemon_binary_candidates(dir: &Path, env_override: Option<&str>) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+    if let Some(value) = env_override.filter(|value| !value.is_empty()) {
+        candidates.push(PathBuf::from(value));
+    }
+    for name in SIBLING_DAEMON_NAMES {
+        let file_name = if cfg!(windows) {
+            format!("{name}.exe")
+        } else {
+            (*name).to_owned()
+        };
+        candidates.push(dir.join(file_name));
+    }
+    candidates.into_iter().filter(|path| path.is_file()).collect()
+}
+
+/// Spawn `program` with `args`, detached from this process on every OS —
+/// mirrors `daemon_client.py::_respawn_daemon`'s `subprocess.Popen(...)`.
+fn spawn_detached(program: &Path, args: &[&str]) -> std::io::Result<std::process::Child> {
+    let mut command = Command::new(program);
+    command.args(args);
+    spawn_detached_with(&mut command)
+}
+
+/// Start the daemon detached from this process, trying (in order): a
+/// sibling Full/Lite binary next to the current `everycli-rs` exe, then
+/// `python`/`python3` on PATH running `-m everycli.everycli
+/// <DAEMON_RUNNER_ARG>` (dev/source installs) — mirrors
+/// `daemon_client.py::_respawn_command`.
 ///
 /// Windows tries `python` first: `python3` there is frequently just the
 /// App Execution Alias stub, which spawns "successfully" (so `spawn()`
 /// returns `Ok`) but exits immediately without starting anything.
 fn spawn_daemon_process(repo_root: &Path) -> bool {
+    if let Ok(current_exe) = std::env::current_exe()
+        && let Some(exe_dir) = current_exe.parent()
+    {
+        let env_override = std::env::var("EVERYCLI_DAEMON_BIN").ok();
+        for candidate in daemon_binary_candidates(exe_dir, env_override.as_deref()) {
+            if spawn_detached(&candidate, &[DAEMON_RUNNER_ARG]).is_ok() {
+                return true;
+            }
+        }
+    }
+
     let candidates: &[&str] = if cfg!(windows) {
         &["python", "python3"]
     } else {
@@ -194,25 +253,33 @@ fn spawn_daemon_process(repo_root: &Path) -> bool {
     for python in candidates {
         let mut command = Command::new(python);
         command
-            .args(["-m", "everycli.infra.daemon_runner"])
-            .env("PYTHONPATH", repo_root)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
-
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            const DETACHED_PROCESS: u32 = 0x0000_0008;
-            const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
-            command.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP);
-        }
-
-        if command.spawn().is_ok() {
+            .args(["-m", "everycli.everycli", DAEMON_RUNNER_ARG])
+            .env("PYTHONPATH", repo_root);
+        if spawn_detached_with(&mut command).is_ok() {
             return true;
         }
     }
     false
+}
+
+/// Apply detachment settings to an already-configured [`Command`] and spawn
+/// it. Shared by [`spawn_detached`] and the `python`/`python3` fallback,
+/// which additionally needs `PYTHONPATH` set on the command before spawning.
+fn spawn_detached_with(command: &mut Command) -> std::io::Result<std::process::Child> {
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const DETACHED_PROCESS: u32 = 0x0000_0008;
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+        command.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP);
+    }
+
+    command.spawn()
 }
 
 /// Spawn the daemon and wait (up to [`RESPAWN_TIMEOUT`]) until it answers a
@@ -264,6 +331,53 @@ mod tests {
     fn ping_returns_true_when_daemon_replies_ok() {
         let config = mock_daemon(r#"{"ok":true,"pong":true}"#);
         assert!(super::ping(&config));
+    }
+
+    fn touch(dir: &std::path::Path, name: &str) {
+        std::fs::write(dir.join(name), b"").expect("write dummy sibling binary");
+    }
+
+    fn tempdir() -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "everycli-daemon-candidates-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).expect("create tempdir");
+        dir
+    }
+
+    #[test]
+    fn daemon_binary_candidates_prefers_the_env_override_when_it_exists() {
+        let dir = tempdir();
+        touch(&dir, "custom-daemon");
+        touch(&dir, "everycli-daemon");
+        let override_path = dir.join("custom-daemon");
+        let candidates =
+            super::daemon_binary_candidates(&dir, Some(override_path.to_str().unwrap()));
+        assert_eq!(candidates.first(), Some(&override_path));
+    }
+
+    #[test]
+    fn daemon_binary_candidates_falls_back_to_a_conventional_sibling_name() {
+        let dir = tempdir();
+        let sibling_name = if cfg!(windows) {
+            "everycli-full.exe"
+        } else {
+            "everycli-full"
+        };
+        touch(&dir, sibling_name);
+        let candidates = super::daemon_binary_candidates(&dir, None);
+        assert_eq!(candidates, vec![dir.join(sibling_name)]);
+    }
+
+    #[test]
+    fn daemon_binary_candidates_is_empty_when_nothing_exists() {
+        let dir = tempdir();
+        assert!(super::daemon_binary_candidates(&dir, None).is_empty());
     }
 
     #[test]

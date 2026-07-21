@@ -506,6 +506,18 @@ def history(
 
 
 def main():
+    # Intercepted before Typer/Click ever sees argv: this is how the daemon
+    # respawns itself (see `daemon_client._respawn_command`). It must not
+    # touch Rich (`console`/`app`) at all — a fully detached respawned
+    # process (no console, stdio redirected to NUL) crashes the moment Rich
+    # tries to probe terminal capabilities, whereas `start_daemon()`'s plain
+    # `print()` calls are safe.
+    from everycli.infra.daemon_client import DAEMON_RUNNER_ARG
+    if len(sys.argv) > 1 and sys.argv[1] == DAEMON_RUNNER_ARG:
+        from everycli.infra.daemon import start_daemon
+        start_daemon()
+        return
+
     from everycli.core.exceptions import EveryCliError
     try:
         app()

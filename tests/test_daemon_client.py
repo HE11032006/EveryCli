@@ -7,15 +7,18 @@ Zéro connexion réseau réelle — tout est mocké via unittest.mock.
 """
 
 import json
+import sys
 import pytest
 from unittest.mock import MagicMock, patch
 
 from everycli.infra.daemon_client import (
+    DAEMON_RUNNER_ARG,
     DaemonError,
     DaemonResult,
     ping,
     search,
     send_reload,
+    _respawn_command,
     _send_request,
 )
 
@@ -138,6 +141,25 @@ class TestSearch:
             result = search("rien du tout")
         assert isinstance(result, DaemonResult)
         assert result.results == []
+
+
+# ── Tests : _respawn_command ──────────────────────────────────────────────────
+
+class TestRespawnCommand:
+    def test_invokes_the_exe_directly_when_frozen(self):
+        # A frozen build's sys.executable is the exe itself, not a Python
+        # interpreter: it must be passed the sentinel arg directly, and
+        # must NOT go through the `daemon` Typer subcommand, since that
+        # touches Rich's console — which crashes under a fully detached
+        # process (no console) with stdio redirected to NUL.
+        with patch.object(sys, "frozen", True, create=True):
+            assert _respawn_command() == [sys.executable, DAEMON_RUNNER_ARG]
+
+    def test_uses_the_module_entrypoint_when_not_frozen(self):
+        with patch.object(sys, "frozen", False, create=True):
+            assert _respawn_command() == [
+                sys.executable, "-m", "everycli.everycli", DAEMON_RUNNER_ARG
+            ]
 
 
 # ── Tests : send_reload ───────────────────────────────────────────────────────
