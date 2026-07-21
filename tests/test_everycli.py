@@ -3,7 +3,27 @@ from unittest.mock import MagicMock, patch
 from typer.testing import CliRunner
 
 from everycli.core.models import Command, Scenario, SearchResult
-from everycli.everycli import app, available_environments
+from everycli.everycli import app, available_environments, main
+from everycli.infra.daemon_client import DAEMON_RUNNER_ARG
+
+
+def test_main_calls_start_daemon_directly_for_the_runner_sentinel():
+    # Bypasses Typer/Click and Rich entirely — required so a fully detached
+    # respawned process (no console, stdio redirected to NUL) doesn't crash
+    # trying to print through Rich before the daemon is even up.
+    with patch("sys.argv", ["everycli", DAEMON_RUNNER_ARG]), \
+         patch("everycli.infra.daemon.start_daemon") as mock_start:
+        main()
+    mock_start.assert_called_once_with()
+
+
+def test_main_runs_the_normal_app_for_regular_invocations():
+    with patch("sys.argv", ["everycli", "--help"]), \
+         patch("everycli.infra.daemon.start_daemon") as mock_start, \
+         patch("everycli.everycli.app") as mock_app:
+        main()
+    mock_start.assert_not_called()
+    mock_app.assert_called_once_with()
 
 
 def test_available_environments_follow_command_files(tmp_path):

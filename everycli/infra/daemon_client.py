@@ -27,6 +27,14 @@ SOCKET_PORT  = int(os.environ.get("EVERYCLI_PORT", "51821"))
 TIMEOUT      = float(os.environ.get("EVERYCLI_TIMEOUT", "1.0"))
 RESPAWN_WAIT = 10.0   # secondes max pour attendre le daemon après respawn
 
+# Argument sentinelle reconnu par `everycli.everycli:main` avant même que
+# Typer/Click ne touche à quoi que ce soit. Nécessaire car un process
+# entièrement détaché (DETACHED_PROCESS, pas de console du tout) avec stdio
+# redirigés vers NUL fait planter Rich (`console.print`) dès sa première
+# tentative de sonder la console — un `print()` simple, lui, s'en sort très
+# bien. `daemon.py::start_daemon()` n'utilise que des `print()` simples.
+DAEMON_RUNNER_ARG = "__internal_daemon_runner__"
+
 
 # ── Result types ──────────────────────────────────────────────────────────────
 
@@ -74,18 +82,38 @@ def ping() -> bool:
 
 # ── Respawn automatique ───────────────────────────────────────────────────────
 
+def _respawn_command() -> list[str]:
+    """
+    Commande à lancer pour démarrer le daemon en arrière-plan.
+
+    En build gelé (PyInstaller), `sys.executable` est l'exe lui-même — pas un
+    interpréteur Python, donc `-m` n'a aucun sens pour lui ; on lui passe
+    alors directement `DAEMON_RUNNER_ARG`. En install source, on passe par
+    `-m everycli.everycli`, le même point d'entrée public que partout
+    ailleurs. Dans les deux cas, `everycli.everycli:main` intercepte cet
+    argument sentinelle avant Typer/Click — voir `DAEMON_RUNNER_ARG`.
+    """
+    if getattr(sys, "frozen", False):
+        return [sys.executable, DAEMON_RUNNER_ARG]
+    return [sys.executable, "-m", "everycli.everycli", DAEMON_RUNNER_ARG]
+
+
 def _respawn_daemon() -> bool:
     """
     Lance le daemon en arrière-plan et attend qu'il soit prêt.
     Retourne True si le daemon répond dans RESPAWN_WAIT secondes.
     """
+    creationflags = 0
+    if os.name == "nt":
+        creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
     try:
         subprocess.Popen(
-            [sys.executable, "-m", "everycli.infra.daemon_runner"],
+            _respawn_command(),
             env={**os.environ, "PYTHONPATH": str(Path(__file__).parent.parent.parent)},
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            start_new_session=True,   # Détache du terminal courant
+            start_new_session=True,   # Détache du terminal courant (POSIX)
+            creationflags=creationflags,  # Détache du terminal courant (Windows)
         )
     except Exception:
         return False
