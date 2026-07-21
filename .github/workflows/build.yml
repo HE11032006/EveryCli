@@ -167,10 +167,10 @@ jobs:
             release_assets/everycli-rs-windows.exe
             release_assets/everycli-data.zip
           body: |
-            🚀 **EveryCli v1.0.0**
+            🚀 **EveryCli ${{ github.ref_name }}**
 
             Deux versions sont disponibles pour chaque système :
-            - **Full** (~300Mo) : Tout inclus, fonctionne instantanément hors-ligne.
+            - **Full** (~300Mo) : Tout inclus, fonctionne instantanément hors-ligne, modèle sémantique fine-tuné sur le corpus EveryCli embarqué.
             - **Lite** (~50Mo) : Télécharge le modèle IA au premier lancement (~400Mo).
             - **Rust** (`everycli-rs-*` + `everycli-data.zip`) : binaire natif sans dépendance, recherche lexicale instantanée hors-ligne ; se connecte au daemon Python (Full/Lite) s'il tourne pour la recherche sémantique.
 
