@@ -5,7 +5,7 @@ from PyInstaller.utils.hooks import collect_all
 
 # On essaie de localiser le modèle dans le dossier courant ou dans le cache
 # Pour le build CI, on s'assure qu'il est téléchargé avant.
-model_name = "paraphrase-multilingual-MiniLM-L12-v2"
+model_name = "Karmelkke/everycli-minilm-ft"
 
 # Collecte automatique pour les grosses librairies complexes
 datas = [('everycli/data/commands/*.yaml', 'everycli/data/commands')]

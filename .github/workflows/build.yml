@@ -36,7 +36,7 @@ jobs:
 
     - name: Download Model
       run: |
-        python -c "from sentence_transformers import SentenceTransformer; model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2'); model.save('paraphrase-multilingual-MiniLM-L12-v2')"
+        python -c "from sentence_transformers import SentenceTransformer; model = SentenceTransformer('Karmelkke/everycli-minilm-ft'); model.save('Karmelkke/everycli-minilm-ft')"
 
     - name: Validate corpus and run tests
       run: |

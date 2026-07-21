@@ -35,7 +35,10 @@ logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 from everycli.core.models import Scenario
 from everycli.core.interfaces import Matcher as MatcherProtocol
 
-MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
+# Fine-tuned on the EveryCli corpus from the paraphrase-multilingual-MiniLM-L12-v2
+# base model (see training/) — validated against eval/confusion_set.yaml before
+# adoption (66/66 top-1, 66/66 top-3, no regression from the base model).
+MODEL_NAME = "Karmelkke/everycli-minilm-ft"
 CACHE_DIR = Path.home() / ".everycli" / "cache"
 
 
