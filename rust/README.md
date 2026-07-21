@@ -46,6 +46,31 @@ Auto-disambiguation mirrors the Python CLI: when the top two results score
 within 5% of each other, you're prompted to pick one instead of getting the
 higher-scored (but uncertain) result silently.
 
+## Download a prebuilt binary
+
+Every tagged release (`v*`) publishes a native, dependency-free
+`everycli-rs` binary for Linux, macOS, and Windows, plus `everycli-data.zip`
+(the corpus) — see the repo's Releases page. Unlike the Full/Lite Python
+builds, this download has no bundled model: it's the fastest possible
+cold-start option and gets full semantic search automatically if a Full/Lite
+daemon happens to be running locally, otherwise it uses the local lexical
+fallback.
+
+```bash
+# Linux/macOS
+unzip everycli-data.zip -d .
+chmod +x everycli-rs-linux   # or everycli-rs-macos
+./everycli-rs-linux search "docker build an image" --data ./commands
+```
+
+```powershell
+# Windows
+Expand-Archive everycli-data.zip .
+.\everycli-rs-windows.exe search "docker build an image" --data .\commands
+```
+
+Set `EVERYCLI_DATA_DIR` instead of `--data` to avoid repeating the flag.
+
 ## What's intentionally not here yet
 
 Only `search` exists — `plan`, `daemon`, `add`, `list`, `export`, `import`,

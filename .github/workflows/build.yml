@@ -81,9 +81,45 @@ jobs:
         name: everycli-${{ matrix.os }}
         path: final_dist/
 
+  build-rust:
+    name: Build Rust client on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Test
+      run: cargo test --manifest-path rust/Cargo.toml
+
+    - name: Build release binary
+      run: cargo build --release --manifest-path rust/Cargo.toml -p everycli-rs
+
+    - name: Prepare artifact
+      shell: bash
+      run: |
+        mkdir -p final_dist_rust/data/commands
+        cp -r everycli/data/commands/* final_dist_rust/data/commands/
+        if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          cp rust/target/release/everycli-rs.exe final_dist_rust/everycli-rs.exe
+        else
+          cp rust/target/release/everycli-rs final_dist_rust/everycli-rs
+        fi
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: everycli-rs-${{ matrix.os }}
+        path: final_dist_rust/
+
   release:
     name: Create Release
-    needs: build
+    needs: [build, build-rust]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
@@ -107,6 +143,12 @@ jobs:
           cp artifacts/everycli-windows-latest/everycli.ps1 release_assets/everycli.ps1
           # Shell wrapper (common for Linux/macOS)
           cp artifacts/everycli-ubuntu-latest/everycli release_assets/everycli
+          # Rust client (native, no Python required)
+          cp artifacts/everycli-rs-ubuntu-latest/everycli-rs release_assets/everycli-rs-linux
+          cp artifacts/everycli-rs-macos-latest/everycli-rs release_assets/everycli-rs-macos
+          cp artifacts/everycli-rs-windows-latest/everycli-rs.exe release_assets/everycli-rs-windows.exe
+          chmod +x release_assets/everycli-rs-linux release_assets/everycli-rs-macos
+          cd artifacts/everycli-rs-ubuntu-latest/data && zip -r ../../../release_assets/everycli-data.zip commands && cd -
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -120,13 +162,18 @@ jobs:
             release_assets/everycli-windows-lite.exe
             release_assets/everycli.ps1
             release_assets/everycli
+            release_assets/everycli-rs-linux
+            release_assets/everycli-rs-macos
+            release_assets/everycli-rs-windows.exe
+            release_assets/everycli-data.zip
           body: |
             🚀 **EveryCli v1.0.0**
-            
+
             Deux versions sont disponibles pour chaque système :
             - **Full** (~300Mo) : Tout inclus, fonctionne instantanément hors-ligne.
             - **Lite** (~50Mo) : Télécharge le modèle IA au premier lancement (~400Mo).
-            
+            - **Rust** (`everycli-rs-*` + `everycli-data.zip`) : binaire natif sans dépendance, recherche lexicale instantanée hors-ligne ; se connecte au daemon Python (Full/Lite) s'il tourne pour la recherche sémantique.
+
             *Note : La taille des versions Full a été réduite en excluant les bibliothèques GPU inutiles.*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

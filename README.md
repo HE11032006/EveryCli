@@ -26,10 +26,11 @@ complete before you run anything. It never executes a command for you.
 
 ### 🚀 Download & Install (Recommended)
 
-Two versions are available for each operating system on the [Releases](https://github.com/HE11032006/EveryCli/releases) page:
+Three versions are available for each operating system on the [Releases](https://github.com/HE11032006/EveryCli/releases) page:
 
 - **Full Version** (~300MB): **Ready to use.** Includes the AI model. Perfect for offline use or fast first-run experience.
 - **Lite Version** (~50MB): **Lightweight.** Will automatically download the AI model (~400MB) on the first search. Recommended if you have a good internet connection.
+- **Rust Version** (`everycli-rs-*` + `everycli-data.zip`, a few MB total): **Fastest cold start, no Python.** Native, dependency-free binary with instant lexical search. Automatically upgrades to full semantic search if a Full/Lite daemon is running locally. See [`rust/README.md`](rust/README.md) for usage.
 
 1. Download the version that fits your needs.
 2. (Optional) Setup for easy access:
