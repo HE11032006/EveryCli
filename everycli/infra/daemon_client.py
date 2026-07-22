@@ -53,17 +53,27 @@ class DaemonError:
 
 # ── Communication bas-niveau ──────────────────────────────────────────────────
 
-def _send_request(payload: dict) -> dict | None:
+# Le daemon ne charge le vrai modèle ML qu'à la première vraie requête (voir
+# semantic_matcher.py — un cache hit sur les embeddings du corpus fait
+# esquiver _load_model() au boot). Un ping/respawn réussi ne dit donc rien
+# sur l'état du modèle. Ce chargement différé coûte normalement ~3s, mais
+# peut prendre bien plus longtemps selon la machine (disque/antivirus
+# scannant les fichiers de torch pour la première fois) — bien au-delà du
+# TIMEOUT par défaut. Miroir du fix déjà appliqué côté client Rust.
+POST_RESPAWN_SEARCH_TIMEOUT = 30.0
+
+
+def _send_request(payload: dict, timeout: float = TIMEOUT) -> dict | None:
     """
     Ouvre une connexion TCP, envoie le payload JSON, lit la réponse.
     Retourne None si le daemon est injoignable ou timeout.
     """
     try:
-        with socket.create_connection((SOCKET_HOST, SOCKET_PORT), timeout=TIMEOUT) as sock:
+        with socket.create_connection((SOCKET_HOST, SOCKET_PORT), timeout=timeout) as sock:
             sock.sendall((json.dumps(payload, ensure_ascii=False) + "\n").encode("utf-8"))
             # Lecture ligne par ligne (la réponse tient sur une ligne)
             data = b""
-            sock.settimeout(TIMEOUT)
+            sock.settimeout(timeout)
             while not data.endswith(b"\n"):
                 chunk = sock.recv(4096)
                 if not chunk:
@@ -179,6 +189,7 @@ def search(query: str, top_k: int = 1, console=None) -> DaemonResult | DaemonErr
     payload = {"action": "search", "query": query, "top_k": top_k, "context": context}
 
     # 1. Ping rapide — si le daemon est absent on tente un respawn avant d'envoyer
+    just_respawned = False
     if not ping():
         (console or __import__("rich.console", fromlist=["Console"]).Console()).print(
             "  [yellow]⚡ Daemon absent — démarrage automatique...[/yellow]",
@@ -190,8 +201,10 @@ def search(query: str, top_k: int = 1, console=None) -> DaemonResult | DaemonErr
                 reason="Impossible de démarrer le daemon. Lance 'everycli daemon --start'.",
                 code="RESPAWN_FAILED",
             )
+        just_respawned = True
 
-    resp = _send_request(payload)
+    request_timeout = POST_RESPAWN_SEARCH_TIMEOUT if just_respawned else TIMEOUT
+    resp = _send_request(payload, timeout=request_timeout)
 
     if resp is None:
         return DaemonError(reason="Le daemon ne répond pas (timeout).", code="TIMEOUT")

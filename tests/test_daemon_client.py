@@ -11,6 +11,7 @@ import sys
 import pytest
 from unittest.mock import MagicMock, patch
 
+from everycli.infra import daemon_client
 from everycli.infra.daemon_client import (
     DAEMON_RUNNER_ARG,
     DaemonError,
@@ -118,6 +119,23 @@ class TestSearch:
                    return_value={"ok": True, "results": [FAKE_RESULT]}):
             result = search("test")
         assert isinstance(result, DaemonResult)
+
+    def test_uses_a_longer_timeout_for_the_first_search_after_successful_respawn(self):
+        # The daemon defers loading the actual ML model until the first
+        # real query (see semantic_matcher.py's fit()/match() split) — so a
+        # successful ping/respawn is not a signal that the model itself is
+        # ready. That first-query model load is normally ~3s but can take
+        # much longer, well past the module's default per-request TIMEOUT
+        # (1.0s) — governing this specific request by it would report a
+        # spurious failure even though the daemon is genuinely about to
+        # answer (mirrors the same fix already applied to the Rust client).
+        with patch("everycli.infra.daemon_client.ping", return_value=False), \
+             patch("everycli.infra.daemon_client._respawn_daemon", return_value=True), \
+             patch("everycli.infra.daemon_client._send_request",
+                   return_value={"ok": True, "results": [FAKE_RESULT]}) as mock_send:
+            search("test")
+        _, kwargs = mock_send.call_args
+        assert kwargs.get("timeout") == daemon_client.POST_RESPAWN_SEARCH_TIMEOUT
 
     def test_returns_daemon_error_on_timeout(self):
         with patch("everycli.infra.daemon_client.ping", return_value=True), \
