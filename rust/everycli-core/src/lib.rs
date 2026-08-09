@@ -333,6 +333,16 @@ fn parse_inline_list(value: &str) -> Vec<String> {
 /// would otherwise drop entirely — e.g. a paraphrase with zero token
 /// overlap with the corpus, which is exactly the case semantic search is
 /// meant to catch. [`search`] uses this internally too.
+///
+/// This is a HARD filter — scenarios outside the detected namespace are
+/// excluded entirely, with no way for a later scoring stage to reconsider
+/// them. That's appropriate for [`search`] (pure lexical, no semantic
+/// signal to safely relax the filter), but NOT for a hybrid lexical+semantic
+/// daemon: it would permanently hide any scenario whose namespace doesn't
+/// match a detected keyword — including user-added scenarios filed under a
+/// generic namespace (e.g. `everycli add`). For that case, use
+/// [`candidates_for_platform`] plus [`explicit_namespace`] as a soft scoring
+/// bonus instead of a hard filter.
 pub fn filter_candidates<'a>(
     corpus: &'a [Scenario],
     query: &str,
@@ -346,6 +356,18 @@ pub fn filter_candidates<'a>(
                 .as_deref()
                 .is_none_or(|scope| scenario.namespace == scope)
         })
+        .filter(|scenario| !scenario.commands.for_platform(platform).is_empty())
+        .collect()
+}
+
+/// Same as [`filter_candidates`] but WITHOUT namespace routing — only
+/// platform command availability. Meant for callers (like `everycli-daemon`)
+/// that want to score the full corpus and use [`explicit_namespace`] as a
+/// soft bonus rather than a hard exclusion, so scenarios in unexpected or
+/// user-defined namespaces (e.g. `everycli add`) stay reachable.
+pub fn candidates_for_platform<'a>(corpus: &'a [Scenario], platform: Platform) -> Vec<&'a Scenario> {
+    corpus
+        .iter()
         .filter(|scenario| !scenario.commands.for_platform(platform).is_empty())
         .collect()
 }
@@ -432,20 +454,29 @@ fn lexical_score(scenario: &Scenario, query_tokens: &HashSet<String>, query: &st
     raw_score / (raw_score + query_tokens.len() as f32 * 10.0)
 }
 
-fn explicit_namespace(query: &str) -> Option<String> {
+/// Detect an explicit ecosystem keyword in `query` (e.g. "docker", "git",
+/// "npm") as a hard-route hint. Exposed as a public, standalone signal —
+/// callers decide whether to use it as a hard filter ([`filter_candidates`])
+/// or a soft scoring bonus (recommended for any hybrid lexical+semantic
+/// search, see `everycli-daemon`).
+pub fn explicit_namespace(query: &str) -> Option<String> {
+    // Volontairement : seuls les alias fixes explicites font office de route
+    // stricte. Un fallback par tags (retiré ici) filtrait des candidats
+    // AVANT le scoring hybride, empêchant le reranking sémantique de voir
+    // des scénarios pertinents pour des paraphrases sans mot-clé explicite
+    // (ex: "annuler mon dernier commit" sans le mot "git") — exactement le
+    // cas d'usage que le sémantique est censé couvrir. Le laisser au
+    // sémantique plutôt qu'à une heuristique de sous-chaîne bruitée.
     const ALIASES: &[(&str, &[&str])] = &[
-        (
-            "docker_compose",
-            &["docker compose", "docker-compose", "compose"],
-        ),
-        ("bash_command", &["bash", "shell script", "shell"]),
         ("composer", &["composer", "php"]),
-        ("docker", &["docker"]),
+        ("docker_compose", &["docker compose", "docker-compose", "compose"]),
+        ("docker", &["docker", "container", "containers", "image", "images"]),
+        ("python", &["python", "pip", "pytest", "virtualenv", "venv", "powershell", "py"]),
+        ("npm", &["npm", "nodejs", "node", "package.json"]),
+        ("ssh", &["ssh", "scp", "sftp", "remote", "forward"]),
         ("git", &["git"]),
+        ("bash_command", &["bash", "shell script", "shell"]),
         ("linux", &["linux", "systemctl", "systemd"]),
-        ("npm", &["npm", "nodejs", "node"]),
-        ("python", &["python", "pip", "pytest", "virtualenv", "venv"]),
-        ("ssh", &["ssh", "scp", "sftp"]),
     ];
 
     let normalized = scope_text(query);
@@ -458,6 +489,9 @@ fn explicit_namespace(query: &str) -> Option<String> {
         })
         .map(|(namespace, _)| (*namespace).to_owned())
 }
+
+
+
 
 fn scope_text(value: &str) -> String {
     value
