@@ -196,6 +196,24 @@ pub fn load_corpus(data_dir: impl AsRef<Path>) -> Result<Vec<Scenario>, CoreErro
     Ok(scenarios)
 }
 
+/// Load the built-in corpus AND a user-defined corpus (e.g. `~/.everycli/commands`,
+/// written by `everycli add`), merged into one list. The user directory is
+/// OPTIONAL — missing or empty is not an error (a fresh install has none
+/// yet), unlike [`load_corpus`] on the built-in directory which does error
+/// on an empty/missing corpus.
+pub fn load_corpus_merged(
+    builtin_dir: impl AsRef<Path>,
+    user_dir: impl AsRef<Path>,
+) -> Result<Vec<Scenario>, CoreError> {
+    let mut scenarios = load_corpus(builtin_dir)?;
+    if user_dir.as_ref().is_dir()
+        && let Ok(user_scenarios) = load_corpus(user_dir)
+    {
+        scenarios.extend(user_scenarios);
+    }
+    Ok(scenarios)
+}
+
 fn parse_corpus_file(path: &Path) -> Result<Vec<Scenario>, CoreError> {
     let namespace = path
         .file_stem()

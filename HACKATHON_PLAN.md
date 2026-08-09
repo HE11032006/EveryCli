@@ -56,7 +56,7 @@ Tag d'arrivée visé : `v1.2.0`
 - [ ] Vrai mode téléchargement depuis une release GitHub (actuellement seul `-LocalSource` fonctionne — mode téléchargement écrit comme point d'extension mais pas implémenté, nécessite une vraie release publiée d'abord)
 - [ ] Taille de l'installation à vérifier (modèle float32 470MB + runtime ONNX + binaires) — lié à la décision de quantification de l'Axe 1
 
-### Linux — pas commencé
+### Linux - pas commencé
 
 - [ ] `install.sh` équivalent (même structure : bin/model/runtime/data dans `~/.local/share/everycli`, PATH via `~/.local/bin` ou modification de `.profile`)
 - [ ] Persistance : `systemd --user` (pas d'équivalent "dossier Démarrage" universel sur Linux, mais `systemd --user` ne devrait pas avoir le même problème de permissions que Task Scheduler — à confirmer)
@@ -72,7 +72,13 @@ Tag d'arrivée visé : `v1.2.0`
 - [ ] Ambiguïté d'extraction `everycli-data.zip` — obsolète une fois l'Axe 1 fait
 
 ## Axe 5 — Commande `everycli add`
-*(inchangé)*
+
+- [x] Dossier utilisateur séparé du corpus intégré (`~/.everycli/commands` / `%USERPROFILE%\.everycli\commands`) — jamais écrasé par une mise à jour, même résolution de chemin côté client ET daemon (`EVERYCLI_USER_DATA_DIR` overridable)
+- [x] `everycli-core::load_corpus_merged()` — fusionne corpus intégré + utilisateur, dossier utilisateur optionnel (pas d'erreur si absent/vide)
+- [x] `everycli add` (everycli-rs) : prompts interactifs (catégorie/namespace, description, commande, explication, tags, avertissement optionnel), génération d'id unique (slug namespace+description, suffixe numérique si collision contre corpus intégré+utilisateur), écriture YAML au format exact attendu par le parseur maison
+- [x] Reload best-effort du daemon après ajout (action `reload` déjà implémentée à l'Axe 1, enfin utilisée) — pas bloquant si daemon injoignable
+- [x] **Vérifié end-to-end** : commande ajoutée (`mes_scripts_pour_usage_personnel`) retrouvée en recherche via le daemon, au coude à coude avec des commandes du corpus intégré (scores 0.50-0.53), désambiguïsation déclenchée normalement — confirme que le bug de filtrage par namespace corrigé plus tôt (Axe 1) ne bloque pas les commandes utilisateur
+- [ ] Peaufinage à prévoir plus tard (Axe 8/finition) : validation des entrées plus stricte, commande par plateforme en option avancée, `everycli list`/`everycli remove` pour gérer les commandes ajoutées
 
 ## Axe 6 — Design / UI
 *(inchangé)*

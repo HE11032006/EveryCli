@@ -29,7 +29,7 @@ use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use everycli_core::{Platform, Scenario, candidates_for_platform, explicit_namespace, load_corpus, score as lexical_score};
+use everycli_core::{Platform, Scenario, candidates_for_platform, explicit_namespace, load_corpus_merged, score as lexical_score};
 use everycli_inference::{SemanticEncoder, cosine_similarity, init_runtime};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -52,6 +52,7 @@ const NAMESPACE_BONUS: f32 = 0.2;
 
 struct DaemonState {
     data_dir: PathBuf,
+    user_dir: PathBuf,
     model_dir: PathBuf,
     scenarios: Vec<Scenario>,
     /// Embeddings parallèles à `scenarios` (même index).
@@ -76,6 +77,22 @@ fn env_path(var: &str, default: &str) -> PathBuf {
     std::env::var(var)
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from(default))
+}
+
+/// Dossier des commandes ajoutées par l'utilisateur via `everycli add`
+/// (`~/.everycli/commands`), fusionné avec le corpus intégré — même
+/// résolution de chemin que le côté client (`everycli-rs`), pour que le
+/// daemon voie exactement les mêmes commandes perso que le repli local.
+fn user_data_dir() -> PathBuf {
+    if let Ok(path) = std::env::var("EVERYCLI_USER_DATA_DIR") {
+        return PathBuf::from(path);
+    }
+    let home = if cfg!(windows) {
+        std::env::var("USERPROFILE").unwrap_or_else(|_| ".".to_owned())
+    } else {
+        std::env::var("HOME").unwrap_or_else(|_| ".".to_owned())
+    };
+    Path::new(&home).join(".everycli").join("commands")
 }
 
 fn dylib_default_name() -> &'static str {
@@ -131,10 +148,11 @@ fn compute_cache_key(scenarios: &[Scenario], documents: &[String], model_path: &
 /// effort — un échec d'écriture du cache n'empêche pas le démarrage).
 fn build_corpus(
     data_dir: &Path,
+    user_dir: &Path,
     model_dir: &Path,
     encoder: &mut SemanticEncoder,
 ) -> Result<(Vec<Scenario>, Vec<Vec<f32>>, HashMap<String, usize>)> {
-    let scenarios = load_corpus(data_dir)?;
+    let scenarios = load_corpus_merged(data_dir, user_dir)?;
 
     // Construit le texte embeddé par scénario AVANT le calcul de la clé de
     // cache, précisément pour que cette logique (description+tags×3+
@@ -197,76 +215,6 @@ fn build_corpus(
 
     Ok((scenarios, embeddings, id_to_index))
 }
-
-// fn handle_search(state: &mut DaemonState, query: &str, top_k: usize) -> Result<Value> {
-//     if query.trim().is_empty() {
-//         return Ok(
-//             json!({"ok": false, "code": "EMPTY_QUERY", "error": "La requête ne peut pas être vide"}),
-//         );
-//     }
-//     if top_k < 1 {
-//         return Ok(json!({"ok": false, "code": "INVALID_TOP_K", "error": "top_k doit être positif"}));
-//     }
-
-//     let candidates = filter_candidates(&state.scenarios, query, state.platform);
-//     if candidates.is_empty() {
-//         return Ok(json!({"ok": true, "results": []}));
-//     }
-
-//     let query_matrix = state.encoder.encode(&[query])?;
-//     let query_vec: Vec<f32> = query_matrix.row(0).to_vec();
-
-//     let mut scored: Vec<(f32, &Scenario, String)> = candidates
-//         .into_iter()
-//         .map(|scenario| {
-//             let idx = state.id_to_index[&scenario.id];
-//             let semantic = cosine_similarity(&query_vec, &state.embeddings[idx]);
-//             let semantic_normalized = (semantic + 1.0) / 2.0; // -1..1 -> 0..1
-//             let lexical = lexical_score(scenario, query);
-//             let hybrid = LEXICAL_WEIGHT * lexical + SEMANTIC_WEIGHT * semantic_normalized;
-//             let command = scenario.commands.for_platform(state.platform).to_owned();
-//             (hybrid, scenario, command)
-//         })
-//         .collect();
-
-//     scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(Ordering::Equal));
-//     scored.truncate(top_k);
-
-//     let results: Vec<Value> = scored
-//         .into_iter()
-//         .map(|(score, scenario, command)| {
-//             json!({
-//                 "id": scenario.id,
-//                 "description": scenario.description,
-//                 "command": command,
-//                 "explanation": scenario.explanation,
-//                 "warning": scenario.warning,
-//                 "tags": scenario.tags,
-//                 "namespace": scenario.namespace,
-//                 "score": score,
-//             })
-//         })
-//         .collect();
-
-//         let (hybrid, scenario, command) = {
-//         let idx = state.id_to_index[&scenario.id];
-//         let semantic = cosine_similarity(&query_vec, &state.embeddings[idx]);
-//         let semantic_normalized = (semantic + 1.0) / 2.0;
-//         let lexical = lexical_score(scenario, query);
-//         let hybrid = LEXICAL_WEIGHT * lexical + SEMANTIC_WEIGHT * semantic_normalized;
-        
-//         if state.debug {
-//             eprintln!(
-//                 "[DEBUG] Scenario: {} | Lexical: {:.4} | Semantic: {:.4} (raw: {:.4}) | Hybrid: {:.4}",
-//                 scenario.id, lexical, semantic_normalized, semantic, hybrid
-//             );
-//         }
-        
-//         (hybrid, scenario, scenario.commands.for_platform(state.platform).to_owned())
-//     };
-
-//     Ok(json!({"ok": true, "results": results}))
-// }
 
 fn handle_search(state: &mut DaemonState, query: &str, top_k: usize) -> Result<Value> {
     if query.trim().is_empty() {
@@ -355,7 +303,7 @@ fn handle_connection(stream: TcpStream, state: &mut DaemonState) -> Result<()> {
             let action = request.get("action").and_then(Value::as_str).unwrap_or("");
             match action {
                 "ping" => json!({"ok": true, "pong": true}),
-                "reload" => match build_corpus(&state.data_dir, &state.model_dir, &mut state.encoder) {
+                "reload" => match build_corpus(&state.data_dir, &state.user_dir, &state.model_dir, &mut state.encoder) {
                     Ok((scenarios, embeddings, id_to_index)) => {
                         state.scenarios = scenarios;
                         state.embeddings = embeddings;
@@ -391,6 +339,7 @@ fn main() -> Result<()> {
         .and_then(|v| v.parse().ok())
         .unwrap_or(51821);
     let data_dir = env_path("EVERYCLI_DATA_DIR", "../everycli/data/commands");
+    let user_dir = user_data_dir();
     let model_dir = env_path("EVERYCLI_MODEL_DIR", "onnx-bench/models/everycli-minilm-ft");
     let dylib_path = env_path("EVERYCLI_ONNXRUNTIME_DYLIB", dylib_default_name());
     
@@ -401,8 +350,8 @@ fn main() -> Result<()> {
     eprintln!("Chargement de l'encodeur sémantique depuis {:?}...", model_dir);
     let mut encoder = SemanticEncoder::new(&model_dir)?;
 
-    eprintln!("Chargement du corpus depuis {:?}...", data_dir);
-    let (scenarios, embeddings, id_to_index) = build_corpus(&data_dir, &model_dir, &mut encoder)?;
+    eprintln!("Chargement du corpus depuis {:?} (+ commandes utilisateur dans {:?})...", data_dir, user_dir);
+    let (scenarios, embeddings, id_to_index) = build_corpus(&data_dir, &user_dir, &model_dir, &mut encoder)?;
     eprintln!("{} scénarios chargés.", scenarios.len());
 
     let debug = std::env::args().any(|arg| arg == "--debug");
@@ -410,6 +359,7 @@ fn main() -> Result<()> {
 
     let mut state = DaemonState {
         data_dir,
+        user_dir,
         model_dir,
         scenarios,
         embeddings,

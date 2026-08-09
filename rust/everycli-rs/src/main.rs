@@ -1,8 +1,10 @@
-use everycli_core::{Platform, Scenario, daemon, find_error_hint, load_corpus, search};
+use everycli_core::{Platform, Scenario, daemon, find_error_hint, load_corpus_merged, search};
 use std::env;
-use std::io::{self, Write};
+use std::io::{self, BufRead, BufReader, Write};
+use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
+use std::time::Duration;
 
 /// A search hit ready to render, regardless of whether it came from the
 /// daemon or the local lexical fallback.
@@ -50,8 +52,11 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
         print_help();
         return Ok(());
     }
+    if arguments[0] == "add" {
+        return cmd_add();
+    }
     if arguments.remove(0) != "search" {
-        return Err("expected the `search` command; run `everycli-rs --help`".to_owned());
+        return Err("expected the `search` or `add` command; run `everycli-rs --help`".to_owned());
     }
 
     let mut query = Vec::new();
@@ -139,7 +144,7 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
     }
     let query = query.join(" ");
     let data_dir = data_dir.unwrap_or_else(default_data_dir);
-    let corpus = load_corpus(&data_dir).map_err(|error| error.to_string())?;
+    let corpus = load_corpus_merged(&data_dir, user_data_dir()).map_err(|error| error.to_string())?;
 
     // Fetch extra candidates so disambiguation/interactive selection has
     // something to choose from, same as everycli.py's `search_top`.
@@ -420,6 +425,197 @@ fn default_data_dir() -> PathBuf {
         .join("commands")
 }
 
+/// Dossier des commandes ajoutées par l'utilisateur (`everycli add`),
+/// séparé du corpus intégré pour ne jamais être écrasé par une mise à jour
+/// (voir HACKATHON_PLAN.md, Axe 5). Même résolution de chemin que le
+/// daemon (`everycli-daemon::user_data_dir`).
+fn user_data_dir() -> PathBuf {
+    if let Ok(path) = env::var("EVERYCLI_USER_DATA_DIR") {
+        return PathBuf::from(path);
+    }
+    let home = if cfg!(windows) {
+        env::var("USERPROFILE").unwrap_or_else(|_| ".".to_owned())
+    } else {
+        env::var("HOME").unwrap_or_else(|_| ".".to_owned())
+    };
+    Path::new(&home).join(".everycli").join("commands")
+}
+
+/// `everycli add` — ajoute une commande personnalisée via une série de
+/// prompts, l'écrit dans le corpus utilisateur, et demande au daemon de
+/// recharger s'il tourne (best effort — pas bloquant s'il n'est pas
+/// joignable, la commande sera prise en compte au prochain démarrage).
+fn cmd_add() -> Result<(), String> {
+    let user_dir = user_data_dir();
+    std::fs::create_dir_all(&user_dir)
+        .map_err(|error| format!("impossible de creer {}: {error}", user_dir.display()))?;
+
+    println!("=== Ajouter une commande a EveryCli ===");
+
+    let namespace_input = prompt("Categorie / nom de fichier (ex: mes-scripts) : ")?;
+    let namespace = slugify(&namespace_input, 8);
+    if namespace.is_empty() {
+        return Err("la categorie ne peut pas etre vide".to_owned());
+    }
+
+    let description = prompt("Description (utilisee pour la recherche) : ")?;
+    if description.trim().is_empty() {
+        return Err("la description ne peut pas etre vide".to_owned());
+    }
+
+    let command = prompt("Commande : ")?;
+    if command.trim().is_empty() {
+        return Err("la commande ne peut pas etre vide".to_owned());
+    }
+
+    let explanation = prompt("Explication (affichee a l'utilisateur) : ")?;
+    let tags_raw = prompt("Tags, separes par des virgules (optionnel) : ")?;
+    let warning = prompt("Avertissement si commande risquee (optionnel, Entree pour ignorer) : ")?;
+
+    let data_dir = default_data_dir();
+    let existing = load_corpus_merged(&data_dir, &user_dir).unwrap_or_default();
+    let id = generate_unique_id(&namespace, &description, &existing);
+
+    let tags: Vec<String> = tags_raw
+        .split(',')
+        .map(|tag| tag.trim().to_owned())
+        .filter(|tag| !tag.is_empty())
+        .collect();
+
+    let file_path = user_dir.join(format!("{namespace}.yaml"));
+    append_scenario_yaml(&file_path, &id, &description, &command, &explanation, &tags, &warning)
+        .map_err(|error| format!("echec d'ecriture dans {}: {error}", file_path.display()))?;
+
+    println!();
+    println!("Commande ajoutee : {id}");
+    println!("  Fichier : {}", file_path.display());
+
+    match reload_daemon() {
+        Ok(()) => println!("Daemon recharge -- disponible immediatement."),
+        Err(_) => println!(
+            "Daemon non joignable -- sera pris en compte au prochain demarrage (ou lance `everycli search --no-daemon` pour l'utiliser des maintenant en local)."
+        ),
+    }
+
+    Ok(())
+}
+
+fn prompt(label: &str) -> Result<String, String> {
+    print!("{label}");
+    io::stdout().flush().ok();
+    let mut line = String::new();
+    io::stdin()
+        .read_line(&mut line)
+        .map_err(|error| error.to_string())?;
+    Ok(line.trim().to_owned())
+}
+
+/// Slug alphanumerique en minuscules, mots joints par underscore, limite a
+/// `max_words` mots pour garder des ids/noms de fichiers raisonnables.
+fn slugify(text: &str, max_words: usize) -> String {
+    text.chars()
+        .map(|character| {
+            if character.is_alphanumeric() {
+                character.to_ascii_lowercase()
+            } else {
+                ' '
+            }
+        })
+        .collect::<String>()
+        .split_whitespace()
+        .take(max_words)
+        .collect::<Vec<_>>()
+        .join("_")
+}
+
+/// Génère un id unique (namespace + slug de la description), en ajoutant un
+/// suffixe numérique en cas de collision avec le corpus existant (intégré +
+/// utilisateur).
+fn generate_unique_id(namespace: &str, description: &str, existing: &[Scenario]) -> String {
+    let slug = slugify(description, 5);
+    let base = if slug.is_empty() {
+        namespace.to_owned()
+    } else {
+        format!("{namespace}_{slug}")
+    };
+    if !existing.iter().any(|scenario| scenario.id == base) {
+        return base;
+    }
+    let mut suffix = 2;
+    loop {
+        let candidate = format!("{base}_{suffix}");
+        if !existing.iter().any(|scenario| scenario.id == candidate) {
+            return candidate;
+        }
+        suffix += 1;
+    }
+}
+
+/// Toujours entre guillemets, pour un round-trip fiable avec le parseur
+/// maison d'everycli-core (`clean_scalar`), qui ne gère pas l'echappement
+/// -- on remplace donc les guillemets internes plutôt que d'essayer de les
+/// echapper.
+fn yaml_scalar(value: &str) -> String {
+    format!("\"{}\"", value.replace('"', "'"))
+}
+
+fn append_scenario_yaml(
+    path: &Path,
+    id: &str,
+    description: &str,
+    command: &str,
+    explanation: &str,
+    tags: &[String],
+    warning: &str,
+) -> io::Result<()> {
+    use std::fs::OpenOptions;
+
+    let mut file = OpenOptions::new().create(true).append(true).open(path)?;
+
+    writeln!(file)?;
+    writeln!(file, "- id: {id}")?;
+    writeln!(file, "  description: {}", yaml_scalar(description))?;
+    if !tags.is_empty() {
+        let quoted_tags = tags
+            .iter()
+            .map(|tag| yaml_scalar(tag))
+            .collect::<Vec<_>>()
+            .join(", ");
+        writeln!(file, "  tags: [{quoted_tags}]")?;
+    }
+    writeln!(file, "  commands:")?;
+    writeln!(file, "    linux: {}", yaml_scalar(command))?;
+    writeln!(file, "    windows: {}", yaml_scalar(command))?;
+    writeln!(file, "  explanation: {}", yaml_scalar(explanation))?;
+    if !warning.trim().is_empty() {
+        writeln!(file, "  warning: {}", yaml_scalar(warning))?;
+    }
+    Ok(())
+}
+
+/// Demande au daemon de recharger le corpus (best effort -- si le daemon
+/// n'est pas joignable, l'appelant doit traiter ca comme un simple
+/// avertissement, pas une erreur bloquante).
+fn reload_daemon() -> Result<(), String> {
+    let mut stream = TcpStream::connect("127.0.0.1:51821").map_err(|error| error.to_string())?;
+    stream
+        .set_read_timeout(Some(Duration::from_secs(15)))
+        .ok();
+    writeln!(stream, "{{\"action\":\"reload\"}}").map_err(|error| error.to_string())?;
+
+    let mut reader = BufReader::new(stream);
+    let mut line = String::new();
+    reader
+        .read_line(&mut line)
+        .map_err(|error| error.to_string())?;
+
+    if line.contains("\"ok\":true") {
+        Ok(())
+    } else {
+        Err(line)
+    }
+}
+
 fn daemon_error_message(error: &everycli_core::daemon::DaemonError) -> String {
     use everycli_core::daemon::DaemonError;
     match error {
@@ -433,8 +629,9 @@ fn daemon_error_message(error: &everycli_core::daemon::DaemonError) -> String {
 fn print_help() {
     println!("EveryCli Rust fast path");
     println!("Usage: everycli-rs search <query> [options]");
+    println!("       everycli-rs add");
     println!();
-    println!("Options:");
+    println!("Search options:");
     println!("  --top N, -t N            Number of results (default 1)");
     println!("  --platform linux|windows|macos");
     println!("  --data DIR               Corpus directory override");
@@ -446,6 +643,9 @@ fn print_help() {
     println!("  --interactive, -i        Pick a result from a numbered list");
     println!("  --shell, -s              Print only the resolved command to stdout");
     println!("  --no-daemon              Skip the daemon and search the local corpus directly");
+    println!();
+    println!("'add' lance une serie de prompts pour ajouter une commande personnalisee");
+    println!("dans ~/.everycli/commands (ou %USERPROFILE%\\.everycli\\commands sur Windows).");
 }
 
 fn render_json(hits: &[DisplayHit]) -> String {
