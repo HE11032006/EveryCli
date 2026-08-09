@@ -38,15 +38,36 @@ def load_expected_ids(confusion_set_path: Path) -> set[str]:
     return {case["expected_id"] for case in data.get("cases", [])}
 
 
+# def scenario_pairs(scenario: Scenario) -> list[tuple[str, str]]:
+#     """Positive pairs for one scenario: different natural views of the same
+#     intent, so MultipleNegativesRankingLoss can pull them together. Mirrors
+#     the tags/command weighting already used for retrieval documents in
+#     everycli/infra/semantic_matcher.py::_scenario_to_document."""
+#     pairs = []
+#     description = scenario.description.strip()
+#     if not description:
+#         return pairs
+
+#     command = scenario.command.linux.strip()
+#     if command:
+#         pairs.append((description, command))
+
+#     explanation = scenario.explanation.strip()
+#     if explanation and explanation != description:
+#         pairs.append((description, explanation))
+
+#     tags_phrase = " ".join(scenario.tags).strip()
+#     if tags_phrase:
+#         pairs.append((tags_phrase, description))
+
+#     return pairs
+
 def scenario_pairs(scenario: Scenario) -> list[tuple[str, str]]:
-    """Positive pairs for one scenario: different natural views of the same
-    intent, so MultipleNegativesRankingLoss can pull them together. Mirrors
-    the tags/command weighting already used for retrieval documents in
-    everycli/infra/semantic_matcher.py::_scenario_to_document."""
+    """Positive pairs for one scenario."""
     pairs = []
     description = scenario.description.strip()
     if not description:
-        return pairs
+        return pairs  # ← Retourne une liste vide, pas None
 
     command = scenario.command.linux.strip()
     if command:
@@ -58,10 +79,11 @@ def scenario_pairs(scenario: Scenario) -> list[tuple[str, str]]:
 
     tags_phrase = " ".join(scenario.tags).strip()
     if tags_phrase:
-        pairs.append((tags_phrase, description))
+        pairs.append((description + " " + tags_phrase, description))
+        pairs.append((tags_phrase, command))
+        pairs.append((tags_phrase, tags_phrase))
 
     return pairs
-
 
 def build_pairs(scenarios: list[Scenario], excluded_ids: set[str]) -> list[tuple[str, str]]:
     pairs: list[tuple[str, str]] = []
