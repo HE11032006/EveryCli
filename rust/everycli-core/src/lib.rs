@@ -326,6 +326,38 @@ fn parse_inline_list(value: &str) -> Vec<String> {
         .collect()
 }
 
+/// Filter the corpus down to scenarios eligible for `query`/`platform`
+/// (explicit namespace routing + platform command availability), *without*
+/// requiring a positive lexical score. Exposed so a semantic reranking layer
+/// (see `everycli-daemon`) can score candidates that a pure lexical match
+/// would otherwise drop entirely — e.g. a paraphrase with zero token
+/// overlap with the corpus, which is exactly the case semantic search is
+/// meant to catch. [`search`] uses this internally too.
+pub fn filter_candidates<'a>(
+    corpus: &'a [Scenario],
+    query: &str,
+    platform: Platform,
+) -> Vec<&'a Scenario> {
+    let namespace = explicit_namespace(query);
+    corpus
+        .iter()
+        .filter(|scenario| {
+            namespace
+                .as_deref()
+                .is_none_or(|scope| scenario.namespace == scope)
+        })
+        .filter(|scenario| !scenario.commands.for_platform(platform).is_empty())
+        .collect()
+}
+
+/// Lexical score for a single scenario against `query` (0.0 when there is no
+/// overlap at all). Exposed alongside [`filter_candidates`] for the same
+/// reason — a semantic reranking layer needs the raw lexical component to
+/// build a hybrid score, not just the truncated top-k from [`search`].
+pub fn score(scenario: &Scenario, query: &str) -> f32 {
+    lexical_score(scenario, &tokens(query), query)
+}
+
 /// Retrieve the most relevant commands using a deterministic lexical score.
 /// A namespace explicitly mentioned in the query is a hard route, matching the
 /// Python engine's protection against cross-ecosystem confusion.
@@ -340,15 +372,8 @@ pub fn search(
         return Vec::new();
     }
 
-    let namespace = explicit_namespace(query);
-    let mut hits = corpus
-        .iter()
-        .filter(|scenario| {
-            namespace
-                .as_deref()
-                .is_none_or(|scope| scenario.namespace == scope)
-        })
-        .filter(|scenario| !scenario.commands.for_platform(platform).is_empty())
+    let mut hits = filter_candidates(corpus, query, platform)
+        .into_iter()
         .filter_map(|scenario| {
             let score = lexical_score(scenario, &query_tokens, query);
             (score > 0.0).then(|| SearchHit {

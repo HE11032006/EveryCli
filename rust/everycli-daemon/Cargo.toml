@@ -1,0 +1,16 @@
+[package]
+name = "everycli-daemon"
+version = "0.1.0"
+edition = "2024"
+
+# Serveur TCP Rust natif, remplace `everycli/infra/daemon_server.py`. Le
+# client Rust (everycli-core::daemon) n'a besoin d'AUCUNE modification :
+# le protocole JSON ligne-par-ligne sur 127.0.0.1:51821 est identique, et
+# "everycli-daemon" est déjà dans SIBLING_DAEMON_NAMES — le binaire compilé
+# ici est trouvé automatiquement par le mécanisme d'auto-respawn existant.
+
+[dependencies]
+everycli-core = { path = "../everycli-core" }
+everycli-inference = { path = "../everycli-inference" }
+serde_json = "1"
+anyhow = "1.0"
