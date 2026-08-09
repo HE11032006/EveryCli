@@ -11,7 +11,7 @@ import time
 
 from sentence_transformers import SentenceTransformer
 
-MODEL_NAME = "Karmelkke/everycli-minilm-ft"
+MODEL_NAME = "Michelhe/everycli-minilm-ft-boosted"
 ITERATIONS = 200
 QUERY = "comment annuler mon dernier commit"
 

@@ -8,7 +8,7 @@ Usage : python fetch_tokenizer.py   (depuis rust/onnx-bench/, venv activé)
 from pathlib import Path
 from transformers import AutoTokenizer
 
-MODEL_NAME = "Karmelkke/everycli-minilm-ft"
+MODEL_NAME = "Michelhe/everycli-minilm-ft-boosted"
 OUTPUT_DIR = Path("models/everycli-minilm-ft")
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
