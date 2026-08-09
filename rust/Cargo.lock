@@ -251,6 +251,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "everycli-daemon"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "everycli-core",
+ "everycli-inference",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "everycli-inference"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ndarray",
+ "ort",
+ "tokenizers",
+]
+
+[[package]]
 name = "everycli-rs"
 version = "0.1.0"
 dependencies = [
