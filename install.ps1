@@ -90,10 +90,45 @@ Write-Host "Enregistrement dans le dossier Demarrage..."
 $StartupDir = [Environment]::GetFolderPath("Startup")
 Copy-Item $HiddenLauncherPath "$StartupDir\EveryCliDaemon.vbs" -Force
 
-# --- 7. Demarrer maintenant (pas besoin d'attendre le prochain login) ---
+# --- 7. Demarrer maintenant et ATTENDRE que le daemon reponde vraiment ---
+# (plutot qu'un delai fixe arbitraire -- le calcul des embeddings du corpus
+# prend 4 a 6.5s mesures + le chargement du modele, un Start-Sleep de 2s
+# n'etait pas fiable pour garantir que le cache soit ecrit avant de dire
+# "installation terminee")
 Write-Host "Demarrage du daemon..."
 Start-Process -FilePath $LauncherPath -WindowStyle Hidden
-Start-Sleep -Seconds 2
+
+function Wait-ForDaemon {
+    param([int]$TimeoutSeconds = 30)
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        try {
+            $client = New-Object System.Net.Sockets.TcpClient
+            $client.Connect("127.0.0.1", 51821)
+            $stream = $client.GetStream()
+            $writer = New-Object System.IO.StreamWriter($stream)
+            $writer.AutoFlush = $true
+            $writer.WriteLine('{"action":"ping"}')
+            $reader = New-Object System.IO.StreamReader($stream)
+            $response = $reader.ReadLine()
+            $client.Close()
+            if ($response -like '*"pong":true*') {
+                return $true
+            }
+        } catch {
+            Start-Sleep -Milliseconds 500
+        }
+    }
+    return $false
+}
+
+Write-Host "Attente que le daemon soit pret (calcul des embeddings du corpus, jusqu'a ~30s au premier demarrage)..."
+if (Wait-ForDaemon -TimeoutSeconds 30) {
+    Write-Host "Daemon pret, cache d'embeddings calcule et ecrit sur disque." -ForegroundColor Green
+} else {
+    Write-Host "Le daemon ne repond pas encore apres 30s -- verifie les logs : $InstallDir\logs\daemon.log" -ForegroundColor Yellow
+    Write-Host "everycli fonctionnera quand meme en mode recherche locale en attendant."
+}
 
 Write-Host ""
 Write-Host "=== Installation terminee ===" -ForegroundColor Green
