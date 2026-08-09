@@ -45,7 +45,23 @@ Tag d'arrivée visé : `v1.2.0`
 **Poids hybrides actuels** : lexical 0.45 / sémantique 0.55 / bonus namespace +0.2 (tous arbitraires, point de départ raisonnable, pas calibrés finement). Les 8 échecs restants sur `confusion_set.yaml` sont des confusions fines entre commandes très proches (ex: `docker compose down` vs `stop`, `exec` vs `run`) — du vrai calibrage, plus des bugs de filtrage.
 
 ## Axe 2 — Distribution : `install.sh` / `install.ps1`
-*(inchangé, voir version précédente du plan)*
+
+### Windows — fait et vérifié end-to-end
+
+- [x] `scripts\windows\stage-release.ps1` : assemble un dossier `dist\windows` (binaires release + modèle ONNX + runtime + corpus) — sert de base au futur packaging CI
+- [x] `install.ps1` : copie dans `%LOCALAPPDATA%\EveryCli`, ajoute au PATH utilisateur (idempotent), démarre le daemon immédiatement
+- [x] Persistance au démarrage de session : **dossier Démarrage de Windows** (`shell:startup`) avec un lanceur VBScript invisible (pas de fenêtre console), PAS le Planificateur de tâches — `schtasks /create` a échoué avec "Accès refusé" sur la machine de test (restriction locale/de groupe), le dossier Démarrage ne demande aucune permission spéciale et est fonctionnellement équivalent pour ce besoin
+- [x] **Vérifié end-to-end depuis un état propre** : nouveau terminal, dossier hors du repo (`C:\Users\EULOGE`), `everycli search "..."` fonctionne — PATH + découverte automatique du daemon sibling + daemon déjà actif en arrière-plan depuis l'installation, résultats cohérents (scores 0.59/0.59/0.53 sur une vraie requête de désambiguïsation git)
+- [ ] Désinstallation propre (script ou commande dédiée) — pas encore fait
+- [ ] Vrai mode téléchargement depuis une release GitHub (actuellement seul `-LocalSource` fonctionne — mode téléchargement écrit comme point d'extension mais pas implémenté, nécessite une vraie release publiée d'abord)
+- [ ] Taille de l'installation à vérifier (modèle float32 470MB + runtime ONNX + binaires) — lié à la décision de quantification de l'Axe 1
+
+### Linux — pas commencé
+
+- [ ] `install.sh` équivalent (même structure : bin/model/runtime/data dans `~/.local/share/everycli`, PATH via `~/.local/bin` ou modification de `.profile`)
+- [ ] Persistance : `systemd --user` (pas d'équivalent "dossier Démarrage" universel sur Linux, mais `systemd --user` ne devrait pas avoir le même problème de permissions que Task Scheduler — à confirmer)
+
+### macOS — pas commencé, remis à plus tard (décision explicite de l'utilisateur)
 
 ## Axe 3 — Service en arrière-plan (fiable, persistant au reboot)
 *(inchangé)*
