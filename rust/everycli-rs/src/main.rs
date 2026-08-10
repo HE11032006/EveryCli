@@ -1,4 +1,5 @@
 use everycli_core::{Platform, Scenario, daemon, find_error_hint, load_corpus_merged, search};
+use owo_colors::OwoColorize;
 use std::env;
 use std::io::{self, BufRead, BufReader, Write};
 use std::net::TcpStream;
@@ -195,9 +196,10 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
         ordered = vec![ordered[choice].clone()];
     } else if !interactive && should_disambiguate(&ordered) {
         let choice = pick_disambiguation(&ordered);
-        if choice == 1 {
-            ordered.swap(0, 1);
-        }
+        // Répondre à la désambiguïsation doit donner UNE réponse nette, pas
+        // continuer d'afficher les autres candidats proches — sinon la
+        // question n'a servi à rien du point de vue de l'utilisateur.
+        ordered = vec![ordered[choice].clone()];
     }
 
     let shown_count = top_k.min(ordered.len());
