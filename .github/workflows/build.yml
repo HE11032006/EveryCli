@@ -36,7 +36,7 @@ jobs:
 
     - name: Download Model
       run: |
-        python -c "from sentence_transformers import SentenceTransformer; model = SentenceTransformer('Karmelkke/everycli-minilm-ft'); model.save('Karmelkke/everycli-minilm-ft')"
+        python -c "from sentence_transformers import SentenceTransformer; model = SentenceTransformer('Michelhe/everycli-minilm-ft-boosted'); model.save('Michelhe/everycli-minilm-ft-boosted')"
 
     - name: Validate corpus and run tests
       run: |
