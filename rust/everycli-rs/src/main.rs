@@ -72,6 +72,7 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
     let mut interactive = false;
     let mut shell = false;
     let mut no_daemon = false;
+    let mut debug = false;
     let mut index = 0;
 
     while index < arguments.len() {
@@ -108,6 +109,7 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
             "--interactive" | "-i" => interactive = true,
             "--shell" | "-s" => shell = true,
             "--no-daemon" => no_daemon = true,
+            "--debug" => debug = true,
             "--help" | "-h" => {
                 print_help();
                 return Ok(());
@@ -194,15 +196,18 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
     if interactive && ordered.len() > 1 {
         let choice = pick_interactive(&ordered).unwrap_or(0);
         ordered = vec![ordered[choice].clone()];
-    } else if !interactive && should_disambiguate(&ordered) {
-        let choice = pick_disambiguation(&ordered);
-        // Répondre à la désambiguïsation doit donner UNE réponse nette, pas
-        // continuer d'afficher les autres candidats proches — sinon la
-        // question n'a servi à rien du point de vue de l'utilisateur.
-        ordered = vec![ordered[choice].clone()];
     }
 
-    let shown_count = top_k.min(ordered.len());
+    // Quand les deux meilleurs scores sont trop proches pour trancher avec
+    // confiance, on ne bloque plus avec une question forcee (l'outil ne
+    // doit pas decider a la place de l'utilisateur) -- on montre plusieurs
+    // resultats, meme format que --top N, et l'utilisateur choisit en
+    // lisant. Le mode -s (shell) fait exception : il doit toujours rendre
+    // une seule commande deterministe pour rester utilisable en script.
+    let ambiguous = !interactive && !shell && should_disambiguate(&ordered);
+    let effective_top_k = if ambiguous { top_k.max(2) } else { top_k };
+
+    let shown_count = effective_top_k.min(ordered.len());
     let shown = &ordered[..shown_count];
 
     // --shell is a machine-readable protocol: stdout may only ever carry the
@@ -219,22 +224,24 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
     } else if json {
         println!("{}", render_json(shown));
     } else {
-        for (index, hit) in shown.iter().enumerate() {
-            if index > 0 {
-                println!();
-            }
-            println!("{} | {}", hit.namespace, hit.id);
-            println!("> {}", hit.command);
-            println!("  {}", hit.explanation);
-            println!("  score {:.2}", hit.score);
-        }
+        render_human(shown, &query, debug);
 
         if let Some(message) = &error_message
             && let Some(first) = shown.first()
             && let Some(hint) = find_hint_for(&corpus, first, message)
         {
-            println!("  cause: {}", hint.cause);
-            println!("  fix:   {}", hint.fix);
+            use owo_colors::Stream::Stdout;
+            println!();
+            println!(
+                "  {} {}",
+                "cause:".if_supports_color(Stdout, |t| t.yellow().to_string()),
+                hint.cause
+            );
+            println!(
+                "  {} {}",
+                "fix:  ".if_supports_color(Stdout, |t| t.green().to_string()),
+                hint.fix
+            );
         }
 
         if let Some(first) = shown.first() {
@@ -308,15 +315,6 @@ fn pick_interactive(hits: &[DisplayHit]) -> Option<usize> {
     io::stdin().read_line(&mut answer).ok()?;
     let choice: usize = answer.trim().parse().ok()?;
     (choice >= 1 && choice <= hits.len()).then_some(choice - 1)
-}
-
-fn pick_disambiguation(hits: &[DisplayHit]) -> usize {
-    eprintln!("J'hesite entre deux commandes tres proches. Quelle est ton intention ?");
-    eprintln!("  1. {} > {}", hits[0].explanation, hits[0].command);
-    eprintln!("  2. {} > {}", hits[1].explanation, hits[1].command);
-    let mut answer = String::new();
-    let _ = io::stdin().read_line(&mut answer);
-    if answer.trim() == "2" { 1 } else { 0 }
 }
 
 fn clipboard_copy(text: &str) -> bool {
@@ -645,9 +643,90 @@ fn print_help() {
     println!("  --interactive, -i        Pick a result from a numbered list");
     println!("  --shell, -s              Print only the resolved command to stdout");
     println!("  --no-daemon              Skip the daemon and search the local corpus directly");
+    println!("  --debug                  Show scores in human-readable output (always in --json)");
     println!();
     println!("'add' lance une serie de prompts pour ajouter une commande personnalisee");
     println!("dans ~/.everycli/commands (ou %USERPROFILE%\\.everycli\\commands sur Windows).");
+}
+
+fn render_human(shown: &[DisplayHit], query: &str, debug: bool) {
+    use owo_colors::Stream::Stdout;
+
+    if shown.len() == 1 {
+        let hit = &shown[0];
+        println!();
+        println!(
+            "{} {} {} {}",
+            "✓".if_supports_color(Stdout, |t| t.green().bold().to_string()),
+            hit.namespace.if_supports_color(Stdout, |t| t.dimmed().to_string()),
+            "·".if_supports_color(Stdout, |t| t.dimmed().to_string()),
+            hit.id.if_supports_color(Stdout, |t| t.bold().to_string())
+        );
+        println!();
+        println!(
+            "  {}",
+            hit.command.if_supports_color(Stdout, |t| t.cyan().to_string())
+        );
+        println!();
+        println!("  {}", hit.explanation);
+        if !hit.warning.is_empty() {
+            println!();
+            println!(
+                "  {} {}",
+                "⚠".if_supports_color(Stdout, |t| t.yellow().bold().to_string()),
+                hit.warning.if_supports_color(Stdout, |t| t.yellow().to_string())
+            );
+        }
+        if debug {
+            println!();
+            println!(
+                "  {}",
+                format!("score {:.4}", hit.score)
+                    .if_supports_color(Stdout, |t| t.dimmed().to_string())
+            );
+        }
+    } else {
+        println!();
+        println!(
+            "{} pour \"{}\"",
+            format!("{} resultats", shown.len())
+                .if_supports_color(Stdout, |t| t.bold().to_string()),
+            query
+        );
+        for (index, hit) in shown.iter().enumerate() {
+            println!();
+            let number = format!("{}.", index + 1);
+            if debug {
+                println!(
+                    "{} {}  {}",
+                    number.if_supports_color(Stdout, |t| t.bold().to_string()),
+                    hit.id.if_supports_color(Stdout, |t| t.bold().to_string()),
+                    format!("{:.2}", hit.score).if_supports_color(Stdout, |t| t.dimmed().to_string())
+                );
+            } else {
+                println!(
+                    "{} {}",
+                    number.if_supports_color(Stdout, |t| t.bold().to_string()),
+                    hit.id.if_supports_color(Stdout, |t| t.bold().to_string())
+                );
+            }
+            println!(
+                "   {} {}",
+                ">".if_supports_color(Stdout, |t| t.dimmed().to_string()),
+                hit.command
+                    .if_supports_color(Stdout, |t| t.cyan().bold().to_string())
+            );
+            println!("   {}", hit.explanation);
+            if !hit.warning.is_empty() {
+                println!(
+                    "   {} {}",
+                    "⚠".if_supports_color(Stdout, |t| t.yellow().bold().to_string()),
+                    hit.warning.if_supports_color(Stdout, |t| t.yellow().to_string())
+                );
+            }
+        }
+    }
+    println!();
 }
 
 fn render_json(hits: &[DisplayHit]) -> String {

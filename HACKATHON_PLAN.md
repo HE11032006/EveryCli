@@ -81,7 +81,15 @@ Tag d'arrivée visé : `v1.2.0`
 - [ ] Peaufinage à prévoir plus tard (Axe 8/finition) : validation des entrées plus stricte, commande par plateforme en option avancée, `everycli list`/`everycli remove` pour gérer les commandes ajoutées
 
 ## Axe 6 — Design / UI
-*(inchangé)*
+
+- [x] Bug corrigé : après désambiguïsation, l'app affichait toujours 2-3 résultats au lieu d'une réponse nette
+- [x] Suppression du blocage par question forcée (1 ou 2 ?) quand les scores sont proches — remplacé par un affichage informatif (même format que `--top N`), l'utilisateur choisit en lisant plutôt que l'outil ne décide à sa place (exception : mode `--shell`, qui garde une sortie déterministe unique pour rester utilisable en script)
+- [x] Ajout de `owo-colors` (feature `supports-colors`) : désactivation automatique si sortie non-terminal ou `NO_COLOR` défini (recommandation clig.dev)
+- [x] Deux formats distincts : réponse unique (✓ vert + commande cyan/gras) vs liste de plusieurs résultats (numérotée, commandes cyan/gras)
+- [x] Score caché par défaut, visible seulement avec `--debug` (nouveau flag) ou `--json`
+- [x] **Vérifié** end-to-end : cas "1 résultat" (docker) et cas "plusieurs résultats proches" (git) confirmés fonctionnels par l'utilisateur
+- [ ] Mode `--interactive` : upgrade vers une vraie sélection au clavier (`inquire` ou `dialoguer`) au lieu de taper un numéro + Entrée — pas fait ce soir, identifié comme prochaine amélioration
+- [ ] Décision explicite : PAS de TUI plein écran (`ratatui`) pour le mode par défaut — casserait le scripting/pipe (`--json`, `--shell`) et l'usage "tape, obtiens, repars". Resterait une option pour un futur mode séparé (`everycli explore` ?), pas une priorité
 
 ## Axe 7 — Site web de présentation
 *(inchangé)*
