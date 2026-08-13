@@ -7,57 +7,39 @@ export default function CommandsReferencePage() {
     <DocPage
       eyebrow="003 // REFERENCE"
       title="CLI COMMANDS"
-      description="The complete command surface. Every command accepts --json for structured output and --help for usage."
+      description="The current EveryCli command surface for search, safe planning, local corpus additions, and daemon control."
       href="/docs/reference/commands"
     >
       <DocH2>Commands</DocH2>
       <DocTable
         head={["Command", "Description"]}
         rows={[
-          [<DocCode key="c">forge init &lt;name&gt;</DocCode>, "Scaffold a new project from a template."],
-          [<DocCode key="c">forge dev</DocCode>, "Start a hot-reloading local dev server."],
-          [<DocCode key="c">forge build</DocCode>, "Produce a deterministic build artifact."],
-          [<DocCode key="c">forge test</DocCode>, "Run the project test suites."],
-          [<DocCode key="c">forge deploy</DocCode>, "Deploy the current artifact to a target."],
-          [<DocCode key="c">forge config</DocCode>, "Inspect resolved configuration."],
-          [<DocCode key="c">forge upgrade</DocCode>, "Update the FORGE binary in place."],
+          [<DocCode key="search">everycli search &lt;query&gt;</DocCode>, "Find command candidates from a natural-language task."],
+          [<DocCode key="plan">everycli plan &lt;query&gt;</DocCode>, "Prepare a corpus-grounded command with risk and preflight checks."],
+          [<DocCode key="daemon">everycli daemon</DocCode>, "Start, stop, inspect, or read logs from the local daemon."],
+          [<DocCode key="add">everycli add</DocCode>, "Interactively add a command scenario to the local corpus."],
         ]}
       />
 
-      <DocH2>Global flags</DocH2>
+      <DocH2>Search options</DocH2>
       <DocTable
-        head={["Flag", "Description"]}
+        head={["Option", "Description"]}
         rows={[
-          [<DocCode key="c">--json</DocCode>, "Emit machine-readable JSON instead of formatted text."],
-          [<DocCode key="c">--env &lt;name&gt;</DocCode>, "Load the named environment overrides."],
-          [<DocCode key="c">--cwd &lt;path&gt;</DocCode>, "Run as if invoked from the given directory."],
-          [<DocCode key="c">--verbose</DocCode>, "Print detailed diagnostic logs."],
-          [<DocCode key="c">--help</DocCode>, "Show usage for a command."],
+          [<DocCode key="top">--top, -t</DocCode>, "Return a chosen number of command candidates."],
+          [<DocCode key="env">--env</DocCode>, "Filter candidates by environment, such as git or docker."],
+          [<DocCode key="interactive">--interactive, -i</DocCode>, "Choose among returned candidates interactively."],
+          [<DocCode key="copy">--copy, -c</DocCode>, "Copy the selected command to the clipboard."],
+          [<DocCode key="no-daemon">--no-daemon</DocCode>, "Force direct local search without the daemon."],
         ]}
       />
 
-      <DocH2>forge build</DocH2>
-      <DocP>Build accepts these command-specific options:</DocP>
-      <CodeBlock
-        code={
-          "forge build [options]\n\n" +
-          "  --release        optimized, minified production build\n" +
-          "  --watch          rebuild on file changes\n" +
-          "  --out <dir>      override the output directory\n" +
-          "  --no-cache       ignore the local build cache"
-        }
-        label="usage"
-      />
+      <DocH2>Plan</DocH2>
+      <DocP>The planner never runs a shell command. Use <DocCode>--local</DocCode> to force the local planner.</DocP>
+      <CodeBlock code={'everycli plan "remove unused Docker images safely" --local'} label="usage" />
 
-      <DocH2>forge deploy</DocH2>
+      <DocH2>Daemon</DocH2>
       <CodeBlock
-        code={
-          "forge deploy [options]\n\n" +
-          "  --target <name>  edge | containers | static\n" +
-          "  --preview        deploy to an isolated preview URL\n" +
-          "  --region <id>    override the deploy region\n" +
-          "  rollback --to <id>   revert to a previous deploy"
-        }
+        code={"everycli daemon --start\neverycli daemon --status\neverycli daemon --logs\neverycli daemon --stop"}
         label="usage"
       />
     </DocPage>
