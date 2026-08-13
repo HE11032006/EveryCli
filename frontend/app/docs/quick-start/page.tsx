@@ -7,37 +7,29 @@ export default function QuickStartPage() {
     <DocPage
       eyebrow="001 // GET_STARTED"
       title="QUICK START"
-      description="Go from an empty folder to a deployed application in three commands."
+      description="Find a command, inspect it, and prepare a safer multi-step action from your terminal."
       href="/docs/quick-start"
     >
-      <DocH2>1. Scaffold a project</DocH2>
+      <DocH2>1. Search by intent</DocH2>
+      <DocP>Describe the task rather than trying to recall the exact syntax:</DocP>
+      <CodeBlock code={'python -m everycli.everycli search "remove unused Docker images"'} label="step_01" shell />
+
+      <DocH2>2. Narrow the results when needed</DocH2>
       <DocP>
-        Create a new project from a template. The <DocCode>service</DocCode> template sets up a
-        production-ready HTTP service with tests and a CI workflow.
+        Ask for more candidates or restrict the search to an environment with <DocCode>--top</DocCode>
+        and <DocCode>--env</DocCode>.
       </DocP>
-      <CodeBlock code={"forge init my-app --template=service\ncd my-app"} label="step_01" shell />
+      <CodeBlock code={'python -m everycli.everycli search "undo my last commit" --env git --top 3'} label="step_02" shell />
 
-      <DocH2>2. Build</DocH2>
-      <DocP>
-        Produce a deterministic release artifact. The build is content-hashed, so identical source
-        always yields the same output.
-      </DocP>
-      <CodeBlock code={"forge build --release"} label="step_02" shell />
+      <DocH2>3. Plan before you run</DocH2>
+      <DocP>Sentinel returns a command, its risk level, and checks to make before execution.</DocP>
+      <CodeBlock code={'python -m everycli.everycli plan "remove unused Docker images safely" --local'} label="step_03" shell />
 
-      <DocH2>3. Ship</DocH2>
-      <DocP>Deploy the artifact to your default target:</DocP>
-      <CodeBlock code={"forge deploy --target=edge"} label="step_03" shell />
-
-      <DocH2>The whole loop</DocH2>
-      <CodeBlock
-        code={"forge init my-app --template=service\ncd my-app\nforge build --release\nforge deploy --target=edge"}
-        label="bash"
-        shell
-      />
+      <DocH2>Keep the daemon warm</DocH2>
+      <CodeBlock code={"python -m everycli.everycli daemon --start\npython -m everycli.everycli daemon --status"} label="bash" shell />
 
       <DocNote>
-        Run <DocCode>forge dev</DocCode> while developing for a hot-reloading local server that
-        mirrors the production build pipeline.
+        EveryCli finds and explains commands. Review the result yourself; a search is not an automatic execution.
       </DocNote>
     </DocPage>
   )
