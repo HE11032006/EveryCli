@@ -31,3 +31,5 @@ fix_yaml2.py
 # Onnx runtime (téléchargé par l'utilisateur)
 rust/onnx-bench/runtime/
 rust/onnx-bench/models/
+frontend/.codex-write-test
+frontend/tsconfig.tsbuildinfo
