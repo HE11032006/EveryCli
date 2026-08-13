@@ -1,80 +1,44 @@
 import type { Metadata, Viewport } from 'next'
-import { JetBrains_Mono } from 'next/font/google'
 import { GeistPixelGrid } from 'geist/font/pixel'
 import { ThemeProvider } from '@/components/theme-provider'
-
+import { BackgroundSnippets } from '@/components/ui/background-snippets'
 import './globals.css'
 
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-})
-
 export const metadata: Metadata = {
-  title: 'FORGE // Scaffold. Build. Ship. — The zero-config developer CLI',
-  description:
-    'FORGE is a zero-config command-line tool that scaffolds projects, runs deterministic builds, and ships to any target from a single binary. Read the docs: installation, quick start, guides, CLI reference, examples, and troubleshooting.',
-  keywords: [
-    'forge cli',
-    'developer cli tool',
-    'zero config build tool',
-    'deterministic builds',
-    'deploy cli',
-    'project scaffolding',
-    'ci cd cli',
-    'developer documentation',
-    'command line tool',
-    'build and deploy',
-  ],
-  authors: [{ name: 'FORGE' }],
-  creator: 'FORGE',
-  publisher: 'FORGE',
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
-  },
+  title: 'EveryCli — Describe the task. Get the command.',
+  description: 'EveryCli is an AI-powered command-line assistant that turns plain-language intent into commands for Git, Docker, and Linux.',
+  keywords: ['everycli', 'natural language cli', 'git assistant', 'docker assistant', 'developer documentation'],
+  authors: [{ name: 'EveryCli' }],
+  creator: 'EveryCli',
+  publisher: 'EveryCli',
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    title: 'FORGE // Scaffold. Build. Ship.',
-    description:
-      'A zero-config developer CLI that scaffolds projects, runs deterministic builds, and ships to any target. Full documentation included.',
-    siteName: 'FORGE',
+    title: 'EveryCli — Describe the task. Get the command.',
+    description: 'An AI-powered command-line assistant for Git, Docker, and Linux.',
+    siteName: 'EveryCli',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'FORGE // Scaffold. Build. Ship.',
-    description:
-      'A zero-config developer CLI: scaffold, build deterministically, and deploy to any target from a single binary.',
-    creator: '@forge',
+    title: 'EveryCli — Describe the task. Get the command.',
+    description: 'An AI-powered command-line assistant for Git, Docker, and Linux.',
   },
-  category: 'technology',
 }
 
 export const viewport: Viewport = {
-  themeColor: '#F2F1EA',
+  themeColor: '#0a0908',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
 }
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${jetbrainsMono.variable} ${GeistPixelGrid.variable}`} suppressHydrationWarning>
-      <body className="font-mono antialiased">
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
-          {children}
+    <html lang="en" className={GeistPixelGrid.variable} suppressHydrationWarning>
+      <body className="relative min-h-screen font-mono antialiased">
+        <BackgroundSnippets />
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+          <div className="relative z-10">{children}</div>
         </ThemeProvider>
       </body>
     </html>
