@@ -1,18 +1,18 @@
 import type { Metadata } from "next"
-import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { DocsShell } from "@/components/docs/docs-shell"
+import { DocsNavbar } from "@/components/docs/docs-navbar"
 
 export const metadata: Metadata = {
-  title: "Documentation // FORGE",
+  title: "Documentation // EveryCli",
   description:
-    "FORGE documentation: installation, quick start, guides, CLI reference, code examples, and troubleshooting.",
+    "EveryCli documentation: installation, quick start, guides, CLI reference, code examples, and troubleshooting.",
 }
 
 export default function DocsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen dot-grid-bg flex flex-col">
-      <Navbar />
+    <div className="min-h-screen flex flex-col">
+      <DocsNavbar />
       <div className="flex-1">
         <DocsShell>{children}</DocsShell>
       </div>
