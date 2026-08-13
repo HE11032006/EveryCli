@@ -8,7 +8,7 @@ export function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
 
   return (
-    <nav aria-label="Documentation" className="flex flex-col gap-8">
+    <nav aria-label="Documentation" className="flex flex-col gap-7">
       {docsNav.map((section) => (
         <div key={section.label} className="flex flex-col gap-2">
           <div className="flex items-center gap-2 mb-1">
@@ -19,7 +19,7 @@ export function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
               {section.label}
             </span>
           </div>
-          <ul className="flex flex-col border-l-2 border-border">
+          <ul className="flex flex-col border-l border-white/10">
             {section.items.map((item) => {
               const active = pathname === item.href
               return (
@@ -29,7 +29,7 @@ export function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
                     onClick={onNavigate}
                     className={`block -ml-0.5 border-l-2 pl-3 py-1.5 text-xs font-mono transition-colors duration-150 ${
                       active
-                        ? "border-[#ea580c] text-foreground font-bold"
+                        ? "border-[#f05243] bg-[#f05243]/10 text-foreground font-bold"
                         : "border-transparent text-muted-foreground hover:text-foreground hover:border-foreground/40"
                     }`}
                   >
