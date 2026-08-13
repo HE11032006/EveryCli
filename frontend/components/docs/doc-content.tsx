@@ -1,8 +1,16 @@
 import { Info } from "lucide-react"
 
+function headingId(children: React.ReactNode) {
+  if (typeof children !== "string") return undefined
+  return children
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+}
+
 export function DocH2({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mt-6 text-lg font-mono font-bold tracking-widest uppercase text-foreground">
+    <h2 id={headingId(children)} className="mt-6 scroll-mt-24 text-lg font-mono font-bold tracking-widest uppercase text-foreground">
       {children}
     </h2>
   )
