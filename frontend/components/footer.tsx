@@ -1,44 +1,24 @@
-"use client"
-
-import { motion } from "framer-motion"
 import { site } from "@/lib/site"
 
-const ease = [0.22, 1, 0.36, 1] as const
+const licenseUrl = `${site.github}/blob/main/LICENSE.md`
 
 export function Footer() {
   return (
-    <motion.footer
-      initial={{ opacity: 0 }}
-      whileInView={{ opacity: 1 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.6, ease }}
-      className="w-full border-t-2 border-foreground px-6 py-8 lg:px-12"
-    >
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-mono tracking-[0.15em] uppercase font-bold text-foreground">
-            {site.name}
-          </span>
-          <span className="text-[10px] font-mono tracking-widest text-muted-foreground">
-            {`(C) 2026 ${site.name} CLI // v${site.version}`}
-          </span>
+    <footer className="border-t border-white/10 px-6 py-12 lg:px-12 lg:py-16">
+      <div className="mx-auto flex max-w-7xl flex-col gap-8 text-sm text-white/45 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="font-medium text-white/90">EveryCli</p>
+          <p className="mt-2">
+            Built by <span className="text-white/80">Euloge</span> &amp; <span className="text-white/80">Karmel</span>
+          </p>
         </div>
-        <div className="flex items-center gap-6">
-          {["Privacy", "Terms", "Status", "GitHub"].map((link, i) => (
-            <motion.a
-              key={link}
-              href="#"
-              initial={{ opacity: 0, y: 6 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 + i * 0.06, duration: 0.4, ease }}
-              className="text-[10px] font-mono tracking-widest uppercase text-muted-foreground hover:text-foreground transition-colors duration-200"
-            >
-              {link}
-            </motion.a>
-          ))}
-        </div>
+        <nav aria-label="Footer navigation" className="flex flex-wrap items-center gap-x-7 gap-y-3 text-sm">
+          <a href={site.github} target="_blank" rel="noreferrer" className="transition-colors hover:text-white">GitHub</a>
+          <a href={licenseUrl} target="_blank" rel="noreferrer" className="transition-colors hover:text-white">MIT License</a>
+          <span title="Privacy policy coming soon" className="cursor-default text-white/30">Privacy</span>
+          <span title="Terms coming soon" className="cursor-default text-white/30">Terms</span>
+        </nav>
       </div>
-    </motion.footer>
+    </footer>
   )
 }
