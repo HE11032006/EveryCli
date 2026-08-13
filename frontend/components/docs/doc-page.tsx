@@ -19,7 +19,7 @@ export function DocPage({ eyebrow, title, description, href, children }: DocPage
     <article className="mx-auto max-w-3xl">
       {/* Eyebrow */}
       <div className="flex items-center gap-3 mb-6">
-        <span className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#ea580c]">
+        <span className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#f05243]">
           {eyebrow}
         </span>
         <div className="flex-1 border-t border-border" />
@@ -33,17 +33,17 @@ export function DocPage({ eyebrow, title, description, href, children }: DocPage
         {description}
       </p>
 
-      <div className="my-8 border-t-2 border-foreground" />
+      <div className="my-8 border-t border-white/15" />
 
       {/* Content */}
-      <div className="doc-content flex flex-col gap-6">{children}</div>
+      <div data-doc-content className="doc-content flex flex-col gap-6">{children}</div>
 
       {/* Prev / Next */}
-      <div className="mt-16 grid grid-cols-1 gap-4 border-t-2 border-foreground pt-8 sm:grid-cols-2">
+      <div className="mt-14 grid grid-cols-1 gap-3 border-t border-white/15 pt-7 sm:grid-cols-2">
         {prev ? (
           <Link
             href={prev.href}
-            className="group flex flex-col gap-1 border-2 border-foreground p-4 hover:bg-foreground hover:text-background transition-colors"
+            className="group flex min-h-24 flex-col gap-1 border border-white/15 p-4 hover:border-[#f05243]/70 hover:bg-white/[0.035] transition-colors"
           >
             <span className="flex items-center gap-1.5 text-[10px] font-mono tracking-widest uppercase text-muted-foreground group-hover:text-background/70">
               <ArrowLeft size={12} strokeWidth={2} /> Previous
@@ -56,7 +56,7 @@ export function DocPage({ eyebrow, title, description, href, children }: DocPage
         {next ? (
           <Link
             href={next.href}
-            className="group flex flex-col gap-1 border-2 border-foreground p-4 text-right hover:bg-foreground hover:text-background transition-colors sm:items-end"
+            className="group flex min-h-24 flex-col gap-1 border border-white/15 p-4 text-right hover:border-[#f05243]/70 hover:bg-white/[0.035] transition-colors sm:items-end"
           >
             <span className="flex items-center gap-1.5 text-[10px] font-mono tracking-widest uppercase text-muted-foreground group-hover:text-background/70">
               Next <ArrowRight size={12} strokeWidth={2} />
