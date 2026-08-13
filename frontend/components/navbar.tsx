@@ -1,36 +1,31 @@
 "use client"
 
 import Link from "next/link"
-import { Hexagon } from "lucide-react"
 import { motion } from "framer-motion"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { site } from "@/lib/site"
 
 const NAV_LINKS = [
+  { label: "Why", href: "/#why" },
+  { label: "Features", href: "/#features" },
+  { label: "Contribute", href: "/#contribute" },
   { label: "Docs", href: "/docs" },
-  { label: "Guides", href: "/docs/guides/project-structure" },
-  { label: "Reference", href: "/docs/reference/commands" },
-  { label: "Examples", href: "/docs/examples" },
 ]
 
 export function Navbar() {
   return (
-    <motion.div
+    <motion.header
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="w-full px-4 pt-4 lg:px-6 lg:pt-6"
+      className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#0a0908]/90 backdrop-blur-md"
     >
-      <nav className="w-full border border-foreground/20 bg-background/80 backdrop-blur-sm px-6 py-3 lg:px-8">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <Hexagon size={16} strokeWidth={1.5} />
-            <span className="text-xs font-mono tracking-[0.15em] uppercase font-bold">
-              {site.name}
-            </span>
+      <nav className="mx-auto w-full max-w-[90rem] px-5 py-3 sm:px-6 lg:px-10">
+        <div className="flex min-h-11 items-center justify-between">
+          <Link href="/" className="text-xl font-semibold tracking-tight text-white transition-colors hover:text-white/80">
+            {site.name}
           </Link>
 
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden lg:flex items-center gap-7">
             {NAV_LINKS.map((link, i) => (
               <motion.div
                 key={link.label}
@@ -40,7 +35,7 @@ export function Navbar() {
               >
                 <Link
                   href={link.href}
-                  className="text-xs font-mono tracking-widest uppercase text-muted-foreground hover:text-foreground transition-colors duration-200"
+                  className="relative py-5 text-xs font-mono tracking-widest uppercase text-muted-foreground transition-colors duration-200 hover:text-white after:absolute after:bottom-2 after:left-0 after:h-px after:w-full after:origin-left after:scale-x-0 after:bg-white after:transition-transform after:duration-200 hover:after:scale-x-100"
                 >
                   {link.label}
                 </Link>
@@ -54,7 +49,6 @@ export function Navbar() {
             transition={{ delay: 0.5, duration: 0.4 }}
             className="flex items-center gap-4"
           >
-            <ThemeToggle />
             <a
               href={site.github}
               target="_blank"
@@ -63,15 +57,9 @@ export function Navbar() {
             >
               GitHub
             </a>
-            <Link
-              href="/docs"
-              className="bg-foreground text-background px-4 py-2 text-xs font-mono tracking-widest uppercase hover:bg-[#ea580c] transition-colors duration-200"
-            >
-              Get Started
-            </Link>
           </motion.div>
         </div>
       </nav>
-    </motion.div>
+    </motion.header>
   )
 }
