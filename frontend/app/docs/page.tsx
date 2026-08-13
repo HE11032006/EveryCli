@@ -6,36 +6,36 @@ export default function IntroductionPage() {
   return (
     <DocPage
       eyebrow="001 // GET_STARTED"
-      title="INTRODUCTION"
-      description="FORGE is a zero-config command-line tool that scaffolds projects, runs deterministic builds, and ships to any target — all from a single binary."
+      title="EVERYCLI"
+      description="EveryCli is a local-first command discovery tool: describe a task in plain language, then review the command before you run it."
       href="/docs"
     >
       <DocP>
-        FORGE unifies the three phases of the developer loop — scaffold, build, ship — behind one
-        consistent, scriptable interface. It has no runtime dependencies, produces reproducible
-        artifacts, and returns structured output that is trivial to wire into CI.
+        Command line work is powerful. Remembering every flag and exact syntax is not. EveryCli
+        keeps useful commands close to your terminal, so you can find the right next step without
+        breaking your flow.
       </DocP>
 
-      <DocH2>Why FORGE</DocH2>
+      <DocH2>What it does</DocH2>
       <DocList
         items={[
-          "Zero configuration — sensible defaults that you can override only when needed.",
-          "Deterministic builds — the same input always produces the exact same output hash.",
-          "Any target — deploy to edge, containers, or static hosts with one adapter interface.",
-          "Scriptable — every command returns JSON with the --json flag for pipelines.",
+          "Searches indexed commands from a plain-language description.",
+          "Works with Git, Docker, Linux, npm, Composer, SSH, Python, and more.",
+          "Keeps search local-first, with a lexical fallback when a semantic model is unavailable.",
+          "Lets you review multi-step actions with Sentinel before execution.",
         ]}
       />
 
-      <DocH2>Install in one line</DocH2>
-      <DocP>Install the CLI globally and verify it is on your PATH:</DocP>
-      <CodeBlock code={"npm install -g @forge/cli\nforge --version"} label="bash" shell />
+      <DocH2>Try a search</DocH2>
+      <DocP>Run EveryCli from the checked-out project while public packages are being prepared:</DocP>
+      <CodeBlock code={'python -m everycli.everycli search "undo my last commit"'} label="bash" shell />
 
       <DocH2>Where to next</DocH2>
       <DocList
         items={[
-          "Installation — every supported install method and platform.",
-          "Quick Start — go from empty folder to deployed app in three commands.",
-          "Guides — project structure, configuration, and deploy targets in depth.",
+          "Installation — current local setup options.",
+          "Quick Start — search and inspect a command in minutes.",
+          "CLI Commands — the full command reference.",
         ]}
       />
     </DocPage>
