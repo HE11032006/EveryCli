@@ -4,47 +4,47 @@
 
 @layer base {
   :root {
-    --background: 43 23% 93%;
-    --foreground: 0 0% 4%;
-    --card: 43 23% 93%;
-    --card-foreground: 0 0% 4%;
-    --popover: 43 23% 93%;
-    --popover-foreground: 0 0% 4%;
-    --primary: 0 0% 4%;
-    --primary-foreground: 43 23% 93%;
-    --secondary: 0 0% 90%;
-    --secondary-foreground: 0 0% 4%;
-    --muted: 40 10% 85%;
-    --muted-foreground: 0 0% 40%;
-    --accent: 20 90% 45%;
+    --background: 24 11% 3%;
+    --foreground: 0 0% 96%;
+    --card: 24 9% 5%;
+    --card-foreground: 0 0% 96%;
+    --popover: 24 9% 5%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 0 0% 96%;
+    --primary-foreground: 24 11% 3%;
+    --secondary: 24 8% 8%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 24 8% 8%;
+    --muted-foreground: 0 0% 62%;
+    --accent: 5 87% 59%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 75%;
-    --input: 0 0% 75%;
-    --ring: 0 0% 4%;
-    --radius: 0rem;
+    --border: 24 7% 20%;
+    --input: 24 7% 20%;
+    --ring: 5 87% 59%;
+    --radius: 0.45rem;
   }
   .dark {
-    --background: 0 0% 6%;
-    --foreground: 43 23% 93%;
-    --card: 0 0% 8%;
-    --card-foreground: 43 23% 93%;
-    --popover: 0 0% 8%;
-    --popover-foreground: 43 23% 93%;
-    --primary: 43 23% 93%;
-    --primary-foreground: 0 0% 6%;
-    --secondary: 0 0% 14%;
-    --secondary-foreground: 43 23% 93%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 20 90% 50%;
+    --background: 24 11% 3%;
+    --foreground: 0 0% 96%;
+    --card: 24 9% 5%;
+    --card-foreground: 0 0% 96%;
+    --popover: 24 9% 5%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 0 0% 96%;
+    --primary-foreground: 24 11% 3%;
+    --secondary: 24 8% 8%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 24 8% 8%;
+    --muted-foreground: 0 0% 62%;
+    --accent: 5 87% 59%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 25%;
-    --input: 0 0% 25%;
-    --ring: 43 23% 93%;
+    --border: 24 7% 20%;
+    --input: 24 7% 20%;
+    --ring: 5 87% 59%;
   }
 }
 
@@ -54,16 +54,58 @@
   }
   body {
     @apply bg-background text-foreground;
+    background: #0a0908;
+  }
+  body::before {
+    position: fixed;
+    z-index: 50;
+    inset: 0;
+    pointer-events: none;
+    content: "";
+    opacity: 0.09;
+    mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.75'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
   }
 }
 
-/* Dot Grid Background */
-.dot-grid-bg {
-  background-image: radial-gradient(circle, #c4c2b8 1px, transparent 1px);
-  background-size: 24px 24px;
+.hero-surface {
+  position: relative;
+  isolation: isolate;
+  background: transparent;
 }
-.dark .dot-grid-bg {
-  background-image: radial-gradient(circle, hsl(0 0% 20%) 1px, transparent 1px);
+
+.hero-surface::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  opacity: 0.8;
+  background-image:
+    linear-gradient(to right, rgba(148, 128, 117, 0.15) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 128, 117, 0.15) 1px, transparent 1px);
+  background-size: 14px 24px;
+  mask-image: linear-gradient(to bottom, #000 0%, #000 58%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 58%, transparent 100%);
+}
+
+.hero-surface::after {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background: radial-gradient(circle 700px at 82% 8%, rgba(240, 82, 67, 0.055), transparent 72%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Glitch Keyframes */
