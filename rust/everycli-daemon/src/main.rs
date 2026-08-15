@@ -27,6 +27,9 @@ use std::hash::{Hash, Hasher};
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
+use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Result;
 use everycli_core::{Platform, Scenario, candidates_for_platform, explicit_namespace, load_corpus_merged, score as lexical_score};
@@ -333,7 +336,12 @@ fn handle_connection(stream: TcpStream, state: &mut DaemonState) -> Result<()> {
     Ok(())
 }
 
-fn main() -> Result<()> {
+/// Coeur du daemon : init runtime/modèle/corpus, puis boucle d'acceptation
+/// TCP. Partagé entre le mode console normal (`stop_flag = None`, boucle
+/// bloquante classique) et le mode service Windows (`stop_flag = Some(...)`,
+/// boucle non bloquante qui vérifie régulièrement si le SCM a demandé
+/// l'arrêt).
+fn run_daemon(stop_flag: Option<Arc<AtomicBool>>) -> Result<()> {
     let port: u16 = std::env::var("EVERYCLI_PORT")
         .ok()
         .and_then(|v| v.parse().ok())
@@ -342,7 +350,6 @@ fn main() -> Result<()> {
     let user_dir = user_data_dir();
     let model_dir = env_path("EVERYCLI_MODEL_DIR", "onnx-bench/models/everycli-minilm-ft");
     let dylib_path = env_path("EVERYCLI_ONNXRUNTIME_DYLIB", dylib_default_name());
-    
 
     eprintln!("Chargement du runtime ONNX depuis {:?}...", dylib_path);
     init_runtime(&dylib_path)?;
@@ -369,20 +376,149 @@ fn main() -> Result<()> {
         debug,
     };
 
-    
     let listener = TcpListener::bind(("127.0.0.1", port))?;
     eprintln!("everycli-daemon prêt sur 127.0.0.1:{port}");
 
-    for stream in listener.incoming() {
-        match stream {
-            Ok(stream) => {
+    if stop_flag.is_some() {
+        // Mode service : boucle non bloquante pour pouvoir vérifier
+        // régulièrement si le SCM a demandé l'arrêt (Stop). En mode console
+        // normal, on garde la boucle bloquante classique (plus simple, pas
+        // de sleep inutile entre chaque connexion).
+        listener.set_nonblocking(true)?;
+    }
+
+    loop {
+        if let Some(flag) = &stop_flag
+            && flag.load(AtomicOrdering::Relaxed)
+        {
+            eprintln!("Arrêt demandé (service), fermeture du daemon.");
+            break;
+        }
+
+        match listener.accept() {
+            Ok((stream, _)) => {
                 if let Err(e) = handle_connection(stream, &mut state) {
                     eprintln!("Erreur de connexion : {e}");
                 }
             }
-            Err(e) => eprintln!("Erreur d'acceptation : {e}"),
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                std::thread::sleep(Duration::from_millis(200));
+            }
+            Err(e) if stop_flag.is_none() => {
+                eprintln!("Erreur d'acceptation : {e}");
+            }
+            Err(_) => {
+                // Mode service, non bloquant : les erreurs autres que
+                // WouldBlock sont rares (socket fermée, etc.), on continue
+                // la boucle plutôt que de planter le service.
+            }
         }
     }
 
     Ok(())
+}
+
+#[cfg(windows)]
+mod windows_service_support {
+    //! Enregistrement auprès du Service Control Manager (SCM) de Windows,
+    //! pour tourner comme un vrai service (démarre avant toute session
+    //! utilisateur, redémarrage automatique géré par Windows en cas de
+    //! crash). Installation du service nécessite les droits administrateur
+    //! (voir install.ps1) -- le mode console/dossier Démarrage reste
+    //! l'option par défaut sans droits spéciaux.
+
+    use std::ffi::OsString;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    use windows_service::service::{
+        ServiceControl, ServiceControlAccept, ServiceExitCode, ServiceState, ServiceStatus,
+        ServiceType,
+    };
+    use windows_service::service_control_handler::{self, ServiceControlHandlerResult};
+    use windows_service::{define_windows_service, service_dispatcher};
+
+    const SERVICE_NAME: &str = "EveryCliDaemon";
+    const SERVICE_TYPE: ServiceType = ServiceType::OWN_PROCESS;
+
+    define_windows_service!(ffi_service_main, service_main);
+
+    /// Point d'entrée appelé depuis `main()` quand l'exe est lancé avec
+    /// `--service` (c'est le SCM qui fait ça, configuré via le binPath lors
+    /// de `sc.exe create`, voir install.ps1).
+    pub fn run() -> anyhow::Result<()> {
+        service_dispatcher::start(SERVICE_NAME, ffi_service_main)
+            .map_err(|e| anyhow::anyhow!("echec du dispatcher de service Windows: {e}"))
+    }
+
+    fn service_main(_arguments: Vec<OsString>) {
+        if let Err(e) = run_service() {
+            eprintln!("Erreur du service EveryCliDaemon : {e}");
+        }
+    }
+
+    fn run_service() -> anyhow::Result<()> {
+        let stop_flag = Arc::new(AtomicBool::new(false));
+        let stop_flag_for_handler = stop_flag.clone();
+
+        let event_handler = move |control_event| -> ServiceControlHandlerResult {
+            match control_event {
+                ServiceControl::Stop => {
+                    stop_flag_for_handler.store(true, Ordering::Relaxed);
+                    ServiceControlHandlerResult::NoError
+                }
+                ServiceControl::Interrogate => ServiceControlHandlerResult::NoError,
+                _ => ServiceControlHandlerResult::NotImplemented,
+            }
+        };
+
+        let status_handle = service_control_handler::register(SERVICE_NAME, event_handler)
+            .map_err(|e| anyhow::anyhow!("echec d'enregistrement aupres du SCM: {e}"))?;
+
+        status_handle
+            .set_service_status(ServiceStatus {
+                service_type: SERVICE_TYPE,
+                current_state: ServiceState::Running,
+                controls_accepted: ServiceControlAccept::STOP,
+                exit_code: ServiceExitCode::Win32(0),
+                checkpoint: 0,
+                wait_hint: Duration::default(),
+                process_id: None,
+            })
+            .map_err(|e| anyhow::anyhow!("echec set_service_status(Running): {e}"))?;
+
+        if let Err(e) = super::run_daemon(Some(stop_flag)) {
+            eprintln!("Erreur du daemon (mode service) : {e}");
+        }
+
+        status_handle
+            .set_service_status(ServiceStatus {
+                service_type: SERVICE_TYPE,
+                current_state: ServiceState::Stopped,
+                controls_accepted: ServiceControlAccept::empty(),
+                exit_code: ServiceExitCode::Win32(0),
+                checkpoint: 0,
+                wait_hint: Duration::default(),
+                process_id: None,
+            })
+            .map_err(|e| anyhow::anyhow!("echec set_service_status(Stopped): {e}"))?;
+
+        Ok(())
+    }
+}
+
+fn main() -> Result<()> {
+    #[cfg(windows)]
+    {
+        // Lancé par le SCM avec --service (voir install.ps1, sc.exe create
+        // .../binPath contient ce flag) -> mode service Windows. Sinon,
+        // comportement inchangé : mode console normal (dev, ou lancé
+        // manuellement/via le dossier Démarrage).
+        if std::env::args().any(|arg| arg == "--service") {
+            return windows_service_support::run();
+        }
+    }
+
+    run_daemon(None)
 }

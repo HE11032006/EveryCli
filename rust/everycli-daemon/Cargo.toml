@@ -15,3 +15,9 @@ everycli-inference = { path = "../everycli-inference" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1.0"
+
+[target.'cfg(windows)'.dependencies]
+# Support d'un vrai service Windows (conforme au protocole SCM) en plus du
+# mode console normal -- voir main.rs. Windows uniquement : ce crate ne
+# compile pas sur Linux/macOS.
+windows-service = "0.7"
