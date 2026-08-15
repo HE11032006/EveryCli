@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 everycli-core = { path = "../everycli-core" }
 owo-colors = { version = "4", features = ["supports-colors"] }
+inquire = "0.7"

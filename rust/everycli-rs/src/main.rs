@@ -306,15 +306,36 @@ fn find_hint_for<'a>(
         .and_then(|scenario| find_error_hint(scenario, error_message))
 }
 
+/// Sélection au clavier (flèches haut/bas + Entrée) parmi les résultats,
+/// via `inquire` -- remplace l'ancienne saisie "tape un numéro". Si
+/// l'utilisateur annule (Echap/Ctrl+C) ou si le terminal ne supporte pas le
+/// mode interactif (pipe, script), retourne `None` et l'appelant retombe
+/// sur le premier résultat (comportement inchangé).
 fn pick_interactive(hits: &[DisplayHit]) -> Option<usize> {
-    eprintln!("Resultats (tape un numero) :");
-    for (index, hit) in hits.iter().enumerate() {
-        eprintln!("  {}. {} ({})", index + 1, hit.explanation, hit.command);
+    struct Choice {
+        index: usize,
+        label: String,
     }
-    let mut answer = String::new();
-    io::stdin().read_line(&mut answer).ok()?;
-    let choice: usize = answer.trim().parse().ok()?;
-    (choice >= 1 && choice <= hits.len()).then_some(choice - 1)
+
+    impl std::fmt::Display for Choice {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}", self.label)
+        }
+    }
+
+    let choices: Vec<Choice> = hits
+        .iter()
+        .enumerate()
+        .map(|(index, hit)| Choice {
+            index,
+            label: format!("{}  —  {}", hit.command, hit.explanation),
+        })
+        .collect();
+
+    inquire::Select::new("Choisis une commande :", choices)
+        .prompt()
+        .ok()
+        .map(|choice| choice.index)
 }
 
 fn clipboard_copy(text: &str) -> bool {
