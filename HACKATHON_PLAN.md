@@ -64,7 +64,15 @@ Tag d'arrivée visé : `v1.2.0`
 ### macOS — pas commencé, remis à plus tard (décision explicite de l'utilisateur)
 
 ## Axe 3 — Service en arrière-plan (fiable, persistant au reboot)
-*(inchangé)*
+
+- [x] Support double mode dans `everycli-daemon` : mode console normal (inchangé) + mode service Windows natif (`--service`), via le crate `windows-service` (protocole SCM correctement implémenté : répond à Start/Stop, `set_service_status`) — plus le problème "Error 1053" qu'on aurait eu avec un `sc.exe create` direct sur un exe qui ne parle pas SCM
+- [x] Boucle TCP non-bloquante avec flag d'arrêt partagé (`Arc<AtomicBool>`) pour un arrêt propre commandé par le SCM, sans changer le comportement du mode console (boucle bloquante classique inchangée)
+- [x] `install.ps1 -Service` : auto-élévation UAC (comme Docker Desktop/PostgreSQL — le script se relance lui-même avec `-Verb RunAs`), repli automatique sur le dossier Démarrage si l'élévation est refusée/échoue. **Mode par défaut inchangé** (dossier Démarrage, aucune permission) — le service est une amélioration opt-in, pas un remplacement
+- [x] Variables d'environnement du service via le Registre (`HKLM:\...\Services\EveryCliDaemon\Environment`, mécanisme standard documenté par Microsoft pour les services SCM)
+- [x] **Vérifié end-to-end** : `sc.exe query EveryCliDaemon` → `STATE : 4 RUNNING`, `everycli search` fonctionne depuis un nouveau terminal après installation en service
+- [x] Debug d'installeur : premières tentatives de capture de logs (redirection externe) ont échoué silencieusement deux fois — fix final via `Start-Transcript`/`Stop-Transcript` (mécanisme PowerShell natif), plus fiable qu'une redirection bricolée depuis l'extérieur
+- [ ] Linux (`systemd --user`) et macOS — pas encore vérifiés (voir Axe 2)
+- [ ] Désinstallation du service (pas encore de commande dédiée, `sc.exe stop`/`sc.exe delete` manuel pour l'instant)
 
 ## Axe 4 — Bugs déjà identifiés
 - [x] Mismatch de noms de binaires sibling — corrigé dans `daemon.rs`
@@ -88,7 +96,7 @@ Tag d'arrivée visé : `v1.2.0`
 - [x] Deux formats distincts : réponse unique (✓ vert + commande cyan/gras) vs liste de plusieurs résultats (numérotée, commandes cyan/gras)
 - [x] Score caché par défaut, visible seulement avec `--debug` (nouveau flag) ou `--json`
 - [x] **Vérifié** end-to-end : cas "1 résultat" (docker) et cas "plusieurs résultats proches" (git) confirmés fonctionnels par l'utilisateur
-- [ ] Mode `--interactive` : upgrade vers une vraie sélection au clavier (`inquire` ou `dialoguer`) au lieu de taper un numéro + Entrée — pas fait ce soir, identifié comme prochaine amélioration
+- [x] Mode `--interactive` : upgrade vers une vraie sélection au clavier (flèches + Entrée) via le crate `inquire`, remplace l'ancienne saisie "tape un numéro" — **vérifié fonctionnel**
 - [ ] Décision explicite : PAS de TUI plein écran (`ratatui`) pour le mode par défaut — casserait le scripting/pipe (`--json`, `--shell`) et l'usage "tape, obtiens, repars". Resterait une option pour un futur mode séparé (`everycli explore` ?), pas une priorité
 
 ## Axe 7 — Site web de présentation
