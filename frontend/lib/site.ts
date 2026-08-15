@@ -36,9 +36,10 @@ export const docsNav: DocsNavSection[] = [
     label: "GUIDES",
     index: "002",
     items: [
-      { title: "How It Works", href: "/docs/guides/how-it-works" },
+      { title: "How It Works", href: "/docs/guides/project-structure" },
       { title: "Sentinel Planner", href: "/docs/guides/sentinel" },
-      { title: "Shell Integration", href: "/docs/guides/shell-integration" },
+      { title: "Build From Source", href: "/docs/guides/deploying" },
+      { title: "Shell Integration", href: "/docs/guides/configuration" },
     ],
   },
   {
@@ -46,13 +47,13 @@ export const docsNav: DocsNavSection[] = [
     index: "003",
     items: [
       { title: "CLI Commands", href: "/docs/reference/commands" },
-      { title: "Configuration", href: "/docs/reference/config" },
+      { title: "Environment Configuration", href: "/docs/reference/config" },
     ],
   },
   {
     label: "EXAMPLES",
     index: "004",
-    items: [{ title: "Code Examples", href: "/docs/examples" }],
+    items: [{ title: "Common Workflows", href: "/docs/examples" }],
   },
   {
     label: "HELP",

@@ -1,44 +1,20 @@
 import { DocPage } from "@/components/docs/doc-page"
-import { DocH2, DocP, DocTable, DocNote, DocCode } from "@/components/docs/doc-content"
+import { DocH2, DocP, DocList, DocNote } from "@/components/docs/doc-content"
 import { CodeBlock } from "@/components/code-block"
 
-export default function DeployingPage() {
+export default function BuildFromSourcePage() {
   return (
-    <DocPage
-      eyebrow="002 // GUIDES"
-      title="DEPLOYING"
-      description="Ship a built artifact to any target through a single, consistent deploy interface."
-      href="/docs/guides/deploying"
-    >
-      <DocH2>Targets</DocH2>
-      <DocTable
-        head={["Target", "Description"]}
-        rows={[
-          [<DocCode key="c">edge</DocCode>, "Global edge network. Lowest latency, ideal for stateless services."],
-          [<DocCode key="c">containers</DocCode>, "OCI image pushed to your registry and rolled out."],
-          [<DocCode key="c">static</DocCode>, "Static assets uploaded to a CDN-backed bucket."],
-        ]}
-      />
+    <DocPage eyebrow="002 // GUIDES" title="BUILD FROM SOURCE" description="Set up a development environment, test EveryCli locally, and generate a packaged daemon with PyInstaller." href="/docs/guides/deploying">
+      <DocH2>Prepare the environment</DocH2>
+      <CodeBlock code={"git clone https://github.com/HE11032006/EveryCli.git\ncd EveryCli\npython3 -m venv .venv\nsource .venv/bin/activate\npip install -r requirements.txt"} label="bash" shell />
 
-      <DocH2>Deploy a release</DocH2>
-      <DocP>Build first, then deploy the resulting artifact:</DocP>
-      <CodeBlock code={"forge build --release\nforge deploy --target=edge"} label="bash" shell />
+      <DocH2>Test locally</DocH2>
+      <CodeBlock code={'python3 -m everycli.everycli daemon --start\npython3 -m everycli.everycli search "git commit"'} label="bash" shell />
 
-      <DocH2>Preview deploys</DocH2>
-      <DocP>
-        Use <DocCode>--preview</DocCode> to deploy to an isolated URL without affecting production.
-        Every preview is content-addressed and immutable.
-      </DocP>
-      <CodeBlock code={"forge deploy --preview"} label="bash" shell />
-
-      <DocH2>Rollbacks</DocH2>
-      <DocP>Because every deploy is immutable, rolling back is instant:</DocP>
-      <CodeBlock code={"forge deploy list\nforge deploy rollback --to=a1b2c3d"} label="bash" shell />
-
-      <DocNote>
-        Add <DocCode>--json</DocCode> to any deploy command to get machine-readable output for CI
-        pipelines, including the deploy id and resolved URL.
-      </DocNote>
+      <DocH2>Build the daemon</DocH2>
+      <DocP>PyInstaller uses the repository specification to package the full CPU daemon into the <code>dist/</code> directory.</DocP>
+      <CodeBlock code="pyinstaller everycli-daemon.spec --clean" label="bash" shell />
+      <DocNote>Check that the distribution folder contains both the wrapper and the packaged daemon before distributing it.</DocNote>
     </DocPage>
   )
 }

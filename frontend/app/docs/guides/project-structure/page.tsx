@@ -1,46 +1,19 @@
 import { DocPage } from "@/components/docs/doc-page"
-import { DocH2, DocP, DocTable, DocCode } from "@/components/docs/doc-content"
-import { CodeBlock } from "@/components/code-block"
+import { DocH2, DocP, DocList, DocCode } from "@/components/docs/doc-content"
 
-export default function ProjectStructurePage() {
+export default function HowItWorksPage() {
   return (
-    <DocPage
-      eyebrow="002 // GUIDES"
-      title="PROJECT STRUCTURE"
-      description="Every FORGE project follows the same predictable layout, so tooling and teammates always know where things live."
-      href="/docs/guides/project-structure"
-    >
-      <DocH2>Default layout</DocH2>
-      <CodeBlock
-        code={
-          "my-app/\n" +
-          "├── forge.config.ts   # project configuration\n" +
-          "├── src/              # application source\n" +
-          "│   └── main.ts\n" +
-          "├── tests/            # test suites\n" +
-          "├── .forge/           # build cache (git-ignored)\n" +
-          "└── dist/             # build output"
-        }
-        label="tree"
-      />
+    <DocPage eyebrow="002 // GUIDES" title="HOW IT WORKS" description="EveryCli combines local lexical and semantic retrieval with a daemon that keeps the model ready." href="/docs/guides/project-structure">
+      <DocH2>The local daemon</DocH2>
+      <DocP>Loading the semantic model for every request would add unnecessary startup time and CPU work. EveryCli keeps it in a local background daemon and communicates through a local socket.</DocP>
+      <DocList items={["The daemon keeps the model loaded in memory.", "The client sends the query and displays the result.", "Warm searches target a response in under 50 ms."]} />
 
-      <DocH2>Directories</DocH2>
-      <DocTable
-        head={["Path", "Purpose"]}
-        rows={[
-          [<DocCode key="c">src/</DocCode>, "Your application code. The entry point is resolved from forge.config.ts."],
-          [<DocCode key="c">tests/</DocCode>, "Test files. Run with forge test."],
-          [<DocCode key="c">.forge/</DocCode>, "Local build cache and metadata. Safe to delete; regenerated on demand."],
-          [<DocCode key="c">dist/</DocCode>, "Release artifacts produced by forge build."],
-        ]}
-      />
+      <DocH2>Hybrid retrieval</DocH2>
+      <DocP>EveryCli uses two complementary retrieval strategies. Lexical matching is fast for exact terms such as <DocCode>git</DocCode>; semantic matching understands intent even when the wording differs from the stored command description.</DocP>
+      <DocList items={["TF-IDF provides fast keyword matching.", "The multilingual MiniLM model contributes semantic similarity.", "Both signals retrieve commands from the curated local corpus."]} />
 
-      <DocH2>Convention over configuration</DocH2>
-      <DocP>
-        FORGE resolves the entry point, test glob, and output directory from these conventions
-        automatically. Override any of them in <DocCode>forge.config.ts</DocCode> when your project
-        needs something different.
-      </DocP>
+      <DocH2>Local command corpus</DocH2>
+      <DocP>Command scenarios live in YAML files under <DocCode>everycli/data/commands/</DocCode>. Each scenario carries descriptions, tags, Linux and Windows command variants, explanations, and optional warnings.</DocP>
     </DocPage>
   )
 }

@@ -2,53 +2,19 @@ import { DocPage } from "@/components/docs/doc-page"
 import { DocH2, DocP, DocNote, DocCode } from "@/components/docs/doc-content"
 import { CodeBlock } from "@/components/code-block"
 
-export default function ConfigurationPage() {
+export default function ShellIntegrationPage() {
   return (
-    <DocPage
-      eyebrow="002 // GUIDES"
-      title="CONFIGURATION"
-      description="Configure FORGE with a typed forge.config.ts at the root of your project."
-      href="/docs/guides/configuration"
-    >
-      <DocH2>The config file</DocH2>
-      <DocP>
-        FORGE reads <DocCode>forge.config.ts</DocCode> from the project root. The
-        <DocCode>defineConfig</DocCode> helper gives you full type-checking and autocomplete.
-      </DocP>
-      <CodeBlock
-        code={
-          'import { defineConfig } from "@forge/cli"\n\n' +
-          "export default defineConfig({\n" +
-          '  entry: "src/main.ts",\n' +
-          '  outDir: "dist",\n' +
-          "  build: {\n" +
-          "    minify: true,\n" +
-          '    target: "node18",\n' +
-          "  },\n" +
-          "  deploy: {\n" +
-          '    target: "edge",\n' +
-          '    region: "auto",\n' +
-          "  },\n" +
-          "})"
-        }
-        label="forge.config.ts"
-      />
+    <DocPage eyebrow="002 // GUIDES" title="SHELL INTEGRATION" description="Bring a reviewed EveryCli result into your shell's editable command buffer without automatic execution." href="/docs/guides/configuration">
+      <DocH2>Safe shell mode</DocH2>
+      <DocP><DocCode>--shell</DocCode> asks for confirmation and sends only the selected raw command to standard output. It cannot be combined with interactive selection, copy, run, error diagnosis, or a result count other than one.</DocP>
 
-      <DocH2>Environment overrides</DocH2>
-      <DocP>
-        Any config value can be overridden per environment with the <DocCode>--env</DocCode> flag or
-        an environment variable prefixed with <DocCode>FORGE_</DocCode>.
-      </DocP>
-      <CodeBlock
-        code={"forge build --env=production\nFORGE_DEPLOY_TARGET=containers forge deploy"}
-        label="bash"
-        shell
-      />
+      <DocH2>PowerShell</DocH2>
+      <DocP>During local development, load the PowerShell integration once in the terminal:</DocP>
+      <CodeBlock code={". D:\\EveryCli\\everycli.ps1\nevc \"annuler mon dernier commit sans perdre mes changements\""} label="powershell" shell />
 
-      <DocNote>
-        Run <DocCode>forge config print</DocCode> to see the fully resolved configuration, including
-        defaults and environment overrides.
-      </DocNote>
+      <DocH2>Editable, never automatic</DocH2>
+      <DocP>The <DocCode>evc</DocCode> helper asks PSReadLine to place the selected result into the editable command buffer. You can change it, or choose whether to press Enter yourself.</DocP>
+      <DocNote>For a packaged executable, set <DocCode>EVERYCLI_BIN</DocCode> to its full path before loading the wrapper.</DocNote>
     </DocPage>
   )
 }
