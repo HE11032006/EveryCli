@@ -56,8 +56,15 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
     if arguments[0] == "add" {
         return cmd_add();
     }
+    if arguments[0] == "list" {
+        return cmd_list();
+    }
+    if arguments[0] == "remove" {
+        let id_arg = arguments.get(1).cloned();
+        return cmd_remove(id_arg);
+    }
     if arguments.remove(0) != "search" {
-        return Err("expected the `search` or `add` command; run `everycli-rs --help`".to_owned());
+        return Err("expected the `search`, `add`, `list`, or `remove` command; run `everycli-rs --help`".to_owned());
     }
 
     let mut query = Vec::new();
@@ -521,6 +528,171 @@ fn cmd_add() -> Result<(), String> {
     Ok(())
 }
 
+/// Charge uniquement les commandes personnalisees de l'utilisateur (pas le
+/// corpus integre) -- utilise par `list`/`remove`. Contrairement a
+/// `load_corpus`, l'absence du dossier ou l'absence de fichiers .yaml
+/// dedans n'est PAS une erreur : ça veut juste dire qu'il n'y a encore rien
+/// d'ajoute (cas normal d'une installation fraiche).
+fn user_scenarios() -> Result<Vec<Scenario>, String> {
+    let user_dir = user_data_dir();
+    if !user_dir.is_dir() {
+        return Ok(Vec::new());
+    }
+    Ok(everycli_core::load_corpus(&user_dir).unwrap_or_default())
+}
+
+/// `everycli list` -- affiche toutes les commandes personnalisees ajoutees
+/// via `everycli add` (pas le corpus integre).
+fn cmd_list() -> Result<(), String> {
+    use owo_colors::Stream::Stdout;
+
+    let scenarios = user_scenarios()?;
+    if scenarios.is_empty() {
+        println!("Aucune commande personnalisee pour l'instant. Utilise `everycli add` pour en ajouter une.");
+        return Ok(());
+    }
+
+    println!();
+    println!(
+        "{} :",
+        format!("{} commande(s) personnalisee(s)", scenarios.len())
+            .if_supports_color(Stdout, |t| t.bold().to_string())
+    );
+    for scenario in &scenarios {
+        println!();
+        println!(
+            "{}  {}",
+            scenario.id.if_supports_color(Stdout, |t| t.bold().to_string()),
+            format!("({})", scenario.namespace).if_supports_color(Stdout, |t| t.dimmed().to_string())
+        );
+        println!(
+            "   {} {}",
+            ">".if_supports_color(Stdout, |t| t.dimmed().to_string()),
+            scenario.commands.linux.if_supports_color(Stdout, |t| t.cyan().to_string())
+        );
+        println!("   {}", scenario.explanation);
+    }
+    println!();
+    Ok(())
+}
+
+/// `everycli remove [id]` -- supprime une commande personnalisee. Si `id`
+/// n'est pas donne, propose une selection au clavier (comme `--interactive`
+/// pour la recherche). Demande toujours une confirmation avant d'ecrire
+/// quoi que ce soit sur disque -- une suppression n'est pas annulable.
+fn cmd_remove(id_arg: Option<String>) -> Result<(), String> {
+    let scenarios = user_scenarios()?;
+    if scenarios.is_empty() {
+        println!("Aucune commande personnalisee a supprimer.");
+        return Ok(());
+    }
+
+    let target_id = match id_arg {
+        Some(id) => id,
+        None => {
+            struct Choice {
+                id: String,
+                label: String,
+            }
+            impl std::fmt::Display for Choice {
+                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    write!(f, "{}", self.label)
+                }
+            }
+            let choices: Vec<Choice> = scenarios
+                .iter()
+                .map(|scenario| Choice {
+                    id: scenario.id.clone(),
+                    label: format!("{}  ({})  {}", scenario.id, scenario.namespace, scenario.commands.linux),
+                })
+                .collect();
+            match inquire::Select::new("Quelle commande supprimer ?", choices).prompt() {
+                Ok(choice) => choice.id,
+                Err(_) => return Ok(()), // annule (Echap/Ctrl+C) -- pas une erreur
+            }
+        }
+    };
+
+    let Some(target) = scenarios.iter().find(|scenario| scenario.id == target_id) else {
+        return Err(format!("aucune commande personnalisee avec l'id '{target_id}'"));
+    };
+
+    let confirmed = inquire::Confirm::new(&format!(
+        "Supprimer '{}' ({}) ?",
+        target.id, target.commands.linux
+    ))
+    .with_default(false)
+    .prompt()
+    .unwrap_or(false);
+
+    if !confirmed {
+        println!("Annule.");
+        return Ok(());
+    }
+
+    let namespace = target.namespace.clone();
+    let remaining: Vec<&Scenario> = scenarios
+        .iter()
+        .filter(|scenario| scenario.namespace == namespace && scenario.id != target_id)
+        .collect();
+    let file_path = user_data_dir().join(format!("{namespace}.yaml"));
+
+    if remaining.is_empty() {
+        std::fs::remove_file(&file_path)
+            .map_err(|error| format!("echec de suppression de {}: {error}", file_path.display()))?;
+    } else {
+        write_user_yaml_file(&file_path, &remaining)
+            .map_err(|error| format!("echec d'ecriture dans {}: {error}", file_path.display()))?;
+    }
+
+    println!("Commande '{target_id}' supprimee.");
+
+    match reload_daemon() {
+        Ok(()) => println!("Daemon recharge -- disponible immediatement."),
+        Err(_) => println!("Daemon non joignable -- sera pris en compte au prochain demarrage."),
+    }
+
+    Ok(())
+}
+
+/// Reecrit un fichier YAML utilisateur entier depuis une liste de
+/// scenarios (remplace tout le contenu) -- utilise par `remove` pour
+/// regenerer un fichier sans l'entree supprimee. Duplique volontairement
+/// une partie de la logique de serialisation d'`append_scenario_yaml`
+/// (append incrementale pour `add`, reecriture complete ici pour `remove`)
+/// plutot que de forcer les deux a partager un chemin de code commun pour
+/// une si petite quantite de code.
+fn write_user_yaml_file(path: &Path, scenarios: &[&Scenario]) -> io::Result<()> {
+    let mut file = std::fs::File::create(path)?;
+    for (index, scenario) in scenarios.iter().enumerate() {
+        if index > 0 {
+            writeln!(file)?;
+        }
+        writeln!(file, "- id: {}", scenario.id)?;
+        writeln!(file, "  description: {}", yaml_scalar(&scenario.description))?;
+        if !scenario.tags.is_empty() {
+            let quoted_tags = scenario
+                .tags
+                .iter()
+                .map(|tag| yaml_scalar(tag))
+                .collect::<Vec<_>>()
+                .join(", ");
+            writeln!(file, "  tags: [{quoted_tags}]")?;
+        }
+        writeln!(file, "  commands:")?;
+        writeln!(file, "    linux: {}", yaml_scalar(&scenario.commands.linux))?;
+        writeln!(file, "    windows: {}", yaml_scalar(&scenario.commands.windows))?;
+        if !scenario.commands.macos.is_empty() {
+            writeln!(file, "    macos: {}", yaml_scalar(&scenario.commands.macos))?;
+        }
+        writeln!(file, "  explanation: {}", yaml_scalar(&scenario.explanation))?;
+        if !scenario.warning.trim().is_empty() {
+            writeln!(file, "  warning: {}", yaml_scalar(&scenario.warning))?;
+        }
+    }
+    Ok(())
+}
+
 fn prompt(label: &str) -> Result<String, String> {
     print!("{label}");
     io::stdout().flush().ok();
@@ -651,6 +823,8 @@ fn print_help() {
     println!("EveryCli Rust fast path");
     println!("Usage: everycli-rs search <query> [options]");
     println!("       everycli-rs add");
+    println!("       everycli-rs list");
+    println!("       everycli-rs remove [id]");
     println!();
     println!("Search options:");
     println!("  --top N, -t N            Number of results (default 1)");
@@ -668,6 +842,8 @@ fn print_help() {
     println!();
     println!("'add' lance une serie de prompts pour ajouter une commande personnalisee");
     println!("dans ~/.everycli/commands (ou %USERPROFILE%\\.everycli\\commands sur Windows).");
+    println!("'list' affiche les commandes personnalisees deja ajoutees.");
+    println!("'remove [id]' en supprime une (selection au clavier si aucun id donne).");
 }
 
 fn render_human(shown: &[DisplayHit], query: &str, debug: bool) {
