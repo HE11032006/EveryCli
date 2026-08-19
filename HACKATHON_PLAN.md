@@ -20,11 +20,11 @@ Tag d'arrivée visé : `v1.2.0`
   - Pièges de compilation résolus : API `ort` 2.0-rc (pas d'`Environment` séparé, `try_extract_array` pas `try_extract_tensor`, `ort::Error<R>` pas Send+Sync → `map_err` explicite), conflit de liaison MSVC statique/dynamique résolu via feature `load-dynamic` (charge `onnxruntime.dll` au runtime plutôt qu'à la compilation)
 - [x] Porter la logique d'inférence (tokenization + forward pass + mean pooling déjà validés dans onnx-bench) dans le vrai daemon (`rust/everycli-daemon`, nouveau crate)
 - [x] Le daemon devient un seul binaire Rust natif (`everycli-daemon`) — **confirmé end-to-end** : le vrai client `everycli-rs` (aucune modification) parle au nouveau daemon Rust via le protocole JSON existant, log de connexion vérifié (ping + search reçus), résultats hybrides lexical+sémantique cohérents sur une vraie requête ("annuler mon dernier commit" → 3 candidats git pertinents, scores 0.72/0.69/0.65, désambiguïsation client déclenchée correctement entre deux commandes proches)
-- [ ] Coût de démarrage à froid : calcul des embeddings du corpus (453 scénarios) prend ~4-6.5s à chaque lancement du daemon — candidat pour un cache disque (embeddings + hash du modèle) pour rendre les redémarrages quasi instantanés
+- [x] Coût de démarrage à froid : cache disque des embeddings du corpus (invalidation par hash de **contenu** échantillonné du fichier modèle, pas sa date de modification — corrigé après avoir constaté qu'une simple copie via `stage-release.ps1`/`install.ps1` changeait la date et invalidait le cache à tort à chaque réinstallation)
 - [ ] Valider la parité de similarité avec le corpus de test réel (pas juste 5 requêtes de sanity check) — comparer scores hybrides Rust vs résultats attendus / ancien comportement Python sur un jeu de requêtes de référence
-- [ ] Calibrer les poids lexical/sémantique (actuellement 0.35/0.65, arbitraires) contre ce jeu de référence
+- [x] Calibrer les poids lexical/sémantique — voir Axe 1bis (0.45/0.55 + bonus namespace, calibré contre `confusion_set.yaml`)
 - [ ] Décider : garder le modèle en float32 (470MB, simple) ou quantifier en int8 pour réduire la taille de distribution (optimisation, pas bloquant)
-- [ ] Le serveur TCP est actuellement mono-thread (une connexion à la fois) — suffisant pour un usage personnel local, à revoir si besoin de concurrence
+- [x] Le serveur TCP était mono-thread (une connexion à la fois) — **corrigé** : thread par connexion, état partagé derrière `Arc<Mutex<DaemonState>>`, verrou tenu brièvement pour `search` (juste le scoring), plus longtemps mais acceptable pour `reload` (action rare/volontaire)
 
 ## Axe 1bis — Calibrage et fine-tuning (fait avec DeepSeek, à intégrer au suivi)
 
@@ -52,9 +52,10 @@ Tag d'arrivée visé : `v1.2.0`
 - [x] `install.ps1` : copie dans `%LOCALAPPDATA%\EveryCli`, ajoute au PATH utilisateur (idempotent), démarre le daemon immédiatement
 - [x] Persistance au démarrage de session : **dossier Démarrage de Windows** (`shell:startup`) avec un lanceur VBScript invisible (pas de fenêtre console), PAS le Planificateur de tâches — `schtasks /create` a échoué avec "Accès refusé" sur la machine de test (restriction locale/de groupe), le dossier Démarrage ne demande aucune permission spéciale et est fonctionnellement équivalent pour ce besoin
 - [x] **Vérifié end-to-end depuis un état propre** : nouveau terminal, dossier hors du repo (`C:\Users\EULOGE`), `everycli search "..."` fonctionne — PATH + découverte automatique du daemon sibling + daemon déjà actif en arrière-plan depuis l'installation, résultats cohérents (scores 0.59/0.59/0.53 sur une vraie requête de désambiguïsation git)
-- [ ] Désinstallation propre (script ou commande dédiée) — pas encore fait
-- [ ] Vrai mode téléchargement depuis une release GitHub (actuellement seul `-LocalSource` fonctionne — mode téléchargement écrit comme point d'extension mais pas implémenté, nécessite une vraie release publiée d'abord)
+- [x] Désinstallation propre : `uninstall.ps1` (arrête/retire le service ou le processus, retire du dossier Démarrage, nettoie PATH + variables d'environnement, supprime le dossier d'installation ; conserve `~/.everycli` par défaut, `-RemoveUserCommands` pour tout supprimer)
+- [x] Mode téléchargement depuis une release GitHub — **codé mais non testé** (décision explicite : test end-to-end reporté à la vraie soumission, quand une release publique existera). Convention : un zip par OS (`everycli-windows.zip`) contenant directement `bin/model/runtime/data`
 - [ ] Taille de l'installation à vérifier (modèle float32 470MB + runtime ONNX + binaires) — lié à la décision de quantification de l'Axe 1
+- [x] Latence de recherche : ~0.5-0.6s → **~0.13-0.21s** après correction (le client parsait tout le corpus YAML local à chaque recherche, même quand le daemon répondait avec succès — chargement rendu paresseux, seulement si repli local ou `--error` réellement nécessaire)
 
 ### Linux - pas commencé
 
@@ -67,12 +68,14 @@ Tag d'arrivée visé : `v1.2.0`
 
 - [x] Support double mode dans `everycli-daemon` : mode console normal (inchangé) + mode service Windows natif (`--service`), via le crate `windows-service` (protocole SCM correctement implémenté : répond à Start/Stop, `set_service_status`) — plus le problème "Error 1053" qu'on aurait eu avec un `sc.exe create` direct sur un exe qui ne parle pas SCM
 - [x] Boucle TCP non-bloquante avec flag d'arrêt partagé (`Arc<AtomicBool>`) pour un arrêt propre commandé par le SCM, sans changer le comportement du mode console (boucle bloquante classique inchangée)
-- [x] `install.ps1 -Service` : auto-élévation UAC (comme Docker Desktop/PostgreSQL — le script se relance lui-même avec `-Verb RunAs`), repli automatique sur le dossier Démarrage si l'élévation est refusée/échoue. **Mode par défaut inchangé** (dossier Démarrage, aucune permission) — le service est une amélioration opt-in, pas un remplacement
+- [x] **Décision : le service Windows est devenu le mécanisme par défaut** (pas juste une option `-Service` en plus) — objectivement le plus avantageux (redémarrage auto en cas de crash géré par Windows, peut démarrer avant toute connexion utilisateur), rendu quasi sans friction par l'auto-élévation UAC automatique (comme Docker Desktop/PostgreSQL). `-NoService` saute directement au dossier Démarrage sans jamais demander l'élévation, pour qui préfère éviter toute invite admin
+- [x] **Coexistence des deux mécanismes corrigée** : `install.ps1` nettoie désormais systématiquement l'AUTRE mécanisme à chaque installation (retire le `.vbs` du dossier Démarrage si passage en service, retire le service si passage en dossier Démarrage), et arrête toute instance active (service ou processus autonome) avant de démarrer la nouvelle — corrige le bug vécu ce soir (deux daemons se disputant le port 51821 après un service laissé actif + un `cargo run` manuel)
+- [x] Détection "daemon déjà actif" côté daemon lui-même : message clair ("Un daemon EveryCli écoute déjà sur le port... rien à faire") au lieu de l'erreur OS brute ("os error 10048") en cas de tentative de double démarrage
 - [x] Variables d'environnement du service via le Registre (`HKLM:\...\Services\EveryCliDaemon\Environment`, mécanisme standard documenté par Microsoft pour les services SCM)
 - [x] **Vérifié end-to-end** : `sc.exe query EveryCliDaemon` → `STATE : 4 RUNNING`, `everycli search` fonctionne depuis un nouveau terminal après installation en service
 - [x] Debug d'installeur : premières tentatives de capture de logs (redirection externe) ont échoué silencieusement deux fois — fix final via `Start-Transcript`/`Stop-Transcript` (mécanisme PowerShell natif), plus fiable qu'une redirection bricolée depuis l'extérieur
+- [x] Désinstallation du service : `uninstall.ps1` gère l'auto-élévation nécessaire uniquement si un service existe (pas de prompt inutile sinon)
 - [ ] Linux (`systemd --user`) et macOS — pas encore vérifiés (voir Axe 2)
-- [ ] Désinstallation du service (pas encore de commande dédiée, `sc.exe stop`/`sc.exe delete` manuel pour l'instant)
 
 ## Axe 4 — Bugs déjà identifiés
 - [x] Mismatch de noms de binaires sibling — corrigé dans `daemon.rs`
@@ -86,7 +89,8 @@ Tag d'arrivée visé : `v1.2.0`
 - [x] `everycli add` (everycli-rs) : prompts interactifs (catégorie/namespace, description, commande, explication, tags, avertissement optionnel), génération d'id unique (slug namespace+description, suffixe numérique si collision contre corpus intégré+utilisateur), écriture YAML au format exact attendu par le parseur maison
 - [x] Reload best-effort du daemon après ajout (action `reload` déjà implémentée à l'Axe 1, enfin utilisée) — pas bloquant si daemon injoignable
 - [x] **Vérifié end-to-end** : commande ajoutée (`mes_scripts_pour_usage_personnel`) retrouvée en recherche via le daemon, au coude à coude avec des commandes du corpus intégré (scores 0.50-0.53), désambiguïsation déclenchée normalement — confirme que le bug de filtrage par namespace corrigé plus tôt (Axe 1) ne bloque pas les commandes utilisateur
-- [ ] Peaufinage à prévoir plus tard (Axe 8/finition) : validation des entrées plus stricte, commande par plateforme en option avancée, `everycli list`/`everycli remove` pour gérer les commandes ajoutées
+- [x] `everycli list` / `everycli remove [id]` : liste/supprime les commandes personnalisées, sélection au clavier via `inquire` si pas d'id donné à `remove`, confirmation obligatoire avant suppression (irréversible), régénère le fichier YAML du namespace concerné sans l'entrée supprimée (ou le supprime s'il devient vide)
+- [ ] Peaufinage à prévoir plus tard : validation des entrées plus stricte, commande par plateforme en option avancée
 
 ## Axe 6 — Design / UI
 
