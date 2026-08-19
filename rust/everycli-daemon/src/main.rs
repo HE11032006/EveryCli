@@ -6,13 +6,9 @@
 //! Combine la recherche lexicale existante d'`everycli-core` avec un
 //! reranking sémantique via `everycli-inference` (ONNX Runtime).
 //!
-//! ATTENTION — hypothèses à valider (voir HACKATHON_PLAN.md, Axe 1) :
-//! - Le texte embeddé par scénario est `scenario.description` — pas encore
-//!   confirmé identique à ce qu'utilise `semantic_matcher.py` côté Python.
-//! - Les poids de combinaison lexical/sémantique (0.35/0.65 ci-dessous) sont
-//!   un point de départ arbitraire, pas calibrés contre le corpus réel.
-//! - Boucle serveur mono-thread (une connexion à la fois) — suffisant pour
-//!   un usage personnel local, mais pas concurrent. À revoir si besoin.
+//! Un thread par connexion (voir `run_daemon`), état partagé derrière un
+//! `Arc<Mutex<DaemonState>>` — l'acceptation de nouvelles connexions n'est
+//! plus bloquée par une requête lente en cours de traitement.
 //!
 //! Variables d'environnement (toutes optionnelles, défauts pensés pour un
 //! lancement depuis `C:\EveryCli\rust` avec `cargo run -p everycli-daemon`) :
@@ -28,7 +24,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use anyhow::Result;
@@ -287,7 +283,7 @@ fn handle_search(state: &mut DaemonState, query: &str, top_k: usize) -> Result<V
     Ok(json!({"ok": true, "results": results}))
 }
 
-fn handle_connection(stream: TcpStream, state: &mut DaemonState) -> Result<()> {
+fn handle_connection(stream: TcpStream, state: &Mutex<DaemonState>) -> Result<()> {
     eprintln!("Connexion reçue de {:?}", stream.peer_addr());
     let mut reader = BufReader::new(stream.try_clone()?);
     let mut writer = stream;
@@ -306,22 +302,41 @@ fn handle_connection(stream: TcpStream, state: &mut DaemonState) -> Result<()> {
             let action = request.get("action").and_then(Value::as_str).unwrap_or("");
             match action {
                 "ping" => json!({"ok": true, "pong": true}),
-                "reload" => match build_corpus(&state.data_dir, &state.user_dir, &state.model_dir, &mut state.encoder) {
-                    Ok((scenarios, embeddings, id_to_index)) => {
-                        state.scenarios = scenarios;
-                        state.embeddings = embeddings;
-                        state.id_to_index = id_to_index;
-                        json!({"ok": true, "reloaded": true})
+                "reload" => {
+                    // Contrairement à "search" (verrou tenu brèvement), on
+                    // garde le verrou pendant tout le recalcul ici -- reload
+                    // est une action rare et volontaire (déclenchée par
+                    // `everycli add`/`remove`), pas un chemin à haute
+                    // fréquence : bloquer les recherches concurrentes
+                    // pendant les quelques secondes du recalcul est un
+                    // compromis largement acceptable, pas la peine de
+                    // complexifier le code pour l'éviter.
+                    let mut guard = state.lock().expect("daemon state lock poisoned");
+                    let data_dir = guard.data_dir.clone();
+                    let user_dir = guard.user_dir.clone();
+                    let model_dir = guard.model_dir.clone();
+                    match build_corpus(&data_dir, &user_dir, &model_dir, &mut guard.encoder) {
+                        Ok((scenarios, embeddings, id_to_index)) => {
+                            guard.scenarios = scenarios;
+                            guard.embeddings = embeddings;
+                            guard.id_to_index = id_to_index;
+                            json!({"ok": true, "reloaded": true})
+                        }
+                        Err(e) => json!({"ok": false, "code": "RELOAD_ERROR", "error": e.to_string()}),
                     }
-                    Err(e) => json!({"ok": false, "code": "RELOAD_ERROR", "error": e.to_string()}),
-                },
+                }
                 "search" => {
                     let query = request.get("query").and_then(Value::as_str).unwrap_or("");
                     let top_k = request
                         .get("top_k")
                         .and_then(Value::as_u64)
                         .unwrap_or(1) as usize;
-                    match handle_search(state, query, top_k) {
+                    // Le verrou n'est tenu que pendant le scoring lui-même
+                    // (quelques ms), pas pendant les I/O réseau (lecture de
+                    // la requête, écriture de la réponse) -- ça laisse les
+                    // autres threads de connexion progresser en parallèle.
+                    let mut guard = state.lock().expect("daemon state lock poisoned");
+                    match handle_search(&mut guard, query, top_k) {
                         Ok(response) => response,
                         Err(e) => json!({"ok": false, "code": "SEARCH_ERROR", "error": e.to_string()}),
                     }
@@ -364,7 +379,7 @@ fn run_daemon(stop_flag: Option<Arc<AtomicBool>>) -> Result<()> {
     let debug = std::env::args().any(|arg| arg == "--debug");
     eprintln!("Mode debug: {}", if debug { "activé" } else { "désactivé" });
 
-    let mut state = DaemonState {
+    let state = DaemonState {
         data_dir,
         user_dir,
         model_dir,
@@ -376,7 +391,25 @@ fn run_daemon(stop_flag: Option<Arc<AtomicBool>>) -> Result<()> {
         debug,
     };
 
-    let listener = TcpListener::bind(("127.0.0.1", port))?;
+    let listener = match TcpListener::bind(("127.0.0.1", port)) {
+        Ok(listener) => listener,
+        Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => {
+            // Message clair au lieu de l'erreur OS brute -- ce cas arrive
+            // systématiquement si le service Windows ET le lanceur du
+            // dossier Démarrage tournent tous les deux (voir install.ps1,
+            // qui nettoie désormais l'autre mécanisme à chaque install pour
+            // éviter ça), ou si le daemon est simplement déjà en cours
+            // d'exécution.
+            eprintln!(
+                "Un daemon EveryCli écoute déjà sur le port {port} -- rien à faire, il répond déjà aux requêtes."
+            );
+            eprintln!(
+                "(Si tu veux vraiment relancer cette instance-ci, arrête d'abord l'autre : `sc.exe stop EveryCliDaemon` ou tue le process `everycli-daemon`.)"
+            );
+            return Ok(());
+        }
+        Err(e) => return Err(e.into()),
+    };
     eprintln!("everycli-daemon prêt sur 127.0.0.1:{port}");
 
     if stop_flag.is_some() {
@@ -386,6 +419,16 @@ fn run_daemon(stop_flag: Option<Arc<AtomicBool>>) -> Result<()> {
         // de sleep inutile entre chaque connexion).
         listener.set_nonblocking(true)?;
     }
+
+    // Arc<Mutex<>> plutôt qu'un simple &mut partagé par une boucle
+    // séquentielle -- chaque connexion acceptée est traitée dans son propre
+    // thread, donc une requête lente (ou un client qui traine à envoyer sa
+    // ligne) ne bloque plus l'acceptation de nouvelles connexions. Le verrou
+    // sérialise toujours l'accès au modèle/corpus lui-même (nécessaire,
+    // `SemanticEncoder::encode` prend `&mut self`), mais c'est une amélioration
+    // réelle par rapport à la boucle mono-thread précédente : plus de connexion
+    // qui attend derrière une autre encore en train d'être lue/écrite.
+    let state = Arc::new(Mutex::new(state));
 
     loop {
         if let Some(flag) = &stop_flag
@@ -397,9 +440,12 @@ fn run_daemon(stop_flag: Option<Arc<AtomicBool>>) -> Result<()> {
 
         match listener.accept() {
             Ok((stream, _)) => {
-                if let Err(e) = handle_connection(stream, &mut state) {
-                    eprintln!("Erreur de connexion : {e}");
-                }
+                let state = Arc::clone(&state);
+                std::thread::spawn(move || {
+                    if let Err(e) = handle_connection(stream, &state) {
+                        eprintln!("Erreur de connexion : {e}");
+                    }
+                });
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 std::thread::sleep(Duration::from_millis(200));
