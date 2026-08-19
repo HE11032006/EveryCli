@@ -122,6 +122,39 @@ fn cache_path(model_dir: &Path) -> PathBuf {
     model_dir.join("corpus_embeddings_cache.json")
 }
 
+/// Hash un échantillon du contenu du fichier modèle (début + fin + taille)
+/// plutôt que sa date de modification -- une simple copie (comme le fait
+/// `stage-release.ps1`/`install.ps1` à chaque réinstallation) change la
+/// date mais pas le contenu, et changeait à tort la clé de cache avant ce
+/// fix, forçant un recalcul inutile des embeddings à chaque réinstall.
+/// Hasher le fichier entier (448 Mo) serait trop coûteux à chaque
+/// démarrage -- un échantillon début/fin suffit en pratique (un modèle
+/// ré-exporté/re-entraîné a une sérialisation de poids entièrement
+/// différente, pas juste une modification localisée au milieu du fichier).
+fn hash_model_file(model_path: &Path, hasher: &mut impl Hasher) -> Result<()> {
+    use std::io::{Read, Seek, SeekFrom};
+
+    const SAMPLE_SIZE: u64 = 1024 * 1024; // 1 MiB
+
+    let mut file = std::fs::File::open(model_path)?;
+    let len = file.metadata()?.len();
+    len.hash(hasher);
+
+    let head_size = SAMPLE_SIZE.min(len) as usize;
+    let mut head = vec![0u8; head_size];
+    file.read_exact(&mut head)?;
+    head.hash(hasher);
+
+    if len > SAMPLE_SIZE {
+        file.seek(SeekFrom::End(-(SAMPLE_SIZE as i64)))?;
+        let mut tail = vec![0u8; SAMPLE_SIZE as usize];
+        file.read_exact(&mut tail)?;
+        tail.hash(hasher);
+    }
+
+    Ok(())
+}
+
 fn compute_cache_key(scenarios: &[Scenario], documents: &[String], model_path: &Path) -> Result<String> {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     for (scenario, document) in scenarios.iter().zip(documents.iter()) {
@@ -133,11 +166,7 @@ fn compute_cache_key(scenarios: &[Scenario], documents: &[String], model_path: &
         // embeddings calculés avec une ancienne logique sans le signaler.
         document.hash(&mut hasher);
     }
-    let metadata = std::fs::metadata(model_path)?;
-    metadata.len().hash(&mut hasher);
-    if let Ok(modified) = metadata.modified() {
-        modified.hash(&mut hasher);
-    }
+    hash_model_file(model_path, &mut hasher)?;
     Ok(format!("{:x}", hasher.finish()))
 }
 
