@@ -1,68 +1,92 @@
-# Tutorial : Installer et utiliser EveryCli
+# Tutoriel : Installer et utiliser EveryCli
 
-Bienvenue dans EveryCli ! Ce guide vous accompagne pour installer l'outil à partir d'une version pré-compilée (Release) pour Linux, macOS ou Windows. Pour l'instant, il y a seulement les commandes git, docker, powershell, bash, composer, docker compose qui sont dans les binaires.
+> **Architecture actuelle (branche `reverie-hacks-2026`)** : EveryCli est passé d'un daemon Python (PyInstaller) à un daemon 100% Rust + ONNX Runtime — voir [CHANGELOG.md](../CHANGELOG.md). Ce tutoriel décrit le nouveau flux. Aucune release GitHub publique ne distribue encore ces binaires ; en attendant, installe depuis les sources (ci-dessous).
 
-## 1. Téléchargement
+## 1. Compiler depuis les sources
 
-Rendez-vous sur la page des [Releases](https://github.com/HE11032006/EveryCli/releases) et téléchargez le fichier correspondant à votre système :
+```bash
+git clone https://github.com/HE11032006/EveryCli.git
+cd EveryCli/rust
+cargo build --release -p everycli-rs -p everycli-daemon
+```
 
-- **Linux** : `everycli-linux-full` (recommandé: ~600 mo) ou `everycli-linux-lite` (le modèle complet se télécharge quand vous lancer la commande pour la première fois).
-- **macOS** : `everycli-macos-full` (recommandé ~600 mo) ou `everycli-macos-lite` (le modèle complet se télécharge quand vous lancer la commande pour la première fois).
-- **Windows** : `everycli-windows-full.exe` (ou version lite) ET le fichier `everycli.ps1`.
+Il te faut aussi le modèle ONNX et le runtime ONNX Runtime — voir [`rust/onnx-bench/README`](../rust/onnx-bench) (ou le [CONTRIBUTING.md](../CONTRIBUTING.md), section "Working on the ONNX export tooling") pour les exporter/télécharger.
 
-## 2. Installation et Configuration
-
-### 🐧 Linux / 🍎 macOS (Installation Rapide)
-
-Pour obtenir des performances optimales (réponse en moins de 10ms), nous recommandons d'utiliser le **wrapper shell**.
-
-1.  Donnez les droits d'exécution au daemon et au wrapper :
-    ```bash
-    chmod +x everycli-linux-full bin/everycli
-    ```
-2.  Créez les liens symboliques :
-    ```bash
-    # Le daemon (le "cerveau")
-    sudo ln -s $(pwd)/everycli-linux-full /usr/local/bin/everycli-daemon
-    # Le wrapper (le "messager" ultra-rapide)
-    sudo ln -s $(pwd)/bin/everycli /usr/local/bin/everycli
-    ```
-3.  Lancez le daemon une première fois :
-    ```bash
-    everycli-daemon --start
-    ```
-4.  Testez la recherche instantanée :
-    ```bash
-    everycli "comment faire un commit"
-    ```
+## 2. Installer
 
 ### 🪟 Windows
 
-1. Placez le fichier `.exe` et le fichier `everycli.ps1` dans un dossier stable (ex: `C:\Tools\EveryCli`).
-2. Renommez le fichier `.exe` en `everycli-daemon.exe` (pour que le script PowerShell le trouve).
-3. Ajoutez le dossier EveryCli à votre variable d'environnement `PATH`.
-4. Dans un terminal PowerShell, lancez :
-   ```powershell
-   everycli search "git commit"
-   ```
-
-## 3. Utilisation Avancée
-
-### Recherche ciblée (Scoped Search)
-
-Pour limiter la recherche à un outil spécifique (ex: git), utilisez le préfixe suivi de `:` :
-
-```bash
-everycli search "git: annuler le dernier commit"
+```powershell
+cd EveryCli
+.\scripts\windows\stage-release.ps1
+.\install.ps1 -LocalSource "dist\windows"
 ```
 
-### Gestion du Daemon
+Par défaut, ça installe EveryCli comme un vrai **service Windows** (redémarre automatiquement en cas de crash, démarre même avant connexion) — une invite d'élévation (UAC) apparaît une fois, à accepter. Si tu préfères éviter toute invite admin, ajoute `-NoService` : EveryCli démarre alors via le dossier Démarrage de Windows à la place (aucune permission spéciale, mais pas de redémarrage automatique).
 
-EveryCli utilise un daemon en arrière-plan pour des réponses instantanées (<50ms).
+```powershell
+.\install.ps1 -LocalSource "dist\windows" -NoService
+```
 
-- **Arrêter le daemon** : `everycli daemon --stop`
-- **Voir l'état** : `everycli daemon --status`
+### 🐧 Linux
 
----
+```bash
+cd EveryCli
+./scripts/linux/stage-release.sh
+./install.sh --local-source dist/linux
+```
 
-*Note : La version **Lite** téléchargera automatiquement le modèle IA (~400Mo) lors de la première recherche. La version **Full** contient déjà tout.*
+La persistance est gérée par un service `systemd --user`, installé et activé automatiquement.
+
+### 🍎 macOS
+
+Pas encore disponible.
+
+## 3. Utiliser
+
+Ouvre un **nouveau** terminal (le PATH mis à jour ne s'applique qu'aux nouvelles fenêtres) :
+
+```bash
+everycli search "comment annuler mon dernier commit"
+```
+
+Le daemon tourne déjà en arrière-plan depuis l'installation — pas besoin de le démarrer manuellement. S'il n'est pas encore prêt (premier démarrage, calcul des embeddings du corpus), `everycli` retombe automatiquement sur une recherche locale le temps qu'il finisse de charger.
+
+### Options utiles
+
+```bash
+everycli search "requête" --top 3        # plusieurs résultats
+everycli search "requête" --interactive  # sélection au clavier
+everycli search "requête" --copy         # copie la commande dans le presse-papier
+everycli search "requête" --run          # exécute après confirmation
+everycli search "requête" --json         # sortie machine-readable
+everycli search "requête" --no-daemon    # force la recherche locale (sans le daemon)
+```
+
+### Ajouter tes propres commandes
+
+```bash
+everycli add       # ajoute une commande via une série de prompts
+everycli list       # liste tes commandes personnalisées
+everycli remove     # en supprime une (sélection au clavier)
+```
+
+Stockées dans `~/.everycli/commands` (`%USERPROFILE%\.everycli\commands` sous Windows) — jamais écrasées par une mise à jour du corpus intégré.
+
+## 4. Désinstaller
+
+### Windows
+
+```powershell
+.\uninstall.ps1
+```
+
+Arrête et retire le service (ou le processus), nettoie le PATH, supprime le dossier d'installation. Tes commandes personnalisées (`~/.everycli`) sont conservées par défaut — ajoute `-RemoveUserCommands` pour tout supprimer.
+
+### Linux
+
+Pas encore de script dédié — voir [CHANGELOG.md](../CHANGELOG.md) pour le statut.
+
+## 5. Ancienne version (Python, v1.1.1 et antérieures)
+
+Si tu utilises encore une ancienne release (Full/Lite basée sur PyInstaller), voir l'historique du dépôt pour la version précédente de ce tutoriel — cette architecture est en cours de remplacement (voir [CHANGELOG.md](../CHANGELOG.md)).
