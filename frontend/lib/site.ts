@@ -5,8 +5,8 @@ export const site = {
   description:
     "EveryCli is an AI-powered command-line assistant that instantly finds the exact command you need — just describe it in plain language. Works with Git, Docker, and Linux, without ever leaving your terminal.",
   version: "1.0.0",
-  demo: 'everycli "how to undo my last commit"',
-  install: "python -m everycli.everycli search \"how to undo my last commit\"",
+  demo: 'everycli search "how to undo my last commit"',
+  install: ".\\install.ps1",
   github: "https://github.com/HE11032006/EveryCli",
   releases: "https://github.com/HE11032006/EveryCli/releases",
 }
