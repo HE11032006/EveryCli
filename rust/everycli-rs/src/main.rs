@@ -154,14 +154,30 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
     }
     let query = query.join(" ");
     let data_dir = data_dir.unwrap_or_else(default_data_dir);
-    let corpus = load_corpus_merged(&data_dir, user_data_dir()).map_err(|error| error.to_string())?;
+
+    // Chargement paresseux du corpus local : le parser maison YAML coûte
+    // un temps non négligeable (mesuré ~0.5s pour 450+ scénarios), et n'est
+    // en fait nécessaire que si le daemon est indisponible (repli local) ou
+    // si --error a besoin de chercher un indice dans le corpus -- pas dans
+    // le cas courant (daemon répond avec succès, pas de --error).
+    let mut corpus: Option<Vec<Scenario>> = None;
+    macro_rules! ensure_corpus {
+        () => {{
+            if corpus.is_none() {
+                corpus = Some(
+                    load_corpus_merged(&data_dir, user_data_dir()).map_err(|error| error.to_string())?,
+                );
+            }
+            corpus.as_ref().unwrap()
+        }};
+    }
 
     // Fetch extra candidates so disambiguation/interactive selection has
     // something to choose from, same as everycli.py's `search_top`.
     let search_top = if interactive { 10 } else { top_k.max(3) };
 
     let mut hits: Vec<DisplayHit> = if no_daemon {
-        local_search(&corpus, &query, search_top, platform)
+        local_search(ensure_corpus!(), &query, search_top, platform)
     } else {
         let config = daemon::DaemonConfig::default();
         let repo_root = repo_root_from_data_dir(&data_dir);
@@ -183,7 +199,7 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
                     "everycli-rs: daemon fallback ({}), using local search",
                     daemon_error_message(&error)
                 );
-                local_search(&corpus, &query, search_top, platform)
+                local_search(ensure_corpus!(), &query, search_top, platform)
             }
         }
     };
@@ -235,7 +251,7 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
 
         if let Some(message) = &error_message
             && let Some(first) = shown.first()
-            && let Some(hint) = find_hint_for(&corpus, first, message)
+            && let Some(hint) = find_hint_for(ensure_corpus!(), first, message)
         {
             use owo_colors::Stream::Stdout;
             println!();
