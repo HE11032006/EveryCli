@@ -27,8 +27,8 @@ export default function IntroductionPage() {
       />
 
       <DocH2>Try a search</DocH2>
-      <DocP>Run EveryCli from the checked-out project while public packages are being prepared:</DocP>
-      <CodeBlock code={'python -m everycli.everycli search "undo my last commit"'} label="bash" shell />
+      <DocP>Run EveryCli after installing the daemon service (see Installation):</DocP>
+      <CodeBlock code={'everycli search "undo my last commit"'} label="bash" shell />
 
       <DocH2>Where to next</DocH2>
       <DocList

@@ -19,6 +19,8 @@ export default function CommandsReferencePage() {
           [<DocCode key="add">everycli add</DocCode>, "Interactively add a command scenario to the local corpus."],
           [<DocCode key="list">everycli list</DocCode>, "List all command scenarios stored in the local user corpus."],
           [<DocCode key="remove">everycli remove &lt;id&gt;</DocCode>, "Remove a command scenario from the local corpus (prompts for confirmation)."],
+          [<DocCode key="ask">everycli ask &lt;question&gt;</DocCode>, "Query an external LLM API and optionally save the command into the local corpus."],
+          [<DocCode key="config">everycli config set|get|show</DocCode>, "Manage local CLI configuration (API keys, endpoints, model names)."],
         ]}
       />
 

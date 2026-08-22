@@ -8,21 +8,21 @@ const ease = [0.22, 1, 0.36, 1] as const
 const STEPS = [
   {
     n: "01",
-    title: "Scaffold",
-    desc: "Generate a new project from a template in seconds.",
-    code: "forge init my-app --template=service",
+    title: "Install",
+    desc: "Register the daemon as a Windows service with one script. Auto-elevation handles UAC.",
+    code: ".\\install.ps1",
   },
   {
     n: "02",
-    title: "Build",
-    desc: "Produce a reproducible, content-hashed artifact.",
-    code: "forge build --release",
+    title: "Search",
+    desc: "Describe the task in plain language. The hybrid engine surfaces the right command in under 50 ms.",
+    code: 'everycli search "git: squash last 3 commits"',
   },
   {
     n: "03",
-    title: "Ship",
-    desc: "Deploy to any configured target with one command.",
-    code: "forge deploy --target=edge",
+    title: "Extend",
+    desc: "Save a command you use often to your personal corpus so EveryCli surfaces it in future searches.",
+    code: "everycli add",
   },
 ]
 

@@ -8,7 +8,7 @@ import { Terminal } from "@/components/ui/terminal"
 import { site } from "@/lib/site"
 
 const installMethods = [
-  { label: "Python", command: 'python -m everycli.everycli search "undo my last commit"' },
+  { label: "Windows", command: ".\\install.ps1" },
   { label: "Source", command: "git clone https://github.com/HE11032006/EveryCli.git" },
   { label: "Try it", command: 'everycli search "undo my last commit"' },
 ]
@@ -17,14 +17,14 @@ const terminalCommands = [
   'everycli search "undo my last commit"',
   'everycli search "remove unused Docker images"',
   'everycli plan "remove unused Docker images safely"',
-  "everycli daemon --status",
+  "everycli list",
 ]
 
 const terminalOutputs = {
-  0: ["-> intent: undo last commit", "git reset --soft HEAD~1", "OK changes preserved in working tree"],
-  1: ["-> intent: remove unused Docker images", "docker image prune -a", "OK reclaimed 1.84 GB"],
-  2: ["-> Sentinel review", "command: docker image prune -a", "risk: medium - review before executing", "OK no command will be run"],
-  3: ["daemon: running", "mode: local hybrid search", "warm response target: <50ms"],
+  0: ["--> intent: undo last commit", "git reset --soft HEAD~1", "OK changes preserved in working tree"],
+  1: ["--> intent: remove unused Docker images", "docker image prune -a", "OK reclaimed 1.84 GB"],
+  2: ["--> Sentinel review", "command: docker image prune -a", "risk: medium - review before executing", "OK no command will be run"],
+  3: ["local corpus: 3 entries", "my_git_alias  git: squash last 3 commits", "deploy_stg    rsync -avz ./dist user@server:/var/www", "ssh_keygen    ssh-keygen -t ed25519 -C \"me@example.com\""],
 }
 
 export function HeroSection() {
