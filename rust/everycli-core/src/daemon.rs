@@ -43,7 +43,11 @@ pub struct DaemonSearchHit {
     pub command: String,
     pub explanation: String,
     #[serde(default)]
+    pub explanation_en: String,
+    #[serde(default)]
     pub warning: String,
+    #[serde(default)]
+    pub warning_en: String,
     #[serde(default)]
     pub tags: Vec<String>,
     pub namespace: String,

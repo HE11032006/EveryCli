@@ -63,9 +63,29 @@ pub struct Scenario {
     pub tags: Vec<String>,
     pub commands: Commands,
     pub explanation: String,
+    pub explanation_en: String,
     pub warning: String,
+    pub warning_en: String,
     pub error_hints: Vec<ErrorHint>,
     pub namespace: String,
+}
+
+impl Scenario {
+    pub fn explanation_for_lang(&self, is_en: bool) -> &str {
+        if is_en && !self.explanation_en.is_empty() {
+            &self.explanation_en
+        } else {
+            &self.explanation
+        }
+    }
+
+    pub fn warning_for_lang(&self, is_en: bool) -> &str {
+        if is_en && !self.warning_en.is_empty() {
+            &self.warning_en
+        } else {
+            &self.warning
+        }
+    }
 }
 
 /// Find the first hint whose trigger appears in `error_message`
@@ -120,7 +140,9 @@ struct ScenarioBuilder {
     windows: String,
     macos: String,
     explanation: String,
+    explanation_en: String,
     warning: String,
+    warning_en: String,
     error_hints: Vec<ErrorHint>,
     current_hint: Option<ErrorHint>,
     namespace: String,
@@ -162,7 +184,9 @@ impl ScenarioBuilder {
                 macos: self.macos,
             },
             explanation: self.explanation,
+            explanation_en: self.explanation_en,
             warning: self.warning,
+            warning_en: self.warning_en,
             error_hints: self.error_hints,
             namespace: self.namespace,
         }
@@ -262,8 +286,12 @@ fn parse_corpus_file(path: &Path) -> Result<Vec<Scenario>, CoreError> {
             } else if let Some(value) = yaml_value(trimmed, "command") {
                 builder.linux = value.clone();
                 builder.windows = value;
+            } else if let Some(value) = yaml_value(trimmed, "explanation_en") {
+                builder.explanation_en = value;
             } else if let Some(value) = yaml_value(trimmed, "explanation") {
                 builder.explanation = value;
+            } else if let Some(value) = yaml_value(trimmed, "warning_en") {
+                builder.warning_en = value;
             } else if let Some(value) = yaml_value(trimmed, "warning") {
                 builder.warning = value;
             }

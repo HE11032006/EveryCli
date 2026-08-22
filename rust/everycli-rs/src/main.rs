@@ -1,5 +1,9 @@
+mod i18n;
+
 use everycli_core::{Platform, Scenario, daemon, find_error_hint, load_corpus_merged, search};
+use i18n::Lang;
 use owo_colors::OwoColorize;
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::io::{self, BufRead, BufReader, Write};
 use std::net::TcpStream;
@@ -15,7 +19,9 @@ struct DisplayHit {
     namespace: String,
     command: String,
     explanation: String,
+    explanation_en: String,
     warning: String,
+    warning_en: String,
     tags: Vec<String>,
     score: f32,
 }
@@ -49,22 +55,35 @@ fn main() -> ExitCode {
 }
 
 fn run(mut arguments: Vec<String>) -> Result<(), String> {
+    let cfg = load_config();
+    let lang = Lang::resolve(cfg.language.as_deref());
+
     if arguments.is_empty() || arguments[0] == "--help" || arguments[0] == "-h" {
-        print_help();
+        print_help(lang);
         return Ok(());
     }
     if arguments[0] == "add" {
-        return cmd_add();
+        return cmd_add(lang);
     }
     if arguments[0] == "list" {
-        return cmd_list();
+        return cmd_list(lang);
     }
     if arguments[0] == "remove" {
         let id_arg = arguments.get(1).cloned();
-        return cmd_remove(id_arg);
+        return cmd_remove(id_arg, lang);
+    }
+    if arguments[0] == "config" {
+        let sub = arguments.get(1).cloned();
+        let key = arguments.get(2).cloned();
+        let value = arguments.get(3).cloned();
+        return cmd_config(sub, key, value, lang);
+    }
+    if arguments[0] == "ask" {
+        let query: Vec<String> = arguments[1..].to_vec();
+        return cmd_ask(query, lang);
     }
     if arguments.remove(0) != "search" {
-        return Err("expected the `search`, `add`, `list`, or `remove` command; run `everycli-rs --help`".to_owned());
+        return Err("expected `search`, `add`, `list`, `remove`, `config`, or `ask`; run `everycli --help`".to_owned());
     }
 
     let mut query = Vec::new();
@@ -118,7 +137,7 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
             "--no-daemon" => no_daemon = true,
             "--debug" => debug = true,
             "--help" | "-h" => {
-                print_help();
+                print_help(lang);
                 return Ok(());
             }
             value if value.starts_with('-') => return Err(format!("unknown option: {value}")),
@@ -189,15 +208,17 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
                     namespace: hit.namespace,
                     command: hit.command,
                     explanation: hit.explanation,
+                    explanation_en: hit.explanation_en,
                     warning: hit.warning,
+                    warning_en: hit.warning_en,
                     tags: hit.tags,
                     score: hit.score,
                 })
                 .collect(),
             Err(error) => {
                 eprintln!(
-                    "everycli-rs: daemon fallback ({}), using local search",
-                    daemon_error_message(&error)
+                    "everycli: {}",
+                    lang.daemon_fallback_warn(&daemon_error_message(&error))
                 );
                 local_search(ensure_corpus!(), &query, search_top, platform)
             }
@@ -212,12 +233,12 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
     }
 
     if hits.is_empty() {
-        return Err("no command matched this query".to_owned());
+        return Err(lang.no_match_found().to_owned());
     }
 
     let mut ordered = hits;
     if interactive && ordered.len() > 1 {
-        let choice = pick_interactive(&ordered).unwrap_or(0);
+        let choice = pick_interactive(&ordered, lang).unwrap_or(0);
         ordered = vec![ordered[choice].clone()];
     }
 
@@ -247,7 +268,7 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
     } else if json {
         println!("{}", render_json(shown));
     } else {
-        render_human(shown, &query, debug);
+        render_human(shown, &query, debug, lang);
 
         if let Some(message) = &error_message
             && let Some(first) = shown.first()
@@ -268,15 +289,22 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
         }
 
         if let Some(first) = shown.first() {
-            if copy {
+            // Copie automatique dans le presse-papier quand un seul résultat est affiché
+            if shown.len() == 1 || copy {
                 if clipboard_copy(&first.command) {
-                    eprintln!("Commande copiee dans le presse-papier.");
-                } else {
-                    eprintln!("Impossible de copier dans le presse-papier.");
+                    use owo_colors::Stream::Stdout;
+                    println!(
+                        "  {} {}",
+                        "📋".if_supports_color(Stdout, |t| t.dimmed().to_string()),
+                        lang.copied_to_clipboard().if_supports_color(Stdout, |t| t.dimmed().to_string())
+                    );
+                    println!();
+                } else if copy {
+                    eprintln!("{}", lang.clipboard_failed());
                 }
             }
             if run_it {
-                run_confirmed(&first.command);
+                run_confirmed(&first.command, lang);
             }
         }
     }
@@ -302,7 +330,9 @@ fn local_search(
             namespace: result.scenario.namespace,
             command: result.command,
             explanation: result.scenario.explanation,
+            explanation_en: result.scenario.explanation_en,
             warning: result.scenario.warning,
+            warning_en: result.scenario.warning_en,
             tags: result.scenario.tags,
             score: result.score,
         })
@@ -334,7 +364,7 @@ fn find_hint_for<'a>(
 /// l'utilisateur annule (Echap/Ctrl+C) ou si le terminal ne supporte pas le
 /// mode interactif (pipe, script), retourne `None` et l'appelant retombe
 /// sur le premier résultat (comportement inchangé).
-fn pick_interactive(hits: &[DisplayHit]) -> Option<usize> {
+fn pick_interactive(hits: &[DisplayHit], lang: Lang) -> Option<usize> {
     struct Choice {
         index: usize,
         label: String,
@@ -355,7 +385,7 @@ fn pick_interactive(hits: &[DisplayHit]) -> Option<usize> {
         })
         .collect();
 
-    inquire::Select::new("Choisis une commande :", choices)
+    inquire::Select::new(lang.pick_interactive_prompt(), choices)
         .prompt()
         .ok()
         .map(|choice| choice.index)
@@ -390,8 +420,8 @@ fn clipboard_copy(text: &str) -> bool {
     child.wait().map(|status| status.success()).unwrap_or(false)
 }
 
-fn run_confirmed(command: &str) {
-    eprint!("Executer `{command}` ? [y/N] ");
+fn run_confirmed(command: &str, lang: Lang) {
+    eprint!("{}", lang.run_confirm_prompt(command));
     io::stderr().flush().ok();
     let mut answer = String::new();
     if io::stdin().read_line(&mut answer).is_err() {
@@ -424,12 +454,12 @@ fn run_confirmed(command: &str) {
             }
             if !output.status.success() {
                 eprintln!(
-                    "Commande terminee avec le code {}.",
-                    output.status.code().unwrap_or(1)
+                    "{}",
+                    lang.exec_exit_code(output.status.code().unwrap_or(1))
                 );
             }
         }
-        Err(error) => eprintln!("Echec de l'execution : {error}"),
+        Err(error) => eprintln!("{}", lang.exec_failed(&error.to_string())),
     }
 }
 
@@ -489,32 +519,32 @@ fn user_data_dir() -> PathBuf {
 /// prompts, l'écrit dans le corpus utilisateur, et demande au daemon de
 /// recharger s'il tourne (best effort — pas bloquant s'il n'est pas
 /// joignable, la commande sera prise en compte au prochain démarrage).
-fn cmd_add() -> Result<(), String> {
+fn cmd_add(lang: Lang) -> Result<(), String> {
     let user_dir = user_data_dir();
     std::fs::create_dir_all(&user_dir)
         .map_err(|error| format!("impossible de creer {}: {error}", user_dir.display()))?;
 
-    println!("=== Ajouter une commande a EveryCli ===");
+    println!("{}", lang.add_title());
 
-    let namespace_input = prompt("Categorie / nom de fichier (ex: mes-scripts) : ")?;
+    let namespace_input = prompt(lang.add_category_prompt())?;
     let namespace = slugify(&namespace_input, 8);
     if namespace.is_empty() {
-        return Err("la categorie ne peut pas etre vide".to_owned());
+        return Err(lang.add_category_empty().to_owned());
     }
 
-    let description = prompt("Description (utilisee pour la recherche) : ")?;
+    let description = prompt(lang.add_description_prompt())?;
     if description.trim().is_empty() {
-        return Err("la description ne peut pas etre vide".to_owned());
+        return Err(lang.add_description_empty().to_owned());
     }
 
-    let command = prompt("Commande : ")?;
+    let command = prompt(lang.add_command_prompt())?;
     if command.trim().is_empty() {
-        return Err("la commande ne peut pas etre vide".to_owned());
+        return Err(lang.add_command_empty().to_owned());
     }
 
-    let explanation = prompt("Explication (affichee a l'utilisateur) : ")?;
-    let tags_raw = prompt("Tags, separes par des virgules (optionnel) : ")?;
-    let warning = prompt("Avertissement si commande risquee (optionnel, Entree pour ignorer) : ")?;
+    let explanation = prompt(lang.add_explanation_prompt())?;
+    let tags_raw = prompt(lang.add_tags_prompt())?;
+    let warning = prompt(lang.add_warning_prompt())?;
 
     let data_dir = default_data_dir();
     let existing = load_corpus_merged(&data_dir, &user_dir).unwrap_or_default();
@@ -531,24 +561,16 @@ fn cmd_add() -> Result<(), String> {
         .map_err(|error| format!("echec d'ecriture dans {}: {error}", file_path.display()))?;
 
     println!();
-    println!("Commande ajoutee : {id}");
-    println!("  Fichier : {}", file_path.display());
+    println!("{}", lang.add_success(&id, &file_path.display().to_string()));
 
     match reload_daemon() {
-        Ok(()) => println!("Daemon recharge -- disponible immediatement."),
-        Err(_) => println!(
-            "Daemon non joignable -- sera pris en compte au prochain demarrage (ou lance `everycli search --no-daemon` pour l'utiliser des maintenant en local)."
-        ),
+        Ok(()) => println!("{}", lang.daemon_reloaded()),
+        Err(_) => println!("{}", lang.daemon_offline_notice()),
     }
 
     Ok(())
 }
 
-/// Charge uniquement les commandes personnalisees de l'utilisateur (pas le
-/// corpus integre) -- utilise par `list`/`remove`. Contrairement a
-/// `load_corpus`, l'absence du dossier ou l'absence de fichiers .yaml
-/// dedans n'est PAS une erreur : ça veut juste dire qu'il n'y a encore rien
-/// d'ajoute (cas normal d'une installation fraiche).
 fn user_scenarios() -> Result<Vec<Scenario>, String> {
     let user_dir = user_data_dir();
     if !user_dir.is_dir() {
@@ -557,21 +579,19 @@ fn user_scenarios() -> Result<Vec<Scenario>, String> {
     Ok(everycli_core::load_corpus(&user_dir).unwrap_or_default())
 }
 
-/// `everycli list` -- affiche toutes les commandes personnalisees ajoutees
-/// via `everycli add` (pas le corpus integre).
-fn cmd_list() -> Result<(), String> {
+fn cmd_list(lang: Lang) -> Result<(), String> {
     use owo_colors::Stream::Stdout;
 
     let scenarios = user_scenarios()?;
     if scenarios.is_empty() {
-        println!("Aucune commande personnalisee pour l'instant. Utilise `everycli add` pour en ajouter une.");
+        println!("{}", lang.list_empty());
         return Ok(());
     }
 
     println!();
     println!(
         "{} :",
-        format!("{} commande(s) personnalisee(s)", scenarios.len())
+        lang.list_header(scenarios.len())
             .if_supports_color(Stdout, |t| t.bold().to_string())
     );
     for scenario in &scenarios {
@@ -592,14 +612,10 @@ fn cmd_list() -> Result<(), String> {
     Ok(())
 }
 
-/// `everycli remove [id]` -- supprime une commande personnalisee. Si `id`
-/// n'est pas donne, propose une selection au clavier (comme `--interactive`
-/// pour la recherche). Demande toujours une confirmation avant d'ecrire
-/// quoi que ce soit sur disque -- une suppression n'est pas annulable.
-fn cmd_remove(id_arg: Option<String>) -> Result<(), String> {
+fn cmd_remove(id_arg: Option<String>, lang: Lang) -> Result<(), String> {
     let scenarios = user_scenarios()?;
     if scenarios.is_empty() {
-        println!("Aucune commande personnalisee a supprimer.");
+        println!("{}", lang.remove_empty());
         return Ok(());
     }
 
@@ -622,27 +638,24 @@ fn cmd_remove(id_arg: Option<String>) -> Result<(), String> {
                     label: format!("{}  ({})  {}", scenario.id, scenario.namespace, scenario.commands.linux),
                 })
                 .collect();
-            match inquire::Select::new("Quelle commande supprimer ?", choices).prompt() {
+            match inquire::Select::new(lang.remove_pick_prompt(), choices).prompt() {
                 Ok(choice) => choice.id,
-                Err(_) => return Ok(()), // annule (Echap/Ctrl+C) -- pas une erreur
+                Err(_) => return Ok(()),
             }
         }
     };
 
     let Some(target) = scenarios.iter().find(|scenario| scenario.id == target_id) else {
-        return Err(format!("aucune commande personnalisee avec l'id '{target_id}'"));
+        return Err(lang.remove_not_found(&target_id));
     };
 
-    let confirmed = inquire::Confirm::new(&format!(
-        "Supprimer '{}' ({}) ?",
-        target.id, target.commands.linux
-    ))
-    .with_default(false)
-    .prompt()
-    .unwrap_or(false);
+    let confirmed = inquire::Confirm::new(&lang.remove_confirm_prompt(&target.id, &target.commands.linux))
+        .with_default(false)
+        .prompt()
+        .unwrap_or(false);
 
     if !confirmed {
-        println!("Annule.");
+        println!("{}", lang.remove_canceled());
         return Ok(());
     }
 
@@ -661,11 +674,11 @@ fn cmd_remove(id_arg: Option<String>) -> Result<(), String> {
             .map_err(|error| format!("echec d'ecriture dans {}: {error}", file_path.display()))?;
     }
 
-    println!("Commande '{target_id}' supprimee.");
+    println!("{}", lang.remove_success(&target_id));
 
     match reload_daemon() {
-        Ok(()) => println!("Daemon recharge -- disponible immediatement."),
-        Err(_) => println!("Daemon non joignable -- sera pris en compte au prochain demarrage."),
+        Ok(()) => println!("{}", lang.daemon_reloaded()),
+        Err(_) => println!("{}", lang.daemon_offline_notice()),
     }
 
     Ok(())
@@ -835,38 +848,26 @@ fn daemon_error_message(error: &everycli_core::daemon::DaemonError) -> String {
     }
 }
 
-fn print_help() {
-    println!("EveryCli Rust fast path");
-    println!("Usage: everycli-rs search <query> [options]");
-    println!("       everycli-rs add");
-    println!("       everycli-rs list");
-    println!("       everycli-rs remove [id]");
-    println!();
-    println!("Search options:");
-    println!("  --top N, -t N            Number of results (default 1)");
-    println!("  --platform linux|windows|macos");
-    println!("  --data DIR               Corpus directory override");
-    println!("  --json                   Machine-readable output");
-    println!("  --error MSG, -e MSG      Diagnose an error message against known hints");
-    println!("  --env NAME               Filter results by environment tag");
-    println!("  --copy, -c               Copy the resolved command to the clipboard");
-    println!("  --run, -r                Confirm and execute the resolved command");
-    println!("  --interactive, -i        Pick a result from a numbered list");
-    println!("  --shell, -s              Print only the resolved command to stdout");
-    println!("  --no-daemon              Skip the daemon and search the local corpus directly");
-    println!("  --debug                  Show scores in human-readable output (always in --json)");
-    println!();
-    println!("'add' lance une serie de prompts pour ajouter une commande personnalisee");
-    println!("dans ~/.everycli/commands (ou %USERPROFILE%\\.everycli\\commands sur Windows).");
-    println!("'list' affiche les commandes personnalisees deja ajoutees.");
-    println!("'remove [id]' en supprime une (selection au clavier si aucun id donne).");
+fn print_help(lang: Lang) {
+    println!("{}", lang.help_text());
 }
 
-fn render_human(shown: &[DisplayHit], query: &str, debug: bool) {
+fn render_human(shown: &[DisplayHit], query: &str, debug: bool, lang: Lang) {
     use owo_colors::Stream::Stdout;
 
     if shown.len() == 1 {
         let hit = &shown[0];
+        let explanation = if lang == Lang::En && !hit.explanation_en.is_empty() {
+            &hit.explanation_en
+        } else {
+            &hit.explanation
+        };
+        let warning = if lang == Lang::En && !hit.warning_en.is_empty() {
+            &hit.warning_en
+        } else {
+            &hit.warning
+        };
+
         println!();
         println!(
             "{} {} {} {}",
@@ -881,13 +882,13 @@ fn render_human(shown: &[DisplayHit], query: &str, debug: bool) {
             hit.command.if_supports_color(Stdout, |t| t.cyan().to_string())
         );
         println!();
-        println!("  {}", hit.explanation);
-        if !hit.warning.is_empty() {
+        println!("  {}", explanation);
+        if !warning.is_empty() {
             println!();
             println!(
                 "  {} {}",
                 "⚠".if_supports_color(Stdout, |t| t.yellow().bold().to_string()),
-                hit.warning.if_supports_color(Stdout, |t| t.yellow().to_string())
+                warning.if_supports_color(Stdout, |t| t.yellow().to_string())
             );
         }
         if debug {
@@ -901,12 +902,22 @@ fn render_human(shown: &[DisplayHit], query: &str, debug: bool) {
     } else {
         println!();
         println!(
-            "{} pour \"{}\"",
-            format!("{} resultats", shown.len())
-                .if_supports_color(Stdout, |t| t.bold().to_string()),
-            query
+            "{}",
+            lang.search_results_header(shown.len(), query)
+                .if_supports_color(Stdout, |t| t.bold().to_string())
         );
         for (index, hit) in shown.iter().enumerate() {
+            let explanation = if lang == Lang::En && !hit.explanation_en.is_empty() {
+                &hit.explanation_en
+            } else {
+                &hit.explanation
+            };
+            let warning = if lang == Lang::En && !hit.warning_en.is_empty() {
+                &hit.warning_en
+            } else {
+                &hit.warning
+            };
+
             println!();
             let number = format!("{}.", index + 1);
             if debug {
@@ -929,12 +940,12 @@ fn render_human(shown: &[DisplayHit], query: &str, debug: bool) {
                 hit.command
                     .if_supports_color(Stdout, |t| t.cyan().bold().to_string())
             );
-            println!("   {}", hit.explanation);
-            if !hit.warning.is_empty() {
+            println!("   {}", explanation);
+            if !warning.is_empty() {
                 println!(
                     "   {} {}",
                     "⚠".if_supports_color(Stdout, |t| t.yellow().bold().to_string()),
-                    hit.warning.if_supports_color(Stdout, |t| t.yellow().to_string())
+                    warning.if_supports_color(Stdout, |t| t.yellow().to_string())
                 );
             }
         }
@@ -986,6 +997,553 @@ fn json_escape(value: &str) -> String {
         .collect()
 }
 
+// ─── Config ──────────────────────────────────────────────────────────────────
+
+/// Fichier de configuration utilisateur : `~/.everycli/config.toml`
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct EveryCliConfig {
+    language: Option<String>,
+    provider: Option<String>,
+    api_key: Option<String>,
+    api_url: Option<String>,
+    api_model: Option<String>,
+}
+
+fn config_path() -> PathBuf {
+    let home = if cfg!(windows) {
+        env::var("USERPROFILE").unwrap_or_else(|_| ".".to_owned())
+    } else {
+        env::var("HOME").unwrap_or_else(|_| ".".to_owned())
+    };
+    Path::new(&home).join(".everycli").join("config.toml")
+}
+
+fn load_config() -> EveryCliConfig {
+    let path = config_path();
+    let Ok(content) = std::fs::read_to_string(&path) else {
+        return EveryCliConfig::default();
+    };
+    toml::from_str(&content).unwrap_or_default()
+}
+
+fn save_config(config: &EveryCliConfig) -> Result<(), String> {
+    let path = config_path();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("impossible de creer {}: {e}", parent.display()))?;
+    }
+    let content = toml::to_string_pretty(config)
+        .map_err(|e| format!("serialisation config: {e}"))?;
+    std::fs::write(&path, content)
+        .map_err(|e| format!("ecriture config {}: {e}", path.display()))?;
+    Ok(())
+}
+
+struct ProviderInfo {
+    name: &'static str,
+    url: &'static str,
+    model: &'static str,
+}
+
+fn get_provider_preset(name: &str) -> Option<ProviderInfo> {
+    match name.to_lowercase().as_str() {
+        "openai" => Some(ProviderInfo {
+            name: "OpenAI",
+            url: "https://api.openai.com/v1",
+            model: "gpt-4o-mini",
+        }),
+        "groq" => Some(ProviderInfo {
+            name: "Groq",
+            url: "https://api.groq.com/openai/v1",
+            model: "llama-3.3-70b-versatile",
+        }),
+        "mistral" => Some(ProviderInfo {
+            name: "Mistral AI",
+            url: "https://api.mistral.ai/v1",
+            model: "mistral-small-latest",
+        }),
+        "gemini" | "google" => Some(ProviderInfo {
+            name: "Google Gemini",
+            url: "https://generativelanguage.googleapis.com/v1beta/openai",
+            model: "gemini-3.6-flash",
+        }),
+        "openrouter" => Some(ProviderInfo {
+            name: "OpenRouter",
+            url: "https://openrouter.ai/api/v1",
+            model: "openai/gpt-4o-mini",
+        }),
+        "claude" | "anthropic" => Some(ProviderInfo {
+            name: "Claude (via OpenRouter)",
+            url: "https://openrouter.ai/api/v1",
+            model: "anthropic/claude-3.5-sonnet",
+        }),
+        "deepseek" => Some(ProviderInfo {
+            name: "DeepSeek",
+            url: "https://api.deepseek.com",
+            model: "deepseek-chat",
+        }),
+        "cloudflare" => Some(ProviderInfo {
+            name: "Cloudflare Workers AI",
+            url: "https://api.cloudflare.com/client/v4/accounts/YOUR_ACCOUNT_ID/ai/v1",
+            model: "@cf/meta/llama-3.1-8b-instruct",
+        }),
+        _ => None,
+    }
+}
+
+fn auto_detect_provider(key: &str) -> Option<ProviderInfo> {
+    if key.starts_with("gsk_") {
+        get_provider_preset("groq")
+    } else if key.starts_with("sk-or-") {
+        get_provider_preset("openrouter")
+    } else if key.starts_with("AIza") || key.starts_with("AQ.") {
+        get_provider_preset("gemini")
+    } else if key.starts_with("sk-ant-") {
+        get_provider_preset("claude")
+    } else if key.starts_with("sk-proj-") || key.starts_with("sk-") {
+        get_provider_preset("openai")
+    } else {
+        None
+    }
+}
+
+/// `everycli config set <key> <value>` / `everycli config get <key>` /
+/// `everycli config show`
+fn cmd_config(
+    sub: Option<String>,
+    key: Option<String>,
+    value: Option<String>,
+    lang: Lang,
+) -> Result<(), String> {
+    let sub = sub.ok_or_else(|| "Usage: everycli config set <key> <value> | get <key> | show".to_owned())?;
+    let mut config = load_config();
+
+    match sub.as_str() {
+        "show" => {
+            let path = config_path();
+            println!("Config : {}", path.display());
+            println!("  language  = {} ({})", lang.code(), lang.name());
+            println!("  provider  = {}", config.provider.as_deref().unwrap_or("(auto / non defini)"));
+            println!("  api_url   = {}", config.api_url.as_deref().unwrap_or("(defaut: https://api.openai.com/v1)"));
+            println!("  api_model = {}", config.api_model.as_deref().unwrap_or("(defaut: gpt-4o-mini)"));
+            println!("  api_key   = {}", if config.api_key.is_some() { "(definie)" } else { "(non definie)" });
+        }
+        "get" => {
+            let key = key.ok_or_else(|| "everycli config get <key>".to_owned())?;
+            let val = match key.as_str() {
+                "language" | "lang" => config.language.as_deref().unwrap_or(lang.code()),
+                "provider" => config.provider.as_deref().unwrap_or("(non defini)"),
+                "api_key" => config.api_key.as_deref().unwrap_or("(non definie)"),
+                "api_url" => config.api_url.as_deref().unwrap_or("(non definie)"),
+                "api_model" => config.api_model.as_deref().unwrap_or("(non definie)"),
+                other => return Err(format!("cle inconnue: {other} (valeurs: language, provider, api_key, api_url, api_model)")),
+            };
+            println!("{val}");
+        }
+        "set" => {
+            let key = key.ok_or_else(|| "everycli config set <key> <value> (ex: set language en | set api_key ...)".to_owned())?;
+            let value = value.ok_or_else(|| format!("everycli config set {key} <value>"))?;
+            match key.as_str() {
+                "language" | "lang" => {
+                    let parsed = Lang::from_str_opt(&value).ok_or_else(|| {
+                        "Langue non supportee. Choisissez: en (English) ou fr (Francais)".to_owned()
+                    })?;
+                    config.language = Some(parsed.code().to_owned());
+                    println!("Language set to {} ({})", parsed.name(), parsed.code());
+                }
+                "provider" => {
+                    let preset = get_provider_preset(&value).ok_or_else(|| {
+                        format!("Provider inconnu: {value}.\nProviders supportes: openai, groq, mistral, gemini, openrouter, claude, deepseek, cloudflare")
+                    })?;
+                    config.provider = Some(preset.name.to_owned());
+                    config.api_url = Some(preset.url.to_owned());
+                    config.api_model = Some(preset.model.to_owned());
+                    println!("Provider configure : {} (URL: {}, Modele: {})", preset.name, preset.url, preset.model);
+                }
+                "api_key" => {
+                    config.api_key = Some(value.clone());
+                    if let Some(detected) = auto_detect_provider(&value) {
+                        config.provider = Some(detected.name.to_owned());
+                        config.api_url = Some(detected.url.to_owned());
+                        config.api_model = Some(detected.model.to_owned());
+                        println!("Cle API enregistree (Provider auto-detecte : {}, Modele : {})", detected.name, detected.model);
+                    } else {
+                        println!("Cle API enregistree.");
+                    }
+                }
+                "api_url" => config.api_url = Some(value),
+                "api_model" => config.api_model = Some(value),
+                other => return Err(format!("cle inconnue: {other} (valeurs acceptees: language, provider, api_key, api_url, api_model)")),
+            }
+            save_config(&config)?;
+            println!("Configuration sauvegardee dans {}", config_path().display());
+        }
+        other => return Err(format!("sous-commande inconnue: {other} (set | get | show)")),
+    }
+    Ok(())
+}
+
+// ─── Ask ─────────────────────────────────────────────────────────────────────
+
+/// Réponse structurée attendue du LLM pour `everycli ask`.
+struct AskResult {
+    command_linux: String,
+    command_windows: String,
+    explanation: String,
+    warning: String,
+    tags: Vec<String>,
+}
+
+/// `everycli ask <question>` — appelle l'API LLM configurée, affiche la
+/// commande retournée, et propose à l'utilisateur de l'ajouter au corpus.
+fn cmd_ask(query_parts: Vec<String>, lang: Lang) -> Result<(), String> {
+    use owo_colors::Stream::Stdout;
+
+    if query_parts.is_empty() {
+        return Err("Usage: everycli ask <question>".to_owned());
+    }
+    let query = query_parts.join(" ");
+
+    let config = load_config();
+    let api_key = config
+        .api_key
+        .as_deref()
+        .map(|s| s.to_owned())
+        .or_else(|| env::var("EVERYCLI_API_KEY").ok())
+        .ok_or_else(|| lang.no_api_key_error().to_owned())?;
+
+    let api_url = config
+        .api_url
+        .as_deref()
+        .unwrap_or("https://api.openai.com/v1")
+        .trim_end_matches('/')
+        .to_owned();
+    let api_model = config
+        .api_model
+        .as_deref()
+        .unwrap_or("gpt-4o-mini")
+        .to_owned();
+
+    eprintln!(
+        "{}  {}",
+        "⟳".if_supports_color(Stdout, |t| t.dimmed().to_string()),
+        lang.ask_querying(&api_model).if_supports_color(Stdout, |t| t.dimmed().to_string())
+    );
+
+    let result = call_llm_api(&api_url, &api_key, &api_model, &query, lang)
+        .map_err(|e| format!("API Error: {e}"))?;
+
+    let is_windows = cfg!(windows);
+    let primary_cmd = if is_windows && !result.command_windows.is_empty() {
+        &result.command_windows
+    } else {
+        &result.command_linux
+    };
+
+    // Affichage du résultat
+    println!();
+    println!(
+        "  {}",
+        primary_cmd.if_supports_color(Stdout, |t| t.cyan().bold().to_string())
+    );
+    println!();
+    println!("  {}", result.explanation);
+    if !result.warning.is_empty() {
+        println!();
+        println!(
+            "  {} {}",
+            "⚠".if_supports_color(Stdout, |t| t.yellow().bold().to_string()),
+            result.warning.if_supports_color(Stdout, |t| t.yellow().to_string())
+        );
+    }
+    println!();
+
+    // Copie automatique dans le presse-papier pour un usage immédiat
+    if clipboard_copy(primary_cmd) {
+        println!(
+            "  {} {}",
+            "📋".if_supports_color(Stdout, |t| t.dimmed().to_string()),
+            lang.copied_to_clipboard().if_supports_color(Stdout, |t| t.dimmed().to_string())
+        );
+        println!();
+    }
+
+    // Proposition d'ajout au corpus
+    eprint!("{}", lang.ask_save_prompt());
+    io::stdout().flush().ok();
+    let mut answer = String::new();
+    if io::stdin().read_line(&mut answer).is_err() {
+        return Ok(());
+    }
+    if !matches!(answer.trim().to_lowercase().as_str(), "o" | "oui" | "y" | "yes") {
+        return Ok(());
+    }
+
+    // Demande du namespace (catégorie) avant d'écrire
+    let namespace_input = prompt(lang.add_category_prompt())?;
+    let namespace = slugify(&namespace_input, 8);
+    if namespace.is_empty() {
+        return Err(lang.add_category_empty().to_owned());
+    }
+
+    let user_dir = user_data_dir();
+    std::fs::create_dir_all(&user_dir)
+        .map_err(|e| format!("impossible de creer {}: {e}", user_dir.display()))?;
+
+    let data_dir = default_data_dir();
+    let existing = load_corpus_merged(&data_dir, &user_dir).unwrap_or_default();
+    let id = generate_unique_id(&namespace, &query, &existing);
+
+    let file_path = user_dir.join(format!("{namespace}.yaml"));
+
+    let command_for_yaml = if result.command_windows.is_empty() {
+        &result.command_linux
+    } else {
+        append_scenario_yaml_cross(
+            &file_path,
+            &id,
+            &query,
+            &result.command_linux,
+            &result.command_windows,
+            &result.explanation,
+            &result.tags,
+            &result.warning,
+        )
+        .map_err(|e| format!("echec d'ecriture: {e}"))?;
+
+        println!();
+        println!("{}", lang.add_success(&id, &file_path.display().to_string()));
+        match reload_daemon() {
+            Ok(()) => println!("{}", lang.daemon_reloaded()),
+            Err(_) => println!("{}", lang.daemon_offline_notice()),
+        }
+        return Ok(());
+    };
+
+    append_scenario_yaml(
+        &file_path,
+        &id,
+        &query,
+        command_for_yaml,
+        &result.explanation,
+        &result.tags,
+        &result.warning,
+    )
+    .map_err(|e| format!("echec d'ecriture: {e}"))?;
+
+    println!();
+    println!("{}", lang.add_success(&id, &file_path.display().to_string()));
+
+    match reload_daemon() {
+        Ok(()) => println!("{}", lang.daemon_reloaded()),
+        Err(_) => println!("{}", lang.daemon_offline_notice()),
+    }
+
+    Ok(())
+}
+
+/// Appel HTTP vers une API compatible OpenAI (`/v1/chat/completions`).
+/// Retourne un `AskResult` en parsant la réponse JSON manuellement pour
+/// éviter une dépendance lourde à serde_json — on cherche juste le contenu
+/// du premier choix de message.
+fn call_llm_api(
+    base_url: &str,
+    api_key: &str,
+    model: &str,
+    user_query: &str,
+    lang: Lang,
+) -> Result<AskResult, String> {
+    let lang_instruction = match lang {
+        Lang::En => "Write the 'explanation' and 'warning' fields in English.",
+        Lang::Fr => "Écris les champs 'explanation' et 'warning' en Français.",
+    };
+
+    let system_prompt = format!(
+        r#"You are a CLI command assistant. Given a task description, respond with a JSON object (and ONLY the JSON object, no markdown, no explanation outside the JSON) with these fields:
+{{
+  "command_linux": "<shell command for Linux/macOS>",
+  "command_windows": "<equivalent PowerShell/cmd command, or empty string if identical>",
+  "explanation": "<one sentence explaining what the command does>",
+  "warning": "<one sentence safety warning if the command is destructive, or empty string>",
+  "tags": ["<tag1>", "<tag2>"]
+}}
+Tags should be short lowercase keywords (e.g. git, docker, npm, ssh, linux). Keep explanation and warning concise (under 120 chars). {lang_instruction}"#
+    );
+
+    let url = format!("{base_url}/chat/completions");
+
+    let body = serde_json::json!({
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_query}
+        ],
+        "temperature": 0.2
+    });
+
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("construction du client HTTP: {e}"))?;
+
+    let response = client
+        .post(&url)
+        .bearer_auth(api_key)
+        .json(&body)
+        .send()
+        .map_err(|e| format!("requete HTTP: {e}"))?;
+
+    let status = response.status();
+    let text = response.text().map_err(|e| format!("lecture reponse: {e}"))?;
+
+    if !status.is_success() {
+        return Err(format!("API a retourne {status}: {text}"));
+    }
+
+    // Extraction du contenu de la réponse LLM depuis le JSON de l'API
+    let content = extract_llm_content(&text)
+        .ok_or_else(|| format!("impossible d'extraire le contenu de la reponse: {text}"))?;
+
+    // Parse le JSON retourné par le LLM
+    parse_ask_result(&content)
+        .ok_or_else(|| format!("le LLM n'a pas retourne le JSON attendu:\n{content}"))
+}
+
+/// Extrait `choices[0].message.content` depuis la réponse JSON de l'API.
+fn extract_llm_content(json: &str) -> Option<String> {
+    // Recherche de `"content":"..."` après `"message":`
+    // On utilise une extraction simple sans parser tout le JSON.
+    let marker = "\"content\":\"";
+    // On cherche après la première occurrence de `"message":`
+    let after_message = json.split("\"message\":").nth(1)?;
+    let start = after_message.find(marker)? + marker.len();
+    let rest = &after_message[start..];
+    // Lit jusqu'au premier `"` non échappé
+    let mut content = String::new();
+    let mut chars = rest.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == '\\' {
+            match chars.next()? {
+                '"' => content.push('"'),
+                'n' => content.push('\n'),
+                'r' => content.push('\r'),
+                't' => content.push('\t'),
+                '\\' => content.push('\\'),
+                other => { content.push('\\'); content.push(other); }
+            }
+        } else if ch == '"' {
+            break;
+        } else {
+            content.push(ch);
+        }
+    }
+    if content.is_empty() { None } else { Some(content) }
+}
+
+/// Parse le JSON retourné par le LLM en `AskResult`.
+/// Tolère que le LLM encadre sa réponse dans un bloc ```json ... ``` .
+fn parse_ask_result(raw: &str) -> Option<AskResult> {
+    // Retire les éventuels blocs markdown
+    let clean = raw
+        .trim()
+        .trim_start_matches("```json")
+        .trim_start_matches("```")
+        .trim_end_matches("```")
+        .trim();
+
+    let command_linux = extract_json_string(clean, "command_linux")?;
+    if command_linux.is_empty() {
+        return None;
+    }
+    let command_windows = extract_json_string(clean, "command_windows").unwrap_or_default();
+    let explanation = extract_json_string(clean, "explanation").unwrap_or_default();
+    let warning = extract_json_string(clean, "warning").unwrap_or_default();
+    let tags = extract_json_string_array(clean, "tags");
+
+    Some(AskResult { command_linux, command_windows, explanation, warning, tags })
+}
+
+/// Extrait la valeur d'un champ string `"key": "value"` d'une chaîne JSON brute.
+fn extract_json_string(json: &str, key: &str) -> Option<String> {
+    let marker = format!("\"{key}\":");
+    let after = json.split(&marker).nth(1)?.trim_start();
+    if !after.starts_with('"') {
+        return None;
+    }
+    let rest = &after[1..];
+    let mut value = String::new();
+    let mut chars = rest.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == '\\' {
+            match chars.next()? {
+                '"' => value.push('"'),
+                'n' => value.push('\n'),
+                'r' => value.push('\r'),
+                't' => value.push('\t'),
+                '\\' => value.push('\\'),
+                other => { value.push('\\'); value.push(other); }
+            }
+        } else if ch == '"' {
+            break;
+        } else {
+            value.push(ch);
+        }
+    }
+    Some(value)
+}
+
+/// Extrait un tableau de strings `"key": ["a", "b"]` d'une chaîne JSON brute.
+fn extract_json_string_array(json: &str, key: &str) -> Vec<String> {
+    let marker = format!("\"{key}\":");
+    let Some(after) = json.split(&marker).nth(1) else { return vec![]; };
+    let trimmed = after.trim_start();
+    if !trimmed.starts_with('[') { return vec![]; }
+    let end = trimmed.find(']').unwrap_or(trimmed.len());
+    let inner = &trimmed[1..end];
+    inner
+        .split(',')
+        .filter_map(|part| {
+            let part = part.trim();
+            if part.starts_with('"') && part.ends_with('"') && part.len() >= 2 {
+                Some(part[1..part.len() - 1].to_owned())
+            } else {
+                None
+            }
+        })
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
+/// Version de `append_scenario_yaml` pour `ask` quand Linux ≠ Windows.
+fn append_scenario_yaml_cross(
+    path: &Path,
+    id: &str,
+    description: &str,
+    command_linux: &str,
+    command_windows: &str,
+    explanation: &str,
+    tags: &[String],
+    warning: &str,
+) -> io::Result<()> {
+    use std::fs::OpenOptions;
+    let mut file = OpenOptions::new().create(true).append(true).open(path)?;
+    writeln!(file)?;
+    writeln!(file, "- id: {id}")?;
+    writeln!(file, "  description: {}", yaml_scalar(description))?;
+    if !tags.is_empty() {
+        let quoted = tags.iter().map(|t| yaml_scalar(t)).collect::<Vec<_>>().join(", ");
+        writeln!(file, "  tags: [{quoted}]")?;
+    }
+    writeln!(file, "  commands:")?;
+    writeln!(file, "    linux: {}", yaml_scalar(command_linux))?;
+    writeln!(file, "    windows: {}", yaml_scalar(command_windows))?;
+    writeln!(file, "  explanation: {}", yaml_scalar(explanation))?;
+    if !warning.trim().is_empty() {
+        writeln!(file, "  warning: {}", yaml_scalar(warning))?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1001,7 +1559,9 @@ mod tests {
             namespace: "docker".to_owned(),
             command: format!("cmd-{id}"),
             explanation: "explanation".to_owned(),
+            explanation_en: String::new(),
             warning: String::new(),
+            warning_en: String::new(),
             tags: tags.iter().map(|tag| tag.to_string()).collect(),
             score,
         }
@@ -1072,5 +1632,90 @@ mod tests {
         };
         let message = daemon_error_message(&error);
         assert!(message.contains("vide"));
+    }
+
+    #[test]
+    fn slugify_produces_clean_lowercase_slug() {
+        assert_eq!(slugify("Git: Squash Last 3 Commits!", 5), "git_squash_last_3_commits");
+    }
+
+    #[test]
+    fn yaml_scalar_replaces_double_quotes() {
+        assert_eq!(yaml_scalar("echo \"hello\""), "\"echo 'hello'\"");
+    }
+
+    #[test]
+    fn parse_ask_result_extracts_all_fields() {
+        let raw = r#"{
+  "command_linux": "tar -czf archive.tar.gz ./folder",
+  "command_windows": "Compress-Archive -Path ./folder -DestinationPath archive.zip",
+  "explanation": "Compress a directory into an archive.",
+  "warning": "Overwrites existing archive.",
+  "tags": ["tar", "archive", "compression"]
+}"#;
+        let parsed = parse_ask_result(raw).expect("should parse ask result");
+        assert_eq!(parsed.command_linux, "tar -czf archive.tar.gz ./folder");
+        assert_eq!(parsed.command_windows, "Compress-Archive -Path ./folder -DestinationPath archive.zip");
+        assert_eq!(parsed.explanation, "Compress a directory into an archive.");
+        assert_eq!(parsed.warning, "Overwrites existing archive.");
+        assert_eq!(parsed.tags, vec!["tar", "archive", "compression"]);
+    }
+
+    #[test]
+    fn parse_ask_result_handles_markdown_fences() {
+        let raw = "```json\n{\"command_linux\": \"git reset --soft HEAD~1\", \"command_windows\": \"\", \"explanation\": \"Undo last commit\", \"warning\": \"\", \"tags\": [\"git\"]}\n```";
+        let parsed = parse_ask_result(raw).expect("should parse fenced json");
+        assert_eq!(parsed.command_linux, "git reset --soft HEAD~1");
+        assert_eq!(parsed.tags, vec!["git"]);
+    }
+
+    #[test]
+    fn extract_llm_content_extracts_nested_message() {
+        let api_response = r#"{"id":"chatcmpl-123","choices":[{"message":{"role":"assistant","content":"{\"command_linux\":\"ls -la\"}"}}]}"#;
+        let content = extract_llm_content(api_response).expect("should extract content");
+        assert_eq!(content, "{\"command_linux\":\"ls -la\"}");
+    }
+
+    #[test]
+    fn auto_detect_provider_identifies_keys() {
+        assert_eq!(auto_detect_provider("gsk_123456").unwrap().name, "Groq");
+        assert_eq!(auto_detect_provider("sk-or-v1-abcdef").unwrap().name, "OpenRouter");
+        assert_eq!(auto_detect_provider("AIzaSyD-1234").unwrap().name, "Google Gemini");
+        assert_eq!(auto_detect_provider("sk-ant-api03-xyz").unwrap().name, "Claude (via OpenRouter)");
+        assert_eq!(auto_detect_provider("sk-proj-999").unwrap().name, "OpenAI");
+    }
+
+    #[test]
+    fn get_provider_preset_returns_correct_endpoints() {
+        let groq = get_provider_preset("groq").unwrap();
+        assert_eq!(groq.url, "https://api.groq.com/openai/v1");
+        assert_eq!(groq.model, "llama-3.3-70b-versatile");
+
+        let gemini = get_provider_preset("gemini").unwrap();
+        assert_eq!(gemini.url, "https://generativelanguage.googleapis.com/v1beta/openai");
+        assert_eq!(gemini.model, "gemini-3.6-flash");
+
+        let mistral = get_provider_preset("mistral").unwrap();
+        assert_eq!(mistral.url, "https://api.mistral.ai/v1");
+    }
+
+    #[test]
+    fn lang_parsing_and_resolution() {
+        assert_eq!(Lang::from_str_opt("fr"), Some(Lang::Fr));
+        assert_eq!(Lang::from_str_opt("french"), Some(Lang::Fr));
+        assert_eq!(Lang::from_str_opt("en"), Some(Lang::En));
+        assert_eq!(Lang::from_str_opt("english"), Some(Lang::En));
+        assert_eq!(Lang::from_str_opt("unknown"), None);
+
+        assert_eq!(Lang::resolve(Some("fr")), Lang::Fr);
+        assert_eq!(Lang::resolve(Some("en")), Lang::En);
+    }
+
+    #[test]
+    fn lang_translations_exist() {
+        assert!(Lang::En.help_text().contains("Natural language"));
+        assert!(Lang::Fr.help_text().contains("langage naturel"));
+        assert!(Lang::En.copied_to_clipboard().contains("Ctrl+V to paste"));
+        assert!(Lang::Fr.copied_to_clipboard().contains("Ctrl+V pour coller"));
     }
 }
