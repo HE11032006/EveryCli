@@ -26,6 +26,7 @@ param(
     [string]$LocalSource = "",
     [string]$InstallDir = "$env:LOCALAPPDATA\EveryCli",
     [string]$Version = "latest",
+    [string]$Language = "",
     [switch]$NoService
 )
 
@@ -118,7 +119,20 @@ if ($useService -and (Test-Elevated)) {
     }
 }
 
-Write-Host "=== Installation d'EveryCli ===" -ForegroundColor Cyan
+Write-Host "=== Installation d'EveryCli / EveryCli Setup ===" -ForegroundColor Cyan
+
+if ([string]::IsNullOrWhiteSpace($Language)) {
+    Write-Host ""
+    Write-Host "Select language / Choisissez votre langue :" -ForegroundColor Cyan
+    Write-Host "  [1] English (default / defaut)"
+    Write-Host "  [2] Francais"
+    $choice = Read-Host "Choice / Choix [1-2]"
+    if ($choice -eq "2" -or $choice -eq "fr" -or $choice -eq "Français") {
+        $Language = "fr"
+    } else {
+        $Language = "en"
+    }
+}
 
 # --- 0. Par defaut, tente le mecanisme le plus avantageux (service Windows
 # natif) via auto-elevation UAC. -NoService saute directement au mode sans
@@ -137,7 +151,7 @@ if ($useService -and -not (Test-Elevated)) {
     $elevatedLogPath = Join-Path $logDir "install-service.log"
     Remove-Item $elevatedLogPath -ErrorAction SilentlyContinue
 
-    $forwardedArgs = @("-LocalSource", $LocalSource, "-InstallDir", $InstallDir)
+    $forwardedArgs = @("-LocalSource", $LocalSource, "-InstallDir", $InstallDir, "-Language", $Language)
     $elevationRan = $false
     try {
         Start-Process -FilePath "powershell.exe" `
@@ -318,9 +332,26 @@ objShell.Run """$LauncherPath""", 0, False
     }
 }
 
+# --- Enregistrer la preference de langue dans config.toml ---
+$userConfigDir = Join-Path $env:USERPROFILE ".everycli"
+New-Item -ItemType Directory -Force -Path $userConfigDir | Out-Null
+$userConfigFile = Join-Path $userConfigDir "config.toml"
+if (Test-Path $userConfigFile) {
+    $configContent = Get-Content $userConfigFile -Raw
+    if ($configContent -notmatch 'language\s*=') {
+        Add-Content -Path $userConfigFile -Value "`nlanguage = `"$Language`""
+    } else {
+        $configContent = $configContent -replace 'language\s*=\s*"[^"]*"', "language = `"$Language`""
+        Set-Content -Path $userConfigFile -Value $configContent
+    }
+} else {
+    Set-Content -Path $userConfigFile -Value "language = `"$Language`""
+}
+
 Write-Host ""
-Write-Host "=== Installation terminee ===" -ForegroundColor Green
-Write-Host "Ouvre un NOUVEAU terminal et tape : everycli search ""ta requete"""
+Write-Host "=== Installation terminee / Setup complete ===" -ForegroundColor Green
+Write-Host "Language / Langue : $(if ($Language -eq 'fr') { 'Francais' } else { 'English' })"
+Write-Host "Ouvre un NOUVEAU terminal et tape / Open a NEW terminal and type: everycli search <query>"
 Write-Host "Logs du daemon : $InstallDir\logs\daemon.log"
 
 if ($transcriptStarted) {
