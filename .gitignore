@@ -18,17 +18,18 @@ venv/
 rust/target/
 target/
 
-# Fichiers temporaires
+# Fichiers internes et temporaires
 *.log
 *.tmp
 arborescence.txt
 temp_tree.txt
-
-arborescence.txt
+fichier_regle.md
 fix_yaml.py
 fix_yaml2.py
+everycli_export.yaml
+*.zip
 
-# Onnx runtime (téléchargé par l'utilisateur)
+# Onnx runtime et modeles locaux
 rust/onnx-bench/runtime/
 rust/onnx-bench/models/
 frontend/.codex-write-test
