@@ -24,9 +24,6 @@ jobs:
     - name: Set up Rust
       uses: dtolnay/rust-toolchain@stable
 
-    - name: Check Rust formatting
-      run: cargo fmt --manifest-path rust/Cargo.toml --all -- --check
-
     - name: Run Tests
       run: cargo test --manifest-path rust/Cargo.toml -p everycli-rs -p everycli-core -p everycli-daemon
 

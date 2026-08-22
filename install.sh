@@ -65,6 +65,9 @@ fi
 
 # --- 2. Copier vers le dossier d'installation ---
 echo "Installation dans $INSTALL_DIR..."
+# Arrête l’ancienne instance avant de remplacer ses binaires.
+systemctl --user stop everycli-daemon.service 2>/dev/null || true
+rm -rf "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR/logs"
 cp -r "$SOURCE/bin" "$INSTALL_DIR/"
 cp -r "$SOURCE/model" "$INSTALL_DIR/"
@@ -83,9 +86,11 @@ ln -sf "$INSTALL_DIR/bin/everycli-daemon" "$HOME/.local/bin/everycli-daemon"
 # ligne a déjà été ajoutée lors d'une install précédente.
 PROFILE="$HOME/.profile"
 PATH_LINE='export PATH="$HOME/.local/bin:$PATH"'
-if [[ -f "$PROFILE" ]] && ! grep -Fq "$PATH_LINE" "$PROFILE"; then
+PATH_MARKER="# EveryCli PATH (managed by installer)"
+touch "$PROFILE"
+if ! grep -Fq "$PATH_LINE" "$PROFILE"; then
     echo "Ajout de ~/.local/bin au PATH dans $PROFILE..."
-    { echo ""; echo "# Ajouté par l'installeur EveryCli"; echo "$PATH_LINE"; } >> "$PROFILE"
+    { echo ""; echo "$PATH_MARKER"; echo "$PATH_LINE"; } >> "$PROFILE"
 fi
 
 # Variables d'environnement persistantes — utiles pour lancer
@@ -94,10 +99,13 @@ fi
 # Environment= dans l'unit file.
 ENV_LINES="export EVERYCLI_MODEL_DIR=\"$INSTALL_DIR/model\"
 export EVERYCLI_ONNXRUNTIME_DYLIB=\"$INSTALL_DIR/runtime/libonnxruntime.so\"
-export EVERYCLI_DATA_DIR=\"$INSTALL_DIR/data/commands\""
-if [[ -f "$PROFILE" ]] && ! grep -Fq "EVERYCLI_MODEL_DIR" "$PROFILE"; then
-    { echo ""; echo "$ENV_LINES"; } >> "$PROFILE"
+export EVERYCLI_DATA_DIR=\"$INSTALL_DIR/data/commands\"
+export EVERYCLI_USER_DATA_DIR=\"$HOME/.everycli/commands\""
+ENV_MARKER="# EveryCli environment (managed by installer)"
+if [[ -f "$PROFILE" ]] && ! grep -Fq "$ENV_MARKER" "$PROFILE"; then
+    { echo ""; echo "$ENV_MARKER"; echo "$ENV_LINES"; } >> "$PROFILE"
 fi
+mkdir -p "$HOME/.everycli/commands"
 
 # --- 5. Service systemd --user ---
 echo "Installation du service systemd --user..."
@@ -114,6 +122,7 @@ ExecStart=$INSTALL_DIR/bin/everycli-daemon
 Environment=EVERYCLI_MODEL_DIR=$INSTALL_DIR/model
 Environment=EVERYCLI_ONNXRUNTIME_DYLIB=$INSTALL_DIR/runtime/libonnxruntime.so
 Environment=EVERYCLI_DATA_DIR=$INSTALL_DIR/data/commands
+Environment=EVERYCLI_USER_DATA_DIR=$HOME/.everycli/commands
 StandardOutput=append:$INSTALL_DIR/logs/daemon.log
 StandardError=append:$INSTALL_DIR/logs/daemon.log
 Restart=on-failure
