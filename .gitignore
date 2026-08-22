@@ -34,3 +34,12 @@ rust/onnx-bench/runtime/
 rust/onnx-bench/models/
 frontend/.codex-write-test
 frontend/tsconfig.tsbuildinfo
+
+# Secrets et certificats locaux
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.pfx
