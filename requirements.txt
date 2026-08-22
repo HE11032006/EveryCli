@@ -11,5 +11,3 @@ pick
 pyinstaller
 openai>=1.0
 maturin
-"optimum-onnx[onnxruntime]" --break-system-packages
-
