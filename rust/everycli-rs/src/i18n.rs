@@ -134,6 +134,17 @@ Clés de configuration : language (en|fr), api_key, api_url, api_model, provider
         }
     }
 
+    pub fn ambiguous_action_target(&self, id: &str, command: &str) -> String {
+        match self {
+            Lang::En => format!(
+                "Multiple results: using the first result for the requested action — {id} ({command})"
+            ),
+            Lang::Fr => format!(
+                "Plusieurs résultats : action appliquée au premier résultat — {id} ({command})"
+            ),
+        }
+    }
+
     pub fn clipboard_failed(&self) -> &'static str {
         match self {
             Lang::En => "Unable to copy command to clipboard.",
@@ -278,10 +289,14 @@ Clés de configuration : language (en|fr), api_key, api_url, api_model, provider
         }
     }
 
-    pub fn daemon_offline_notice(&self) -> &'static str {
+    pub fn daemon_reload_failed(&self, reason: &str) -> String {
         match self {
-            Lang::En => "Daemon not reachable — will be loaded on next startup.",
-            Lang::Fr => "Daemon non joignable — sera pris en compte au prochain démarrage.",
+            Lang::En => format!(
+                "Command saved, but daemon reload was not confirmed: {reason}"
+            ),
+            Lang::Fr => format!(
+                "Commande enregistrée, mais le rechargement du daemon n'a pas été confirmé : {reason}"
+            ),
         }
     }
 

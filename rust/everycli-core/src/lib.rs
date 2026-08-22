@@ -149,12 +149,42 @@ struct ScenarioBuilder {
     base_indent: usize,
     in_commands: bool,
     in_errors: bool,
+    block_field: Option<String>,
+    block_lines: Vec<String>,
 }
 
 impl ScenarioBuilder {
     fn flush_current_hint(&mut self) {
         if let Some(hint) = self.current_hint.take() {
             self.error_hints.push(hint);
+        }
+    }
+
+    fn set_text_field(&mut self, field: &str, value: String) {
+        match field {
+            "description" => self.description = value,
+            "explanation" => self.explanation = value,
+            "explanation_en" => self.explanation_en = value,
+            "warning" => self.warning = value,
+            "warning_en" => self.warning_en = value,
+            _ => {}
+        }
+    }
+
+    fn set_or_start_text_field(&mut self, field: &str, value: String) {
+        if value == "|" {
+            self.block_field = Some(field.to_owned());
+            self.block_lines.clear();
+        } else {
+            self.set_text_field(field, value);
+        }
+    }
+
+    fn flush_block(&mut self) {
+        if let Some(field) = self.block_field.take() {
+            let value = self.block_lines.join("\n");
+            self.block_lines.clear();
+            self.set_text_field(&field, value);
         }
     }
 }
@@ -170,6 +200,7 @@ impl ScenarioBuilder {
     }
 
     fn finish(mut self) -> Scenario {
+        self.flush_block();
         if self.windows.is_empty() {
             self.windows = self.linux.clone();
         }
@@ -261,6 +292,16 @@ fn parse_corpus_file(path: &Path) -> Result<Vec<Scenario>, CoreError> {
         };
         let indent = raw_line.len() - raw_line.trim_start().len();
         let trimmed = raw_line.trim();
+
+        if builder.block_field.is_some() {
+            if indent > builder.base_indent + 2 {
+                let content_indent = (builder.base_indent + 4).min(indent);
+                builder.block_lines.push(raw_line[content_indent..].to_owned());
+                continue;
+            }
+            builder.flush_block();
+        }
+
         if trimmed.is_empty() || trimmed.starts_with('#') {
             continue;
         }
@@ -280,20 +321,20 @@ fn parse_corpus_file(path: &Path) -> Result<Vec<Scenario>, CoreError> {
                 continue;
             }
             if let Some(value) = yaml_value(trimmed, "description") {
-                builder.description = value;
+                builder.set_or_start_text_field("description", value);
             } else if let Some(value) = yaml_value(trimmed, "tags") {
                 builder.tags = parse_inline_list(&value);
             } else if let Some(value) = yaml_value(trimmed, "command") {
                 builder.linux = value.clone();
                 builder.windows = value;
             } else if let Some(value) = yaml_value(trimmed, "explanation_en") {
-                builder.explanation_en = value;
+                builder.set_or_start_text_field("explanation_en", value);
             } else if let Some(value) = yaml_value(trimmed, "explanation") {
-                builder.explanation = value;
+                builder.set_or_start_text_field("explanation", value);
             } else if let Some(value) = yaml_value(trimmed, "warning_en") {
-                builder.warning_en = value;
+                builder.set_or_start_text_field("warning_en", value);
             } else if let Some(value) = yaml_value(trimmed, "warning") {
-                builder.warning = value;
+                builder.set_or_start_text_field("warning", value);
             }
             continue;
         }
@@ -610,6 +651,17 @@ mod tests {
         let results = search(&corpus(), "pip install package", 1, Platform::Windows);
         assert_eq!(results[0].scenario.namespace, "python");
         assert!(!results[0].command.is_empty());
+    }
+
+    #[test]
+    fn parses_block_scalar_explanation_from_the_real_corpus() {
+        let scenario = corpus()
+            .into_iter()
+            .find(|scenario| scenario.id == "bash_pushd_popd")
+            .expect("fixture scenario must exist in the checked-in corpus");
+        assert!(scenario.explanation.contains("pushd"));
+        assert!(scenario.explanation.contains("popd"));
+        assert_ne!(scenario.explanation, "|");
     }
 
     #[test]

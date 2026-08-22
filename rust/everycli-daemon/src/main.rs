@@ -38,6 +38,9 @@ use serde_json::{Value, json};
 /// qu'on a un jeu de requêtes de référence avec les résultats attendus.
 const LEXICAL_WEIGHT: f32 = 0.45;
 const SEMANTIC_WEIGHT: f32 = 0.55;
+/// Score hybride minimal observé avant de présenter un résultat à l’utilisateur.
+/// Calibré sur une paraphrase valide (0.53+) et une requête absurde (0.40).
+const MIN_RELEVANCE_SCORE: f32 = 0.50;
 
 /// Bonus additif quand le namespace du scénario correspond au namespace
 /// explicite détecté dans la requête (mot-clé comme "docker", "git"...).
@@ -48,6 +51,10 @@ const SEMANTIC_WEIGHT: f32 = 0.55;
 /// générique, restent toujours trouvables même quand une requête contient
 /// un mot-clé d'un autre écosystème. Valeur arbitraire, à calibrer.
 const NAMESPACE_BONUS: f32 = 0.2;
+
+fn is_relevant_score(score: f32) -> bool {
+    score >= MIN_RELEVANCE_SCORE
+}
 
 struct DaemonState {
     data_dir: PathBuf,
@@ -291,6 +298,12 @@ fn handle_search(state: &mut DaemonState, query: &str, top_k: usize) -> Result<V
         .collect();
 
     scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(Ordering::Equal));
+    if !scored
+        .first()
+        .is_some_and(|(score, _, _)| is_relevant_score(*score))
+    {
+        return Ok(json!({"ok": true, "results": []}));
+    }
     scored.truncate(top_k);
 
     let results: Vec<Value> = scored
@@ -598,4 +611,22 @@ fn main() -> Result<()> {
     }
 
     run_daemon(None)
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::{is_relevant_score, MIN_RELEVANCE_SCORE};
+
+    #[test]
+    fn relevance_threshold_rejects_measured_false_positive() {
+        assert!(!is_relevant_score(0.40));
+        assert!(!is_relevant_score(MIN_RELEVANCE_SCORE - f32::EPSILON));
+    }
+
+    #[test]
+    fn relevance_threshold_keeps_measured_valid_match() {
+        assert!(is_relevant_score(0.53));
+        assert!(is_relevant_score(MIN_RELEVANCE_SCORE));
+    }
 }

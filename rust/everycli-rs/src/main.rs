@@ -44,6 +44,30 @@ fn should_disambiguate(hits: &[DisplayHit]) -> bool {
     }
 }
 
+fn search_limit(interactive: bool, top_k: usize) -> usize {
+    if interactive {
+        top_k.max(1)
+    } else {
+        top_k.max(3)
+    }
+}
+
+fn localized_explanation<'a>(hit: &'a DisplayHit, lang: Lang) -> &'a str {
+    if lang == Lang::En && !hit.explanation_en.is_empty() {
+        &hit.explanation_en
+    } else {
+        &hit.explanation
+    }
+}
+
+fn localized_warning<'a>(hit: &'a DisplayHit, lang: Lang) -> &'a str {
+    if lang == Lang::En && !hit.warning_en.is_empty() {
+        &hit.warning_en
+    } else {
+        &hit.warning
+    }
+}
+
 fn main() -> ExitCode {
     match run(env::args().skip(1).collect()) {
         Ok(()) => ExitCode::SUCCESS,
@@ -193,7 +217,7 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
 
     // Fetch extra candidates so disambiguation/interactive selection has
     // something to choose from, same as everycli.py's `search_top`.
-    let search_top = if interactive { 10 } else { top_k.max(3) };
+    let search_top = search_limit(interactive, top_k);
 
     let mut hits: Vec<DisplayHit> = if no_daemon {
         local_search(ensure_corpus!(), &query, search_top, platform)
@@ -262,7 +286,7 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
         if let Some(first) = shown.first() {
             eprintln!("{} | {}", first.namespace, first.id);
             eprintln!("> {}", first.command);
-            eprintln!("  {}", first.explanation);
+            eprintln!("  {}", localized_explanation(first, lang));
             eprintln!("  score {:.2}", first.score);
         }
     } else if json {
@@ -289,6 +313,10 @@ fn run(mut arguments: Vec<String>) -> Result<(), String> {
         }
 
         if let Some(first) = shown.first() {
+            if shown.len() > 1 && (copy || run_it) {
+                println!("  {}", lang.ambiguous_action_target(&first.id, &first.command));
+            }
+
             // Copie automatique dans le presse-papier quand un seul résultat est affiché
             if shown.len() == 1 || copy {
                 if clipboard_copy(&first.command) {
@@ -381,7 +409,7 @@ fn pick_interactive(hits: &[DisplayHit], lang: Lang) -> Option<usize> {
         .enumerate()
         .map(|(index, hit)| Choice {
             index,
-            label: format!("{}  —  {}", hit.command, hit.explanation),
+            label: format!("{}  —  {}", hit.command, localized_explanation(hit, lang)),
         })
         .collect();
 
@@ -565,7 +593,7 @@ fn cmd_add(lang: Lang) -> Result<(), String> {
 
     match reload_daemon() {
         Ok(()) => println!("{}", lang.daemon_reloaded()),
-        Err(_) => println!("{}", lang.daemon_offline_notice()),
+        Err(reason) => println!("{}", lang.daemon_reload_failed(&reason)),
     }
 
     Ok(())
@@ -606,7 +634,7 @@ fn cmd_list(lang: Lang) -> Result<(), String> {
             ">".if_supports_color(Stdout, |t| t.dimmed().to_string()),
             scenario.commands.linux.if_supports_color(Stdout, |t| t.cyan().to_string())
         );
-        println!("   {}", scenario.explanation);
+        println!("   {}", scenario.explanation_for_lang(lang == Lang::En));
     }
     println!();
     Ok(())
@@ -678,7 +706,7 @@ fn cmd_remove(id_arg: Option<String>, lang: Lang) -> Result<(), String> {
 
     match reload_daemon() {
         Ok(()) => println!("{}", lang.daemon_reloaded()),
-        Err(_) => println!("{}", lang.daemon_offline_notice()),
+        Err(reason) => println!("{}", lang.daemon_reload_failed(&reason)),
     }
 
     Ok(())
@@ -815,27 +843,43 @@ fn append_scenario_yaml(
     Ok(())
 }
 
-/// Demande au daemon de recharger le corpus (best effort -- si le daemon
-/// n'est pas joignable, l'appelant doit traiter ca comme un simple
-/// avertissement, pas une erreur bloquante).
+/// Demande au daemon de recharger le corpus. Retourne une raison exploitable
+/// par l'interface si la connexion échoue, si le daemon ne répond pas à temps
+/// ou s'il refuse explicitement le rechargement.
 fn reload_daemon() -> Result<(), String> {
-    let mut stream = TcpStream::connect("127.0.0.1:51821").map_err(|error| error.to_string())?;
+    let mut stream = TcpStream::connect("127.0.0.1:51821")
+        .map_err(|error| format!("connexion impossible au daemon : {error}"))?;
     stream
         .set_read_timeout(Some(Duration::from_secs(15)))
         .ok();
-    writeln!(stream, "{{\"action\":\"reload\"}}").map_err(|error| error.to_string())?;
+    writeln!(stream, "{{\"action\":\"reload\"}}")
+        .map_err(|error| format!("échec d'envoi de la demande : {error}"))?;
 
     let mut reader = BufReader::new(stream);
     let mut line = String::new();
     reader
         .read_line(&mut line)
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| format!("le daemon n'a pas répondu à temps : {error}"))?;
 
-    if line.contains("\"ok\":true") {
-        Ok(())
-    } else {
-        Err(line)
+    validate_reload_response(&line)
+}
+
+fn validate_reload_response(line: &str) -> Result<(), String> {
+    let response: serde_json::Value = serde_json::from_str(line.trim())
+        .map_err(|error| format!("réponse JSON invalide ({error})"))?;
+    if response.get("ok").and_then(serde_json::Value::as_bool) == Some(true) {
+        return Ok(());
     }
+
+    let code = response
+        .get("code")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("RELOAD_ERROR");
+    let error = response
+        .get("error")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("le daemon a refusé le rechargement");
+    Err(format!("{code}: {error}"))
 }
 
 fn daemon_error_message(error: &everycli_core::daemon::DaemonError) -> String {
@@ -857,16 +901,8 @@ fn render_human(shown: &[DisplayHit], query: &str, debug: bool, lang: Lang) {
 
     if shown.len() == 1 {
         let hit = &shown[0];
-        let explanation = if lang == Lang::En && !hit.explanation_en.is_empty() {
-            &hit.explanation_en
-        } else {
-            &hit.explanation
-        };
-        let warning = if lang == Lang::En && !hit.warning_en.is_empty() {
-            &hit.warning_en
-        } else {
-            &hit.warning
-        };
+        let explanation = localized_explanation(hit, lang);
+        let warning = localized_warning(hit, lang);
 
         println!();
         println!(
@@ -907,16 +943,8 @@ fn render_human(shown: &[DisplayHit], query: &str, debug: bool, lang: Lang) {
                 .if_supports_color(Stdout, |t| t.bold().to_string())
         );
         for (index, hit) in shown.iter().enumerate() {
-            let explanation = if lang == Lang::En && !hit.explanation_en.is_empty() {
-                &hit.explanation_en
-            } else {
-                &hit.explanation
-            };
-            let warning = if lang == Lang::En && !hit.warning_en.is_empty() {
-                &hit.warning_en
-            } else {
-                &hit.warning
-            };
+            let explanation = localized_explanation(hit, lang);
+            let warning = localized_warning(hit, lang);
 
             println!();
             let number = format!("{}.", index + 1);
@@ -1026,6 +1054,32 @@ fn load_config() -> EveryCliConfig {
     toml::from_str(&content).unwrap_or_default()
 }
 
+fn write_private_config(path: &Path, content: &str) -> Result<(), String> {
+    use std::fs::OpenOptions;
+
+    let mut options = OpenOptions::new();
+    options.create(true).truncate(true).write(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+
+    let mut file = options
+        .open(path)
+        .map_err(|e| format!("ouverture config {}: {e}", path.display()))?;
+    file.write_all(content.as_bytes())
+        .map_err(|e| format!("ecriture config {}: {e}", path.display()))?;
+    file.flush()
+        .map_err(|e| format!("flush config {}: {e}", path.display()))?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))
+            .map_err(|e| format!("permissions config {}: {e}", path.display()))?;
+    }
+
+    Ok(())
+}
+
 fn save_config(config: &EveryCliConfig) -> Result<(), String> {
     let path = config_path();
     if let Some(parent) = path.parent() {
@@ -1034,9 +1088,7 @@ fn save_config(config: &EveryCliConfig) -> Result<(), String> {
     }
     let content = toml::to_string_pretty(config)
         .map_err(|e| format!("serialisation config: {e}"))?;
-    std::fs::write(&path, content)
-        .map_err(|e| format!("ecriture config {}: {e}", path.display()))?;
-    Ok(())
+    write_private_config(&path, &content)
 }
 
 struct ProviderInfo {
@@ -1315,7 +1367,7 @@ fn cmd_ask(query_parts: Vec<String>, lang: Lang) -> Result<(), String> {
         println!("{}", lang.add_success(&id, &file_path.display().to_string()));
         match reload_daemon() {
             Ok(()) => println!("{}", lang.daemon_reloaded()),
-            Err(_) => println!("{}", lang.daemon_offline_notice()),
+            Err(reason) => println!("{}", lang.daemon_reload_failed(&reason)),
         }
         return Ok(());
     };
@@ -1336,7 +1388,7 @@ fn cmd_ask(query_parts: Vec<String>, lang: Lang) -> Result<(), String> {
 
     match reload_daemon() {
         Ok(()) => println!("{}", lang.daemon_reloaded()),
-        Err(_) => println!("{}", lang.daemon_offline_notice()),
+        Err(reason) => println!("{}", lang.daemon_reload_failed(&reason)),
     }
 
     Ok(())
@@ -1553,6 +1605,23 @@ mod tests {
         assert_eq!(json_escape("a\"b\n"), "a\\\"b\\n");
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn config_file_permissions_are_private() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let path = std::env::temp_dir().join(format!(
+            "everycli-config-permissions-{}-{}",
+            std::process::id(),
+            std::thread::current().name().unwrap_or("test")
+        ));
+        write_private_config(&path, "api_key = \"test-secret\"\n").unwrap();
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        std::fs::remove_file(&path).unwrap();
+
+        assert_eq!(mode, 0o600);
+    }
+
     fn hit(id: &str, tags: &[&str], score: f32) -> DisplayHit {
         DisplayHit {
             id: id.to_owned(),
@@ -1565,6 +1634,30 @@ mod tests {
             tags: tags.iter().map(|tag| tag.to_string()).collect(),
             score,
         }
+    }
+
+    #[test]
+    fn localized_text_uses_english_when_available() {
+        let mut scenario = hit("a", &[], 0.9);
+        scenario.explanation = "Explication française".to_owned();
+        scenario.explanation_en = "English explanation".to_owned();
+        scenario.warning = "Avertissement français".to_owned();
+        scenario.warning_en = "English warning".to_owned();
+
+        assert_eq!(localized_explanation(&scenario, Lang::En), "English explanation");
+        assert_eq!(localized_explanation(&scenario, Lang::Fr), "Explication française");
+        assert_eq!(localized_warning(&scenario, Lang::En), "English warning");
+        assert_eq!(localized_warning(&scenario, Lang::Fr), "Avertissement français");
+    }
+
+    #[test]
+    fn localized_text_falls_back_to_french_when_english_is_missing() {
+        let mut scenario = hit("a", &[], 0.9);
+        scenario.explanation = "Explication française".to_owned();
+        scenario.warning = "Avertissement français".to_owned();
+
+        assert_eq!(localized_explanation(&scenario, Lang::En), "Explication française");
+        assert_eq!(localized_warning(&scenario, Lang::En), "Avertissement français");
     }
 
     #[test]
@@ -1582,6 +1675,18 @@ mod tests {
     fn filter_by_env_returns_empty_when_nothing_matches() {
         let hits = vec![hit("a", &["git"], 0.9)];
         assert!(filter_by_env(&hits, "npm").is_empty());
+    }
+
+    #[test]
+    fn search_limit_uses_requested_top_k_for_interactive_mode() {
+        assert_eq!(search_limit(true, 3), 3);
+        assert_eq!(search_limit(true, 0), 1);
+    }
+
+    #[test]
+    fn search_limit_keeps_extra_candidates_for_non_interactive_mode() {
+        assert_eq!(search_limit(false, 1), 3);
+        assert_eq!(search_limit(false, 5), 5);
     }
 
     #[test]
@@ -1717,5 +1822,29 @@ mod tests {
         assert!(Lang::Fr.help_text().contains("langage naturel"));
         assert!(Lang::En.copied_to_clipboard().contains("Ctrl+V to paste"));
         assert!(Lang::Fr.copied_to_clipboard().contains("Ctrl+V pour coller"));
+        assert!(Lang::Fr.daemon_reload_failed("timeout").contains("timeout"));
+        let target = Lang::Fr.ambiguous_action_target("git_commit", "git commit -m message");
+        assert!(target.contains("git_commit"));
+        assert!(target.contains("git commit -m message"));
+    }
+
+    #[test]
+    fn validate_reload_response_accepts_success() {
+        assert!(validate_reload_response(r#"{"ok":true,"reloaded":true}"#).is_ok());
+    }
+
+    #[test]
+    fn validate_reload_response_reports_server_rejection() {
+        let error = validate_reload_response(
+            r#"{"ok":false,"code":"RELOAD_ERROR","error":"corpus inaccessible"}"#,
+        )
+        .unwrap_err();
+        assert_eq!(error, "RELOAD_ERROR: corpus inaccessible");
+    }
+
+    #[test]
+    fn validate_reload_response_reports_invalid_json() {
+        let error = validate_reload_response("not-json").unwrap_err();
+        assert!(error.starts_with("réponse JSON invalide ("));
     }
 }
