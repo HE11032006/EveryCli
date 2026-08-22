@@ -242,6 +242,8 @@ Copy-Item "$Source\data" "$InstallDir\" -Recurse -Force
 
 # --- 3. Ajouter au PATH utilisateur (idempotent) ---
 $BinDir = "$InstallDir\bin"
+$UserCommandsDir = Join-Path -Path $env:USERPROFILE -ChildPath ".everycli"
+$UserCommandsDir = Join-Path -Path $UserCommandsDir -ChildPath "commands"
 $CurrentPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if ($CurrentPath -notlike "*$BinDir*") {
     Write-Host "Ajout de $BinDir au PATH utilisateur..."
@@ -286,7 +288,8 @@ if ($useService) {
     $envVars = @(
         "EVERYCLI_MODEL_DIR=$InstallDir\model",
         "EVERYCLI_ONNXRUNTIME_DYLIB=$InstallDir\runtime\onnxruntime.dll",
-        "EVERYCLI_DATA_DIR=$InstallDir\data\commands"
+        "EVERYCLI_DATA_DIR=$InstallDir\data\commands",
+        "EVERYCLI_USER_DATA_DIR=$UserCommandsDir"
     )
     Set-ItemProperty -Path $envRegPath -Name "Environment" -Value $envVars -Type MultiString
 
@@ -307,6 +310,7 @@ if ($useService) {
 set EVERYCLI_MODEL_DIR=$InstallDir\model
 set EVERYCLI_ONNXRUNTIME_DYLIB=$InstallDir\runtime\onnxruntime.dll
 set EVERYCLI_DATA_DIR=$InstallDir\data\commands
+set EVERYCLI_USER_DATA_DIR=$UserCommandsDir
 "$InstallDir\bin\everycli-daemon.exe" >> "$InstallDir\logs\daemon.log" 2>&1
 "@ | Set-Content -Path $LauncherPath -Encoding ASCII
 
