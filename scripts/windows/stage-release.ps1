@@ -1,4 +1,4 @@
-# Assemble un dossier "dist\windows" qui imite ce qu'une vraie release
+﻿# Assemble un dossier "dist\windows" qui imite ce qu'une vraie release
 # GitHub contiendrait — sert à tester install.ps1 localement ce soir, et
 # deviendra la base du job de packaging CI plus tard.
 #

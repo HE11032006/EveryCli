@@ -86,6 +86,7 @@ if ($currentPath -and $currentPath -like "*$BinDir*") {
 [Environment]::SetEnvironmentVariable("EVERYCLI_MODEL_DIR", $null, "User")
 [Environment]::SetEnvironmentVariable("EVERYCLI_ONNXRUNTIME_DYLIB", $null, "User")
 [Environment]::SetEnvironmentVariable("EVERYCLI_DATA_DIR", $null, "User")
+[Environment]::SetEnvironmentVariable("EVERYCLI_USER_DATA_DIR", $null, "User")
 
 # --- 6. Supprimer le dossier d'installation ---
 if (Test-Path $InstallDir) {
