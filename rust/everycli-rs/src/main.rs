@@ -413,7 +413,8 @@ fn pick_interactive(hits: &[DisplayHit], lang: Lang) -> Option<usize> {
         })
         .collect();
 
-    inquire::Select::new(lang.pick_interactive_prompt(), choices)
+    let prompt = lang.pick_interactive_prompt(choices.len());
+    inquire::Select::new(&prompt, choices)
         .prompt()
         .ok()
         .map(|choice| choice.index)
@@ -950,15 +951,19 @@ fn render_human(shown: &[DisplayHit], query: &str, debug: bool, lang: Lang) {
             let number = format!("{}.", index + 1);
             if debug {
                 println!(
-                    "{} {}  {}",
+                    "{} {} {} {}",
                     number.if_supports_color(Stdout, |t| t.bold().to_string()),
-                    hit.id.if_supports_color(Stdout, |t| t.bold().to_string()),
-                    format!("{:.2}", hit.score).if_supports_color(Stdout, |t| t.dimmed().to_string())
+                    hit.namespace.if_supports_color(Stdout, |t| t.dimmed().to_string()),
+                    "·".if_supports_color(Stdout, |t| t.dimmed().to_string()),
+                    format!("{}  {:.2}", hit.id, hit.score)
+                        .if_supports_color(Stdout, |t| t.bold().to_string())
                 );
             } else {
                 println!(
-                    "{} {}",
+                    "{} {} {} {}",
                     number.if_supports_color(Stdout, |t| t.bold().to_string()),
+                    hit.namespace.if_supports_color(Stdout, |t| t.dimmed().to_string()),
+                    "·".if_supports_color(Stdout, |t| t.dimmed().to_string()),
                     hit.id.if_supports_color(Stdout, |t| t.bold().to_string())
                 );
             }
@@ -1823,6 +1828,8 @@ mod tests {
         assert!(Lang::En.copied_to_clipboard().contains("Ctrl+V to paste"));
         assert!(Lang::Fr.copied_to_clipboard().contains("Ctrl+V pour coller"));
         assert!(Lang::Fr.daemon_reload_failed("timeout").contains("timeout"));
+        assert!(Lang::En.pick_interactive_prompt(3).contains("3"));
+        assert!(Lang::Fr.pick_interactive_prompt(3).contains("3"));
         let target = Lang::Fr.ambiguous_action_target("git_commit", "git commit -m message");
         assert!(target.contains("git_commit"));
         assert!(target.contains("git commit -m message"));

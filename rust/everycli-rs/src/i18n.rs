@@ -182,10 +182,10 @@ Clés de configuration : language (en|fr), api_key, api_url, api_model, provider
         }
     }
 
-    pub fn pick_interactive_prompt(&self) -> &'static str {
+    pub fn pick_interactive_prompt(&self, count: usize) -> String {
         match self {
-            Lang::En => "Choose a command:",
-            Lang::Fr => "Choisis une commande :",
+            Lang::En => format!("Choose one of {count} commands:"),
+            Lang::Fr => format!("Choisis une commande parmi {count} :"),
         }
     }
 
