@@ -21,16 +21,31 @@ set -euo pipefail
 
 LOCAL_SOURCE=""
 INSTALL_DIR="$HOME/.local/share/everycli"
+LANGUAGE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --local-source) LOCAL_SOURCE="$2"; shift 2 ;;
         --install-dir) INSTALL_DIR="$2"; shift 2 ;;
+        --language|--lang) LANGUAGE="$2"; shift 2 ;;
         *) echo "Option inconnue : $1" >&2; exit 1 ;;
     esac
 done
 
-echo "=== Installation d'EveryCli ==="
+echo "=== Installation d'EveryCli / EveryCli Setup ==="
+
+if [[ -z "$LANGUAGE" ]]; then
+    echo ""
+    echo "Select language / Choisissez votre langue :"
+    echo "  [1] English (default / defaut)"
+    echo "  [2] Francais"
+    read -rp "Choice / Choix [1-2]: " choice || choice=""
+    if [[ "$choice" == "2" || "$choice" == "fr" || "$choice" == "Français" ]]; then
+        LANGUAGE="fr"
+    else
+        LANGUAGE="en"
+    fi
+fi
 
 # --- 1. Obtenir les fichiers (local ou téléchargement) ---
 if [[ -n "$LOCAL_SOURCE" ]]; then
@@ -140,8 +155,23 @@ else
     echo "everycli fonctionnera quand même en mode recherche locale en attendant."
 fi
 
+# --- Enregistrer la preference de langue dans config.toml ---
+USER_CONFIG_DIR="$HOME/.everycli"
+mkdir -p "$USER_CONFIG_DIR"
+USER_CONFIG_FILE="$USER_CONFIG_DIR/config.toml"
+if [[ -f "$USER_CONFIG_FILE" ]]; then
+    if ! grep -q 'language[[:space:]]*=' "$USER_CONFIG_FILE"; then
+        echo "language = \"$LANGUAGE\"" >> "$USER_CONFIG_FILE"
+    else
+        sed -i -E "s/language[[:space:]]*=[[:space:]]*\"[^\"]*\"/language = \"$LANGUAGE\"/" "$USER_CONFIG_FILE"
+    fi
+else
+    echo "language = \"$LANGUAGE\"" > "$USER_CONFIG_FILE"
+fi
+
 echo ""
-echo "=== Installation terminée ==="
-echo "Ouvre un NOUVEAU terminal (ou lance : source ~/.profile) et tape : everycli search \"ta requete\""
+echo "=== Installation terminée / Setup complete ==="
+echo "Language / Langue : $( [[ "$LANGUAGE" == "fr" ]] && echo "Français" || echo "English" )"
+echo "Ouvre un NOUVEAU terminal (ou lance : source ~/.profile) et tape / Open a NEW terminal and type : everycli search <query>"
 echo "Logs du daemon : $INSTALL_DIR/logs/daemon.log"
 echo "Statut du service : systemctl --user status everycli-daemon.service"
