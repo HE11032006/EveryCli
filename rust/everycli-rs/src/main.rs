@@ -919,7 +919,11 @@ fn render_human(shown: &[DisplayHit], query: &str, debug: bool, lang: Lang) {
             hit.command.if_supports_color(Stdout, |t| t.cyan().to_string())
         );
         println!();
-        println!("  {}", explanation);
+        println!(
+            "  {} {}",
+            "i".if_supports_color(Stdout, |t| t.dimmed().to_string()),
+            explanation
+        );
         if !warning.is_empty() {
             println!();
             println!(
@@ -973,7 +977,11 @@ fn render_human(shown: &[DisplayHit], query: &str, debug: bool, lang: Lang) {
                 hit.command
                     .if_supports_color(Stdout, |t| t.cyan().bold().to_string())
             );
-            println!("   {}", explanation);
+            println!(
+                "   {} {}",
+                "i".if_supports_color(Stdout, |t| t.dimmed().to_string()),
+                explanation
+            );
             if !warning.is_empty() {
                 println!(
                     "   {} {}",

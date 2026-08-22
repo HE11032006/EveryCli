@@ -56,6 +56,7 @@ fn is_relevant_score(score: f32) -> bool {
     score >= MIN_RELEVANCE_SCORE
 }
 
+
 struct DaemonState {
     data_dir: PathBuf,
     user_dir: PathBuf,
@@ -629,4 +630,5 @@ mod tests {
         assert!(is_relevant_score(0.53));
         assert!(is_relevant_score(MIN_RELEVANCE_SCORE));
     }
+
 }
