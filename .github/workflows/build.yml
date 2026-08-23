@@ -9,8 +9,8 @@ on:
   workflow_dispatch:
 
 env:
-  # Version CPU officielle et reproductible du runtime chargé dynamiquement.
-  ORT_VERSION: "1.20.1"
+  # Version CPU officielle et reproductible compatible avec ort 2.0.0-rc.13.
+  ORT_VERSION: "1.27.0"
   # Artefact ONNX validé et publié séparément du code EveryCli.
   MODEL_REPO: "Michelhe/everycli-minilm-ft-boosted-onnx"
   MODEL_REVISION: "4ffbae1c8588491e8a655384619a4c9c6e41d7f3"

@@ -1,80 +1,185 @@
-# How-to : compiler EveryCli depuis les sources
+# Compiler et tester EveryCli
 
-Ce guide est destiné aux développeurs qui souhaitent modifier le code d'EveryCli ou générer leurs propres binaires à partir du dépôt Git.
+Ce guide s’adresse aux développeurs qui modifient le code ou produisent un bundle local. Il ne décrit pas une étape nécessaire pour l’utilisateur final : une release précompilée contient déjà les binaires, le modèle et le runtime.
 
-> Architecture actuelle (branche `reverie-hacks-2026`) : le chemin de recherche rapide (`search`, `add`, `list`, `remove`) est 100% Rust. Seul Sentinel (`plan`, planificateur LLM) reste Python. Voir [CONTRIBUTING.md](../CONTRIBUTING.md) pour la boucle de développement rapide ; ce document couvre la compilation de release complète.
+## Pré-requis
 
-## 1. Compiler le client et le daemon (Rust)
+Le chemin de recherche rapide utilise Rust. Sentinel, le planificateur LLM, reste Python. Pour travailler sur le daemon et le client :
 
 ```bash
-git clone https://github.com/HE11032006/EveryCli.git
-cd EveryCli/rust
+rustup toolchain install stable
+```
+
+Pour travailler sur Sentinel ou les outils de modèle, installe Python 3 et les dépendances du projet dans un environnement virtuel.
+
+## Compiler les binaires Rust
+
+Depuis la racine du dépôt :
+
+```bash
+cd rust
 cargo build --release -p everycli-rs -p everycli-daemon
 ```
 
-Ça produit `target/release/everycli-rs(.exe)` et `target/release/everycli-daemon(.exe)`.
+Les binaires sont créés dans `rust/target/release/` :
 
-## 2. Obtenir le modèle ONNX et le runtime
-
-Le daemon a besoin de trois choses à côté de lui pour tourner :
-- `model.onnx` + `tokenizer.json` — le modèle sémantique exporté
-- `onnxruntime.dll` (Windows) / `libonnxruntime.so` (Linux) — le runtime d'inférence
-- le corpus YAML (`everycli/data/commands/`)
-
-Pour exporter le modèle toi-même (pas nécessaire si tu as déjà ces fichiers) :
-
-```bash
-pip install -r requirements.txt --break-system-packages
-pip install -r training/requirements-onnx-export.txt --break-system-packages
-optimum-cli export onnx --model Karmelkke/everycli-minilm-ft --task feature-extraction --library-name transformers rust/onnx-bench/models/everycli-minilm-ft
-cd rust/onnx-bench && python fetch_tokenizer.py && cd ../..
+```text
+everycli-rs(.exe)
+everycli-daemon(.exe)
 ```
 
-Pièges connus documentés en tête de [`training/requirements-onnx-export.txt`](../training/requirements-onnx-export.txt) (notamment un bug de compatibilité `tokenizer_class` selon la version de `transformers`).
+Le binaire doit être compilé pour la plateforme sur laquelle il sera exécuté. Un exécutable Windows n’est pas un exécutable Linux ; le runtime ONNX est également différent selon le système.
 
-Pour `onnxruntime`, télécharge le zip officiel `onnxruntime-{platform}-x64-*` depuis les [releases GitHub de microsoft/onnxruntime](https://github.com/microsoft/onnxruntime/releases/latest), et place la bibliothèque dans `rust/onnx-bench/runtime/`.
+## Préparer les artefacts ONNX
 
-## 3. Assembler un dossier de distribution
+Le daemon attend au minimum :
+
+```text
+model.onnx
+tokenizer.json
+```
+
+L’artefact de production est publié dans le dépôt Hugging Face [`Michelhe/everycli-minilm-ft-boosted-onnx`](https://huggingface.co/Michelhe/everycli-minilm-ft-boosted-onnx). La CI utilise une révision précise et vérifie les SHA-256 avant de construire les bundles.
+
+Pour une préparation locale, place les fichiers dans :
+
+```text
+rust/onnx-bench/models/everycli-minilm-ft/
+```
+
+Le dépôt ONNX ne contient pas le runtime natif. Le runtime doit être obtenu séparément pour la plateforme cible :
+
+```text
+Windows : runtime/onnxruntime.dll
+Linux   : runtime/libonnxruntime.so
+```
+
+Le crate `ort 2.0.0-rc.13` utilisé par EveryCli exige une bibliothèque ONNX Runtime native de la série `1.27.x` ou ultérieure. Le workflow épingle actuellement `ONNX Runtime 1.27.0`, qui fournit les archives CPU officielles `onnxruntime-win-x64-1.27.0.zip` et `onnxruntime-linux-x64-1.27.0.tgz`. La version 1.20.1 est incompatible avec le binaire actuel.
+
+Les archives CPU officielles sont disponibles dans les [releases ONNX Runtime](https://github.com/microsoft/onnxruntime/releases). Le workflow CI est la méthode recommandée pour préparer simultanément les bundles Ubuntu et Windows, car chaque job s’exécute sur le système cible.
+
+## Exporter un nouveau modèle
+
+Cette opération n’est pas nécessaire pour une release normale. Elle ne doit être utilisée que lorsqu’un nouveau checkpoint doit être exporté. Les dépendances et les pièges d’export sont documentés dans [`training/requirements-onnx-export.txt`](../training/requirements-onnx-export.txt).
+
+Le pipeline de release ne réexporte pas le modèle de production : il télécharge l’artefact ONNX publié, versionné et hashé. Cela évite de produire silencieusement un fichier différent lors d’un build ultérieur.
+
+## Assembler un staging local
+
+Sous Windows, depuis la racine du dépôt :
+
+```powershell
+.\scripts\windows\stage-release.ps1
+```
+
+Le script assemble `dist\windows` avec `bin`, `model`, `runtime` et `data`.
+
+Sous Linux :
 
 ```bash
-# Windows
-.\scripts\windows\stage-release.ps1
-# Linux
 ./scripts/linux/stage-release.sh
 ```
 
-Ça assemble `dist/windows` (ou `dist/linux`) avec la structure exacte attendue par `install.ps1`/`install.sh` : `bin/`, `model/`, `runtime/`, `data/`.
+Le script assemble `dist/linux`. Il doit être exécuté dans un environnement Linux et nécessite le binaire Linux ainsi que `libonnxruntime.so` Linux.
 
-## 4. Tester localement
+La structure attendue est :
 
-```bash
-cargo run -p everycli-daemon         # terminal 1 -- laisse tourner
-cargo run -p everycli-rs -- search "git commit"   # terminal 2
+```text
+bundle/
+├── bin/
+│   ├── everycli(.exe)
+│   └── everycli-daemon(.exe)
+├── model/
+│   ├── model.onnx
+│   └── tokenizer.json
+├── runtime/
+│   ├── onnxruntime.dll       # Windows
+│   └── libonnxruntime.so     # Linux
+├── data/commands/
+├── install.ps1 ou install.sh
+└── uninstall.ps1 ou uninstall.sh
 ```
 
-Ajoute `--debug` au daemon pour voir les scores lexical/sémantique/hybride séparément par résultat.
+## Tester un staging local
 
-## 5. Tester l'installeur
+Windows :
 
 ```powershell
-.\install.ps1 -LocalSource "dist\windows"
+.\install.ps1 -LocalSource "dist\windows" -NoService
+everycli search "how to undo my last commit"
+.\uninstall.ps1
 ```
 
-Voir [`docs/tutorial_installation.md`](tutorial_installation.md) pour le flux complet côté utilisateur final.
-
-## 6. Dépannage
-
-- **Erreurs de compilation liées à `ort`** : vérifie que la version d'`ort` dans `rust/everycli-inference/Cargo.toml` correspond à celle attendue par `rust/onnx-bench` (elles doivent matcher, y compris la version d'`ndarray` utilisée en interne).
-- **Le daemon ne trouve pas le modèle** : vérifie les variables d'environnement `EVERYCLI_MODEL_DIR`, `EVERYCLI_ONNXRUNTIME_DYLIB`, `EVERYCLI_DATA_DIR` (voir [`docs/reference_config.md`](reference_config.md)).
-- **Conflit de port au démarrage du daemon** (`os error 10048` / `AddrInUse`) : une autre instance tourne déjà (service Windows ou processus). Le daemon affiche maintenant un message clair dans ce cas plutôt que l'erreur brute — suis les instructions qu'il donne pour l'arrêter.
-
-## Ancien flux PyInstaller (Python, releases v1.1.1 et antérieures)
-
-Pour référence uniquement — ce flux est en cours de remplacement (voir [CHANGELOG.md](../CHANGELOG.md)) :
+Linux :
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt --break-system-packages
-pyinstaller everycli-daemon.spec --clean
+./install.sh --local-source "$PWD/dist/linux" --language fr
+source ~/.profile
+hash -r
+everycli search "comment annuler mon dernier commit"
+./uninstall.sh
 ```
+
+Le test Linux doit vérifier le service, le port et la conservation des données personnelles :
+
+```bash
+systemctl --user status everycli-daemon.service --no-pager -l
+ss -ltn | grep 51821
+find "$HOME/.everycli" -maxdepth 3 -type f -print
+```
+
+## Tester les crates Rust
+
+Depuis `rust/` :
+
+```bash
+cargo test -p everycli-rs
+cargo test -p everycli-core
+cargo test -p everycli-daemon
+```
+
+Le test `everycli-core` couvre notamment le parsing du corpus, la recherche et la découverte du daemon. Le test du daemon couvre le seuil de pertinence.
+
+## Mesurer la qualité de recherche
+
+Depuis la racine du dépôt :
+
+```bash
+python tools/evaluate_confusion.py
+```
+
+Le benchmark `eval/confusion_set.yaml` contient des requêtes bilingues. L’évaluateur mesure le ranking et n’exécute jamais les commandes retournées. `--matcher lexical` permet de comparer le repli lexical ; `--fail-under` doit être choisi à partir d’une baseline explicitement acceptée.
+
+## CI et releases
+
+Le workflow [`.github/workflows/build.yml`](../.github/workflows/build.yml) :
+
+1. télécharge `model.onnx` et `tokenizer.json` depuis une révision Hugging Face verrouillée ;
+2. vérifie leurs SHA-256 ;
+3. compile sur Ubuntu, Windows et macOS ;
+4. télécharge le runtime natif propre à chaque job ;
+5. assemble les archives Linux et Windows ;
+6. publie une release et `SHA256SUMS` lorsqu’un tag `v*` est poussé.
+
+Un push vers `main` valide et produit des artefacts CI. Un tag est nécessaire pour activer le job de publication.
+
+L’audit des dépendances s’exécute dans le workspace Rust :
+
+```yaml
+working-directory: rust
+run: cargo audit
+```
+
+## Dépannage développeur
+
+Si le daemon ne trouve pas ses fichiers, vérifie `EVERYCLI_MODEL_DIR`, `EVERYCLI_ONNXRUNTIME_DYLIB`, `EVERYCLI_DATA_DIR` et `EVERYCLI_USER_DATA_DIR` dans [`reference_config.md`](reference_config.md).
+
+Si le port `51821` est déjà utilisé, arrête l’ancien daemon avant de relancer le test. Sous Linux, utilise `systemctl --user stop everycli-daemon.service`. Sous Windows, vérifie le service et le processus `everycli-daemon`.
+
+Si le daemon Linux démarre lentement, attends la fin du premier calcul des embeddings. Le cache peut ensuite accélérer les démarrages suivants.
+
+## Références
+
+- [ONNX Runtime — installation](https://onnxruntime.ai/docs/install/)
+- [ONNX Runtime — releases](https://github.com/microsoft/onnxruntime/releases)
+- [Artefact ONNX EveryCli](https://huggingface.co/Michelhe/everycli-minilm-ft-boosted-onnx)
