@@ -257,14 +257,18 @@ systemctl --user enable --now everycli-daemon.service
 
 # --- 6. Attendre que le daemon réponde vraiment ---
 wait_for_daemon() {
-    local timeout_attempts=60
+    # Le chargement du modèle float32 peut dépasser 30 secondes sur une
+    # machine modeste ou dans WSL. On attend jusqu'à 3 minutes sans afficher
+    # les diagnostics bruyants de /dev/tcp à chaque tentative.
+    local timeout_attempts=360
     local attempt=0
     while [[ $attempt -lt $timeout_attempts ]]; do
-        if exec 3<>/dev/tcp/127.0.0.1/51821 2>/dev/null; then
-            echo '{"action":"ping"}' >&3
-            local response
-            response=$(timeout 2 head -n1 <&3 || true)
-            exec 3<&- 3>&- 2>/dev/null || true
+        local response=""
+        if response=$(timeout 3 bash -c '
+            exec 3<>/dev/tcp/127.0.0.1/51821 || exit 1
+            printf "%s\n" '\''{"action":"ping"}'\'' >&3
+            head -n1 <&3
+        ' 2>/dev/null); then
             if [[ "$response" == *'"pong":true'* ]]; then
                 return 0
             fi
@@ -275,11 +279,11 @@ wait_for_daemon() {
     return 1
 }
 
-echo "Attente que le daemon soit prêt (calcul des embeddings du corpus, jusqu'à ~30s au premier démarrage)..."
+echo "Attente que le daemon soit prêt (calcul des embeddings du corpus, jusqu'à ~3 min au premier démarrage)..."
 if wait_for_daemon; then
     echo "Daemon prêt, cache d'embeddings calculé et écrit sur disque."
 else
-    echo "Le daemon ne répond pas encore après 30s -- vérifie : systemctl --user status everycli-daemon.service"
+    echo "Le daemon ne répond pas encore après 3 min -- vérifie : systemctl --user status everycli-daemon.service"
     echo "et les logs : $INSTALL_DIR/logs/daemon.log"
     echo "everycli fonctionnera quand même en mode recherche locale en attendant."
 fi

@@ -29,7 +29,7 @@ cp "$MODEL_SRC/model.onnx" "$DIST/model/"
 cp "$MODEL_SRC/tokenizer.json" "$DIST/model/"
 
 echo "Copie du runtime ONNX..."
-cp "$REPO_ROOT/rust/onnx-bench/runtime/libonnxruntime.so" "$DIST/runtime/"
+cp "$REPO_ROOT/rust/onnx-bench/runtime/libonnxruntime.so"* "$DIST/runtime/libonnxruntime.so"
 
 echo "Copie du corpus de commandes..."
 cp "$REPO_ROOT/everycli/data/commands/"*.yaml "$DIST/data/commands/"
