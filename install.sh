@@ -1,38 +1,81 @@
 #!/usr/bin/env bash
-# EveryCli - installeur Linux. Miroir de install.ps1 (Windows).
+# EveryCli - installeur Linux.
 #
-# Usage :
-#   Test local (avant qu'une vraie release existe) :
-#     ./install.sh --local-source "dist/linux"
+# Installation depuis une archive extraite (aucun compilateur Rust requis) :
+#   tar -xzf everycli-linux-x86_64.tar.gz
+#   cd everycli-linux-x86_64
+#   ./install.sh
 #
-# Ce que ça fait :
-#   1. Place les binaires/modèle/runtime/corpus dans ~/.local/share/everycli
-#   2. Symlink les binaires dans ~/.local/bin (déjà dans le PATH sur la
-#      plupart des distributions récentes), + ajout en secours dans
-#      ~/.profile pour les cas où ce ne serait pas déjà le cas
-#   3. Installe et active un service systemd --user (démarre au login,
-#      redémarre automatiquement en cas de crash) — pas d'équivalent au
-#      blocage de permissions rencontré avec le Planificateur de tâches
-#      Windows, systemd --user est prévu pour ce cas d'usage
-#   4. Attend que le daemon réponde réellement avant d'annoncer le succès
-#      (pas un délai fixe arbitraire)
+# L’installeur détecte automatiquement le bundle placé à côté de lui.
+# Si aucun bundle local n’est présent, il télécharge la release GitHub.
+# Test explicite d'un bundle local préparé ailleurs :
+#   ./install.sh --local-source "dist/linux"
 
 set -euo pipefail
 
+REPOSITORY="HE11032006/EveryCli"
+VERSION="latest"
 LOCAL_SOURCE=""
 INSTALL_DIR="$HOME/.local/share/everycli"
 LANGUAGE=""
+TEMP_DIR=""
+
+usage() {
+    cat <<'EOF'
+Usage : ./install.sh [options]
+
+Sans --local-source, télécharge l'archive Linux x86_64 de la release GitHub,
+puis vérifie son SHA-256 avant extraction. Rust n'est pas requis.
+
+Options :
+  --version VERSION       Release à installer (latest ou vX.Y.Z)
+  --local-source DIR      Utiliser un bundle local déjà assemblé
+  --install-dir DIR       Dossier d'installation (défaut : ~/.local/share/everycli)
+  --language en|fr        Langue sans question interactive
+  --help                  Afficher cette aide
+EOF
+}
+
+cleanup() {
+    if [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]]; then
+        rm -rf "$TEMP_DIR"
+    fi
+}
+trap cleanup EXIT
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --local-source) LOCAL_SOURCE="$2"; shift 2 ;;
-        --install-dir) INSTALL_DIR="$2"; shift 2 ;;
-        --language|--lang) LANGUAGE="$2"; shift 2 ;;
-        *) echo "Option inconnue : $1" >&2; exit 1 ;;
+        --version)
+            [[ $# -ge 2 ]] || { echo "--version nécessite une valeur." >&2; exit 1; }
+            VERSION="$2"
+            shift 2
+            ;;
+        --local-source)
+            [[ $# -ge 2 ]] || { echo "--local-source nécessite un dossier." >&2; exit 1; }
+            LOCAL_SOURCE="$2"
+            shift 2
+            ;;
+        --install-dir)
+            [[ $# -ge 2 ]] || { echo "--install-dir nécessite un chemin." >&2; exit 1; }
+            INSTALL_DIR="$2"
+            shift 2
+            ;;
+        --language|--lang)
+            [[ $# -ge 2 ]] || { echo "--language nécessite en ou fr." >&2; exit 1; }
+            LANGUAGE="$2"
+            shift 2
+            ;;
+        --help|-h)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Option inconnue : $1" >&2
+            usage >&2
+            exit 1
+            ;;
     esac
 done
-
-echo "=== Installation d'EveryCli / EveryCli Setup ==="
 
 if [[ -z "$LANGUAGE" ]]; then
     echo ""
@@ -46,26 +89,110 @@ if [[ -z "$LANGUAGE" ]]; then
         LANGUAGE="en"
     fi
 fi
+case "$LANGUAGE" in
+    en|fr) ;;
+    *) echo "Langue invalide : $LANGUAGE (valeurs attendues : en ou fr)." >&2; exit 1 ;;
+esac
 
-# --- 1. Obtenir les fichiers (local ou téléchargement) ---
+echo "=== Installation d'EveryCli / EveryCli Setup ==="
+
+# --- 1. Obtenir et vérifier les fichiers (bundle local ou release GitHub) ---
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 if [[ -n "$LOCAL_SOURCE" ]]; then
     if [[ ! -d "$LOCAL_SOURCE" ]]; then
         echo "Dossier source introuvable : $LOCAL_SOURCE" >&2
         exit 1
     fi
-    echo "Source locale : $LOCAL_SOURCE"
     SOURCE="$LOCAL_SOURCE"
+    echo "Source locale : $SOURCE"
+elif [[ -d "$SCRIPT_DIR/bin" ]]; then
+    SOURCE="$SCRIPT_DIR"
+    echo "Bundle local détecté à côté de l'installeur : $SOURCE"
 else
-    # NOTE : pas encore de release GitHub publique avec les binaires Rust.
-    # Utilise --local-source avec un dossier préparé par
-    # scripts/linux/stage-release.sh en attendant.
-    echo "Le téléchargement depuis une release GitHub n'est pas encore disponible. Utilise --local-source." >&2
-    exit 1
+    if [[ "$VERSION" == "latest" ]]; then
+        RELEASE_BASE="https://github.com/$REPOSITORY/releases/latest/download"
+    else
+        RELEASE_TAG="${VERSION#v}"
+        if [[ -z "$RELEASE_TAG" ]]; then
+            echo "Version invalide : $VERSION" >&2
+            exit 1
+        fi
+        RELEASE_BASE="https://github.com/$REPOSITORY/releases/download/v$RELEASE_TAG"
+    fi
+
+    ARCHIVE="everycli-linux-x86_64.tar.gz"
+    TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/everycli-install.XXXXXX")"
+    ARCHIVE_PATH="$TEMP_DIR/$ARCHIVE"
+    CHECKSUMS_PATH="$TEMP_DIR/SHA256SUMS"
+    EXTRACT_DIR="$TEMP_DIR/extracted"
+    mkdir -p "$EXTRACT_DIR"
+
+    download() {
+        local url="$1"
+        local destination="$2"
+        if command -v curl >/dev/null 2>&1; then
+            curl --fail --location --retry 3 --proto '=https' --tlsv1.2 "$url" -o "$destination"
+        elif command -v wget >/dev/null 2>&1; then
+            wget --https-only --tries=3 --output-document="$destination" "$url"
+        else
+            echo "curl ou wget est requis pour télécharger EveryCli." >&2
+            exit 1
+        fi
+    }
+
+    echo "Téléchargement de EveryCli $VERSION pour Linux x86_64..."
+    download "$RELEASE_BASE/$ARCHIVE" "$ARCHIVE_PATH"
+    download "$RELEASE_BASE/SHA256SUMS" "$CHECKSUMS_PATH"
+
+    expected_hash="$(awk -v name="$ARCHIVE" '$2 == name { print $1; exit }' "$CHECKSUMS_PATH")"
+    if [[ ! "$expected_hash" =~ ^[[:xdigit:]]{64}$ ]]; then
+        echo "SHA-256 introuvable pour $ARCHIVE dans SHA256SUMS." >&2
+        exit 1
+    fi
+
+    if command -v sha256sum >/dev/null 2>&1; then
+        actual_hash="$(sha256sum "$ARCHIVE_PATH" | awk '{print $1}')"
+    elif command -v shasum >/dev/null 2>&1; then
+        actual_hash="$(shasum -a 256 "$ARCHIVE_PATH" | awk '{print $1}')"
+    else
+        echo "sha256sum ou shasum est requis pour vérifier l'archive." >&2
+        exit 1
+    fi
+    if [[ "${actual_hash,,}" != "${expected_hash,,}" ]]; then
+        echo "Échec de vérification SHA-256 pour $ARCHIVE." >&2
+        exit 1
+    fi
+    echo "Archive vérifiée (SHA-256)."
+
+    tar -xzf "$ARCHIVE_PATH" -C "$EXTRACT_DIR"
+    SOURCE="$EXTRACT_DIR"
+    shopt -s nullglob
+    extracted_entries=("$SOURCE"/*)
+    if [[ ! -d "$SOURCE/bin" && "${#extracted_entries[@]}" -eq 1 && -d "${extracted_entries[0]}" ]]; then
+        SOURCE="${extracted_entries[0]}"
+    fi
+    shopt -u nullglob
 fi
+
+# Refuser de supprimer une installation existante si la source est incomplète.
+required_paths=(
+    "bin/everycli"
+    "bin/everycli-daemon"
+    "model/model.onnx"
+    "model/tokenizer.json"
+    "runtime/libonnxruntime.so"
+    "data/commands"
+)
+for relative_path in "${required_paths[@]}"; do
+    if [[ ! -e "$SOURCE/$relative_path" ]]; then
+        echo "Bundle incomplet : fichier ou dossier absent : $relative_path" >&2
+        exit 1
+    fi
+done
 
 # --- 2. Copier vers le dossier d'installation ---
 echo "Installation dans $INSTALL_DIR..."
-# Arrête l’ancienne instance avant de remplacer ses binaires.
+# Arrête l'ancienne instance avant de remplacer ses binaires.
 systemctl --user stop everycli-daemon.service 2>/dev/null || true
 rm -rf "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR/logs"
@@ -75,15 +202,12 @@ cp -r "$SOURCE/runtime" "$INSTALL_DIR/"
 cp -r "$SOURCE/data" "$INSTALL_DIR/"
 chmod +x "$INSTALL_DIR/bin/everycli" "$INSTALL_DIR/bin/everycli-daemon"
 
-# --- 3. Symlinks dans ~/.local/bin (convention XDG, déjà dans le PATH sur
-# la plupart des distributions récentes par défaut) ---
+# --- 3. Symlinks dans ~/.local/bin ---
 mkdir -p "$HOME/.local/bin"
 ln -sf "$INSTALL_DIR/bin/everycli" "$HOME/.local/bin/everycli"
 ln -sf "$INSTALL_DIR/bin/everycli-daemon" "$HOME/.local/bin/everycli-daemon"
 
-# --- 4. Filet de sécurité : ajoute quand même au PATH via ~/.profile (idempotent) ---
-# Ne fait rien si ~/.local/bin est déjà dans le PATH (cas fréquent) ou si la
-# ligne a déjà été ajoutée lors d'une install précédente.
+# --- 4. PATH et variables persistantes dans ~/.profile ---
 PROFILE="$HOME/.profile"
 PATH_LINE='export PATH="$HOME/.local/bin:$PATH"'
 PATH_MARKER="# EveryCli PATH (managed by installer)"
@@ -93,16 +217,12 @@ if ! grep -Fq "$PATH_LINE" "$PROFILE"; then
     { echo ""; echo "$PATH_MARKER"; echo "$PATH_LINE"; } >> "$PROFILE"
 fi
 
-# Variables d'environnement persistantes — utiles pour lancer
-# everycli-daemon manuellement depuis un terminal pour déboguer. Le service
-# systemd (plus bas) ne dépend PAS de ces lignes : il a ses propres
-# Environment= dans l'unit file.
 ENV_LINES="export EVERYCLI_MODEL_DIR=\"$INSTALL_DIR/model\"
 export EVERYCLI_ONNXRUNTIME_DYLIB=\"$INSTALL_DIR/runtime/libonnxruntime.so\"
 export EVERYCLI_DATA_DIR=\"$INSTALL_DIR/data/commands\"
 export EVERYCLI_USER_DATA_DIR=\"$HOME/.everycli/commands\""
 ENV_MARKER="# EveryCli environment (managed by installer)"
-if [[ -f "$PROFILE" ]] && ! grep -Fq "$ENV_MARKER" "$PROFILE"; then
+if ! grep -Fq "$ENV_MARKER" "$PROFILE"; then
     { echo ""; echo "$ENV_MARKER"; echo "$ENV_LINES"; } >> "$PROFILE"
 fi
 mkdir -p "$HOME/.everycli/commands"
@@ -135,9 +255,9 @@ EOF
 systemctl --user daemon-reload
 systemctl --user enable --now everycli-daemon.service
 
-# --- 6. Attendre que le daemon réponde vraiment (pas un délai fixe) ---
+# --- 6. Attendre que le daemon réponde vraiment ---
 wait_for_daemon() {
-    local timeout_attempts=60  # 60 * 0.5s = 30s
+    local timeout_attempts=60
     local attempt=0
     while [[ $attempt -lt $timeout_attempts ]]; do
         if exec 3<>/dev/tcp/127.0.0.1/51821 2>/dev/null; then
@@ -164,7 +284,7 @@ else
     echo "everycli fonctionnera quand même en mode recherche locale en attendant."
 fi
 
-# --- Enregistrer la preference de langue dans config.toml ---
+# --- 7. Enregistrer la préférence de langue ---
 USER_CONFIG_DIR="$HOME/.everycli"
 mkdir -p "$USER_CONFIG_DIR"
 USER_CONFIG_FILE="$USER_CONFIG_DIR/config.toml"
@@ -180,6 +300,7 @@ fi
 
 echo ""
 echo "=== Installation terminée / Setup complete ==="
+echo "Rust n'était pas nécessaire : l'archive contient les binaires, le modèle et le runtime."
 echo "Language / Langue : $( [[ "$LANGUAGE" == "fr" ]] && echo "Français" || echo "English" )"
 echo "Ouvre un NOUVEAU terminal (ou lance : source ~/.profile) et tape / Open a NEW terminal and type : everycli search <query>"
 echo "Logs du daemon : $INSTALL_DIR/logs/daemon.log"

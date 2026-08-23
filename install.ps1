@@ -1,9 +1,12 @@
 # EveryCli - installeur Windows.
 #
 # Usage :
-#   Par defaut -- tente le mecanisme le plus avantageux (service Windows
-#   natif : redemarrage auto en cas de crash, demarre avant connexion
-#   utilisateur), via auto-elevation UAC (comme Docker Desktop) :
+#   Depuis une archive release extraite, l'installeur detecte automatiquement
+#   bin/model/runtime/data a cote de lui :
+#     .\install.ps1
+#   Pour telecharger explicitement une release GitHub (aucun Rust requis) :
+#     .\install.ps1 -Version v0.1.0
+#   Pour tester un staging local :
 #     .\install.ps1 -LocalSource "dist\windows"
 #   Sans jamais demander l'elevation (dossier Demarrage directement,
 #   aucune permission speciale, mais pas de redemarrage auto en cas de
@@ -31,6 +34,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$tempRoot = $null
 
 function Test-Elevated {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -185,37 +189,60 @@ if ($LocalSource -ne "") {
     }
     Write-Host "Source locale : $LocalSource"
     $Source = $LocalSource
+} elseif (Test-Path (Join-Path $PSScriptRoot "bin")) {
+    $Source = $PSScriptRoot
+    Write-Host "Bundle local detecte a cote de l'installeur : $Source"
 } else {
-    # Convention : un seul zip par OS, nommé "everycli-windows.zip",
-    # attaché en asset de release GitHub, contenant directement les
-    # dossiers bin/model/runtime/data (même structure que produit
-    # scripts\windows\stage-release.ps1). PAS ENCORE TESTE de bout en
-    # bout -- aucune release publique avec ces binaires n'existe à ce jour.
+    # L'archive release est autonome : binaires, modele, tokenizer, runtime et corpus.
     $repo = "HE11032006/EveryCli"
-    $releaseUrl = if ($Version -eq "latest") {
-        "https://github.com/$repo/releases/latest/download/everycli-windows.zip"
+    $archive = "everycli-windows-x86_64.zip"
+    $releaseBase = if ($Version -eq "latest") {
+        "https://github.com/$repo/releases/latest/download"
     } else {
-        "https://github.com/$repo/releases/download/$Version/everycli-windows.zip"
+        $tag = $Version.TrimStart('v')
+        "https://github.com/$repo/releases/download/v$tag"
     }
+    $releaseUrl = "$releaseBase/$archive"
+    $checksumsUrl = "$releaseBase/SHA256SUMS"
 
-    $tempZip = Join-Path $env:TEMP "everycli-$([guid]::NewGuid()).zip"
-    $tempExtract = Join-Path $env:TEMP "everycli-$([guid]::NewGuid())"
+    $tempRoot = Join-Path $env:TEMP "everycli-$([guid]::NewGuid())"
+    $tempZip = Join-Path $tempRoot $archive
+    $tempChecksums = Join-Path $tempRoot "SHA256SUMS"
+    $tempExtract = Join-Path $tempRoot "extracted"
+    New-Item -ItemType Directory -Force -Path $tempExtract | Out-Null
 
     Write-Host "Telechargement depuis $releaseUrl..."
     try {
         Invoke-WebRequest -Uri $releaseUrl -OutFile $tempZip -UseBasicParsing
+        Invoke-WebRequest -Uri $checksumsUrl -OutFile $tempChecksums -UseBasicParsing
     } catch {
-        Write-Error "Echec du telechargement depuis $releaseUrl -- verifie que la release existe, ou utilise -LocalSource pour installer depuis un dossier local prepare par stage-release.ps1."
+        Remove-Item $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Error "Echec du telechargement de la release -- verifie que $Version existe, ou utilise -LocalSource pour installer depuis un dossier local prepare par stage-release.ps1."
         exit 1
     }
 
+    $checksumLine = Get-Content -LiteralPath $tempChecksums |
+        Where-Object { $_ -match "\s$([regex]::Escape($archive))$" } |
+        Select-Object -First 1
+    if (-not $checksumLine) {
+        Remove-Item $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Error "SHA-256 introuvable pour $archive dans SHA256SUMS."
+        exit 1
+    }
+    $expectedHash = ($checksumLine -split '\s+')[0].ToLowerInvariant()
+    $actualHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $tempZip).Hash.ToLowerInvariant()
+    if ($expectedHash -notmatch '^[0-9a-f]{64}$' -or $actualHash -ne $expectedHash) {
+        Remove-Item $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Error "Echec de verification SHA-256 pour $archive."
+        exit 1
+    }
+    Write-Host "Archive verifiee (SHA-256)."
+
     Write-Host "Extraction..."
     Expand-Archive -Path $tempZip -DestinationPath $tempExtract -Force
-    Remove-Item $tempZip -ErrorAction SilentlyContinue
 
     # Le zip peut contenir directement bin/model/runtime/data a la racine,
-    # ou un seul dossier englobant (GitHub ajoute parfois ca automatiquement
-    # selon comment l'asset a ete construit) -- on detecte les deux cas.
+    # ou un seul dossier englobant : on detecte les deux cas.
     if (Test-Path (Join-Path $tempExtract "bin")) {
         $Source = $tempExtract
     } else {
@@ -223,11 +250,29 @@ if ($LocalSource -ne "") {
         if ($inner -and (Test-Path (Join-Path $inner.FullName "bin"))) {
             $Source = $inner.FullName
         } else {
+            Remove-Item $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
             Write-Error "Structure inattendue dans l'archive telechargee (pas de dossier 'bin' trouve)."
             exit 1
         }
     }
     Write-Host "Telecharge et extrait dans $Source"
+}
+
+# Refuser d'écraser une installation existante si l'archive est incomplète.
+$requiredPaths = @(
+    "bin\everycli.exe",
+    "bin\everycli-daemon.exe",
+    "model\model.onnx",
+    "model\tokenizer.json",
+    "runtime\onnxruntime.dll",
+    "data\commands"
+)
+foreach ($relativePath in $requiredPaths) {
+    if (-not (Test-Path (Join-Path $Source $relativePath))) {
+        if ($tempRoot) { Remove-Item $tempRoot -Recurse -Force -ErrorAction SilentlyContinue }
+        Write-Error "Bundle incomplet : fichier ou dossier absent : $relativePath"
+        exit 1
+    }
 }
 
 # --- 2. Copier vers le dossier d'installation ---
@@ -357,6 +402,10 @@ Write-Host "=== Installation terminee / Setup complete ===" -ForegroundColor Gre
 Write-Host "Language / Langue : $(if ($Language -eq 'fr') { 'Francais' } else { 'English' })"
 Write-Host "Ouvre un NOUVEAU terminal et tape / Open a NEW terminal and type: everycli search <query>"
 Write-Host "Logs du daemon : $InstallDir\logs\daemon.log"
+
+if ($tempRoot) {
+    Remove-Item $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+}
 
 if ($transcriptStarted) {
     Stop-Transcript | Out-Null

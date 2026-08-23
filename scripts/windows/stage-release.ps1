@@ -1,6 +1,6 @@
 ﻿# Assemble un dossier "dist\windows" qui imite ce qu'une vraie release
-# GitHub contiendrait — sert à tester install.ps1 localement ce soir, et
-# deviendra la base du job de packaging CI plus tard.
+# GitHub contient — sert à tester install.ps1 localement avant de publier.
+# Le job CI assemble le même contenu dans l'archive Windows de release.
 #
 # Usage (depuis la racine du repo, C:\EveryCli) :
 #   .\scripts\windows\stage-release.ps1

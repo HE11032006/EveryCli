@@ -1,6 +1,6 @@
 """
-Récupère et sauvegarde les fichiers du tokenizer à côté du model.onnx déjà
-exporté (l'export --library-name transformers ne les a pas copiés).
+Récupère et sauvegarde le tokenizer publié à côté du model.onnx validé.
+Le dépôt ONNX contient déjà les artefacts prêts pour le daemon Rust.
 
 Usage : python fetch_tokenizer.py   (depuis rust/onnx-bench/, venv activé)
 """
@@ -8,7 +8,7 @@ Usage : python fetch_tokenizer.py   (depuis rust/onnx-bench/, venv activé)
 from pathlib import Path
 from transformers import AutoTokenizer
 
-MODEL_NAME = "Michelhe/everycli-minilm-ft-boosted"
+MODEL_NAME = "Michelhe/everycli-minilm-ft-boosted-onnx"
 OUTPUT_DIR = Path("models/everycli-minilm-ft")
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
