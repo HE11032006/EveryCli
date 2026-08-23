@@ -1,53 +1,70 @@
 - id: ssh_connect
   description: Se connecter à un serveur SSH
+  description_en: "Connect to an SSH server"
   tags: [ssh, connect, login, remote, server, connexion, serveur]
   command: "ssh utilisateur@hote"
   explanation: Ouvre une session chiffrée vers un hôte distant.
+  explanation_en: "Opens an encrypted session to a remote host."
   example: "ssh deploy@server.example.com"
 
 - id: ssh_connect_port
   description: Se connecter à SSH sur un port personnalisé
+  description_en: "Connect to SSH on a custom port"
   tags: [ssh, port, connect, remote, server, custom]
   command: "ssh -p port utilisateur@hote"
   explanation: Utilise un port SSH différent du port 22 par défaut.
+  explanation_en: "Uses an SSH port other than the default port 22."
   example: "ssh -p 2222 deploy@server.example.com"
 
 - id: ssh_generate_key
   description: Générer une clé SSH moderne ed25519
+  description_en: "Generate modern SSH key ed25519"
   tags: [ssh, keygen, key, ed25519, generate, authentication]
   command: 'ssh-keygen -t ed25519 -C "votre-email@example.com"'
   explanation: Crée une paire de clés SSH ed25519 protégée par une passphrase si tu en choisis une.
+  explanation_en: "Creates a passphrase-protected ed25519 SSH key pair if you choose one."
   warning: "Ne partage jamais la clé privée ; seule la clé .pub peut être copiée sur un serveur."
+  warning_en: "Never share the private key; only the .pub key can be copied to a server."
 
 - id: ssh_copy_key
   description: Installer sa clé publique sur un serveur
+  description_en: "Install your public key on a server"
   tags: [ssh, copy-id, public key, authentication, server, key]
   command: "ssh-copy-id utilisateur@hote"
   explanation: Ajoute la clé publique locale aux clés autorisées du compte distant.
+  explanation_en: "Adds the local public key to the remote account's authorized keys."
   warning: "Cette commande est surtout disponible sur Linux/macOS ; sous Windows, ajoute la clé publique manuellement."
+  warning_en: "This command is mainly available on Linux/macOS; on Windows, add the public key manually."
 
 - id: ssh_use_identity_file
   description: Se connecter avec une clé SSH précise
+  description_en: "Log in with a specific SSH key"
   tags: [ssh, identity, key, private key, connect, authentication]
   command: "ssh -i ~/.ssh/ma_cle utilisateur@hote"
   explanation: Indique explicitement le fichier de clé privée à utiliser pour la connexion.
+  explanation_en: "Explicitly indicates the private key file to use for the connection."
 
 - id: ssh_run_remote_command
   description: Exécuter une commande sur un serveur distant
+  description_en: "Run a command on a remote server"
   tags: [ssh, remote command, execute, server, run, distant]
   command: "ssh utilisateur@hote 'commande'"
   explanation: Exécute une commande sur le serveur distant sans ouvrir de session interactive.
+  explanation_en: "Runs a command on the remote server without opening an interactive session."
   example: "ssh deploy@server.example.com 'uptime'"
 
 - id: ssh_local_forward
   description: Créer un tunnel SSH de port local
+  description_en: "Create a local port SSH tunnel"
   tags: [ssh, tunnel, local forward, port, database, forwarding]
   command: "ssh -L port_local:hote_cible:port_cible utilisateur@hote"
   explanation: Rend un service distant accessible via un port local à travers le tunnel SSH.
+  explanation_en: "Makes a remote service accessible via a local port through the SSH tunnel."
   example: "ssh -L 5432:localhost:5432 deploy@server.example.com"
 
 - id: ssh_remote_forward
   description: Créer un tunnel SSH de port distant
+  description_en: "Create a remote port SSH tunnel"
   tags:
     [
       ssh,
@@ -63,49 +80,66 @@
     ]
   command: "ssh -R port_distant:hote_cible:port_cible utilisateur@hote"
   explanation: Expose un service local ou accessible depuis le client à travers le serveur SSH distant.
+  explanation_en: "Exposes a local service or accessible from the client through the remote SSH server."
   warning: "L'exposition du port dépend de la configuration du serveur SSH et peut ouvrir un accès réseau non désiré."
+  warning_en: "Port exposure depends on the SSH server configuration and may open unwanted network access."
 
 - id: ssh_jump_host
   description: Se connecter via un bastion SSH
+  description_en: "Connect via SSH bastion"
   tags: [ssh, jump, bastion, proxyjump, connect, server]
   command: "ssh -J utilisateur@bastion utilisateur@serveur"
   explanation: Passe par un hôte bastion pour atteindre un serveur non exposé directement.
+  explanation_en: "Goes through a bastion host to reach a non-exposed server directly."
 
 - id: ssh_add_agent_key
   description: Ajouter une clé au ssh-agent
+  description_en: "Add a key to the ssh-agent"
   tags: [ssh, agent, add, key, passphrase, authentication]
   command: "ssh-add ~/.ssh/ma_cle"
   explanation: Charge une clé privée dans ssh-agent pour éviter de saisir sa passphrase à chaque connexion.
+  explanation_en: "Loads a private key into ssh-agent to avoid entering its passphrase each time you connect."
 
 - id: ssh_list_agent_keys
   description: Lister les clés chargées dans ssh-agent
+  description_en: "List keys loaded in ssh-agent"
   tags: [ssh, agent, list, keys, identity, authentication]
   command: "ssh-add -l"
   explanation: Affiche les empreintes des clés actuellement chargées dans l'agent SSH.
+  explanation_en: "Shows the fingerprints of the keys currently loaded in the SSH agent."
 
 - id: ssh_verbose_connect
   description: Diagnostiquer une connexion SSH en mode verbeux
+  description_en: "Diagnose an SSH connection in verbose mode"
   tags: [ssh, verbose, debug, troubleshoot, connection, diagnostic]
   command: "ssh -vvv utilisateur@hote"
   explanation: Affiche des détails sur la négociation, les clés essayées et l'authentification.
+  explanation_en: "Shows details about the handshake, keys tried, and authentication."
   warning: "Les logs peuvent révéler des noms d'hôtes, utilisateurs et chemins de clés ; ne les publie pas sans les relire."
+  warning_en: "Logs can reveal hostnames, users and key paths; Don’t publish them without proofreading them."
 
 - id: ssh_copy_file_to_server
   description: Copy a local file to a server with scp
+  description_en: "Copy a local file to a server with scp"
   tags: [ssh, scp, copy, file, upload, remote, server]
   command: "scp local_file user@host:remote_path/"
   explanation: Uploads a local file over SSH without opening an interactive session.
+  explanation_en: "Uploads a local file over SSH without opening an interactive session."
   example: "scp .env deploy@server.example.com:/srv/app/.env"
 
 - id: ssh_copy_file_from_server
   description: Copy a file from a server with scp
+  description_en: "Copy a file from a server with scp"
   tags: [ssh, scp, copy, file, download, remote, server]
   command: "scp user@host:remote_file local_path/"
   explanation: Downloads a remote file over SSH to the local machine.
+  explanation_en: "Downloads a remote file over SSH to the local machine."
   example: "scp deploy@server.example.com:/srv/app/logs/app.log ./logs/"
 
 - id: ssh_config_host
   description: Configurer un alias SSH dans ~/.ssh/config
+  description_en: "Configure an SSH alias in ~/.ssh/config"
   tags: [ssh, config, alias, host, identity file, configuration]
   command: "nano ~/.ssh/config"
   explanation: Ouvre le fichier de configuration SSH afin de définir un alias, un utilisateur, un port ou une clé par défaut.
+  explanation_en: "Opens the SSH configuration file to set a default alias, user, port, or key."

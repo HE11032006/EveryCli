@@ -10,3 +10,4 @@ rank_bm25
 pick
 pyinstaller
 openai>=1.0
+maturin

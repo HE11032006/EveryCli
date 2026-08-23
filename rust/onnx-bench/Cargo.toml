@@ -1,0 +1,19 @@
+[package]
+name = "onnx-bench"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Crate volontairement séparé du workspace principal (rust/Cargo.toml, resolver="3")
+# pour ne rien risquer dessus pendant qu'on valide juste l'hypothèse de vélocité.
+# `cargo run` doit être lancé depuis CE dossier (rust/onnx-bench), pas depuis rust/.
+#
+# "load-dynamic" : évite le conflit de liaison MSVC statique/dynamique
+# (LNK2005/LNK1120 rencontrés) en chargeant onnxruntime.dll au runtime au lieu
+# de lier statiquement contre sa lib d'import à la compilation.
+
+[dependencies]
+ort = { version = "2.0.0-rc.13", features = ["ndarray", "load-dynamic"] }
+tokenizers = "0.20"
+ndarray = "0.17"
+anyhow = "1.0"

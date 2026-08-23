@@ -5,6 +5,7 @@ docker_compose:
   basic_commands:
     - id: docker_compose_up
       description: Lancer tous les services en arrière-plan avec docker-compose
+      description_en: "Launch all services in the background with docker-compose"
       tags: [docker, compose, up, démarrer, services, conteneurs, lancer, stack, monter, déploiement, arrière-plan, background, detached, tous, all, containers]
       command: "docker-compose up -d"
       explanation: |
@@ -19,6 +20,7 @@ docker_compose:
 
     - id: docker_compose_down
       description: Arrêter et supprimer les conteneurs, réseaux et volumes
+      description_en: "Stop and delete containers, networks, and volumes"
       tags: [docker, compose, down, arrêter, stop, supprimer, remove, conteneurs, containers, réseaux, volumes, services, project, démonter, nettoyer, détruire]
       command: "docker-compose down"
       explanation: |
@@ -30,17 +32,21 @@ docker_compose:
 
     - id: docker_compose_ps
       description: Lister les conteneurs en cours d'exécution
+      description_en: "List running containers"
       tags: [docker, compose, ps, lister, conteneurs, statut, voir, état, actifs, marche]
       command: "docker-compose ps"
       explanation: Affiche la liste des conteneurs démarrés par Docker Compose, avec leur statut.
+      explanation_en: "Displays the list of containers started by Docker Compose, with their status."
       options:
         - "-a": "Affiche tous les conteneurs (y compris ceux arrêtés)."
 
     - id: docker_compose_logs
       description: Afficher les logs des services
+      description_en: "View service logs"
       tags: [docker, compose, logs, afficher, journaux, conteneurs, erreur, sortie, journal, suivre]
       command: "docker-compose logs"
       explanation: Affiche les logs de tous les services.
+      explanation_en: "Shows logs for all services."
       options:
         - "-f": "Suivre les logs en temps réel (comme `tail -f`)."
         - "--tail=100": "Affiche les 100 dernières lignes de logs."
@@ -49,40 +55,52 @@ docker_compose:
 
     - id: docker_compose_restart
       description: Redémarrer un ou plusieurs services
+      description_en: "Restart one or more services"
       tags: [docker, compose, restart, redémarrer, service, relancer, reboot]
       command: "docker-compose restart service_name"
       explanation: Redémarre un service spécifique.
+      explanation_en: "Restarts a specific service."
       example: "docker-compose restart web db"
 
     - id: docker_compose_start
       description: Démarrer des conteneurs arrêtés
+      description_en: "Start stopped containers"
       tags: [docker, compose, start, démarrer, conteneurs, lancer, allumer]
       command: "docker-compose start service_name"
       explanation: Démarre un conteneur arrêté sans le recréer.
+      explanation_en: "Starts a stopped container without recreating it."
 
     - id: docker_compose_stop
       description: Arrêter des conteneurs en cours d'exécution
+      description_en: "Stop running containers"
       tags: [docker, compose, stop, arrêter, conteneurs, couper, éteindre]
       command: "docker-compose stop service_name"
       explanation: Arrête un conteneur sans le supprimer.
+      explanation_en: "Stops a container without deleting it."
 
     - id: docker_compose_pause
       description: Mettre en pause des conteneurs
+      description_en: "Pause containers"
       tags: [docker, compose, pause, mettre en pause, conteneurs, suspendre, figer]
       command: "docker-compose pause service_name"
       explanation: Met en pause un conteneur (il reste en mémoire mais ne consomme pas de CPU).
+      explanation_en: "Pauses a container (it stays in memory but does not consume CPU)."
 
     - id: docker_compose_unpause
       description: Reprendre des conteneurs en pause
+      description_en: "Resume paused containers"
       tags: [docker, compose, unpause, reprendre, conteneurs, réactiver, continuer]
       command: "docker-compose unpause service_name"
       explanation: Reprend un conteneur mis en pause.
+      explanation_en: "Resumes a paused container."
 
     - id: docker_compose_build
       description: Construire ou reconstruire les images des services
+      description_en: "Build or rebuild service images"
       tags: [docker, compose, build, construire, reconstruire, rebuild, image, images, application, compilation, fabrication]
       command: "docker-compose build"
       explanation: Construit les images des services définis dans `docker-compose.yml`.
+      explanation_en: "Builds images of services defined in `docker-compose.yml`."
       options:
         - "--no-cache": "Ignore le cache et reconstruit tout depuis zéro."
         - "service_name": "Reconstruit uniquement l'image d'un service spécifique."
@@ -90,17 +108,21 @@ docker_compose:
 
     - id: docker_compose_pull
       description: Télécharger les images des services
+      description_en: "Download service images"
       tags: [docker, compose, pull, télécharger, image, récupérer, chercher, download]
       command: "docker-compose pull"
       explanation: Télécharge les images des services depuis Docker Hub ou un registry privé.
+      explanation_en: "Download service images from Docker Hub or a private registry."
       options:
         - "service_name": "Télécharge uniquement l'image d'un service spécifique."
 
     - id: docker_compose_exec
       description: Exécuter une commande dans un conteneur en cours d'exécution
+      description_en: "Execute a command in a running container"
       tags: [docker, compose, exec, exécuter, execute, commande, command, conteneur, container, existing, running, inside, entrer, console, bash, terminal]
       command: "docker-compose exec service_name commande"
       explanation: Exécute une commande dans un conteneur en cours d'exécution.
+      explanation_en: "Runs a command in a running container."
       example: "docker-compose exec web bash"
       options:
         - "-it": "Mode interactif avec un terminal (pour les commandes comme `bash`)."
@@ -108,6 +130,7 @@ docker_compose:
       example: "docker-compose exec -it -u root web bash"
     - id: docker_compose_run
       description: Exécuter une commande dans un nouveau conteneur
+      description_en: "Run a command in a new container"
       tags: [docker, compose, run, exécuter, execute, commande, command, conteneur, container, lancer, launch, temporaire, temporary, one-off, new, service]
       command: "docker-compose run service_name commande"
       explanation: |
@@ -120,76 +143,97 @@ docker_compose:
 
     - id: docker_compose_config
       description: Valider et afficher la configuration finale
+      description_en: "Validate and display the final configuration"
       tags: [docker, compose, config, valider, configuration, vérifier, syntaxe, yaml]
       command: "docker-compose config"
       explanation: Affiche la configuration finale après interpolation des variables et fichiers de configuration.
+      explanation_en: "Shows the final configuration after interpolation of variables and configuration files."
 
     - id: docker_compose_version
       description: Afficher la version de Docker Compose
+      description_en: "Show Docker Compose version"
       tags: [docker, compose, version, --version, info]
       command: "docker-compose --version"
       explanation: Affiche la version installée de Docker Compose.
+      explanation_en: "Shows the installed version of Docker Compose."
 
     - id: docker_compose_help
       description: Afficher l'aide de Docker Compose
+      description_en: "View Docker Compose help"
       tags: [docker, compose, help, aide, manuel, manuel, options]
       command: "docker-compose --help"
       explanation: Affiche le manuel d'utilisation de Docker Compose.
+      explanation_en: "Displays the Docker Compose user manual."
 
   # ===== Gestion des Images =====
   images:
     - id: docker_compose_images
       description: Lister les images utilisées par les services
+      description_en: "List images used by services"
       tags: [docker, compose, images, lister]
       command: "docker-compose images"
       explanation: Affiche la liste des images utilisées par les services définis dans `docker-compose.yml`.
+      explanation_en: "Shows the list of images used by the services defined in `docker-compose.yml`."
 
     - id: docker_compose_pull_images
       description: Télécharger toutes les images des services
+      description_en: "Download all service images"
       tags: [docker, compose, pull, images, télécharger]
       command: "docker-compose pull"
       explanation: Télécharge toutes les images nécessaires pour les services.
+      explanation_en: "Uploads all images needed for the services."
 
     - id: docker_compose_build_images
       description: Reconstruire les images des services
+      description_en: "Rebuild service images"
       tags: [docker, compose, build, images, reconstruire]
       command: "docker-compose build --no-cache"
       explanation: Reconstruit toutes les images sans utiliser le cache.
+      explanation_en: "Rebuilds all images without using cache."
 
   # ===== Réseau =====
   network:
     - id: docker_compose_networks
       description: Lister les réseaux créés par Docker Compose
+      description_en: "List networks created by Docker Compose"
       tags: [docker, compose, networks, lister, réseaux]
       command: "docker-compose network ls"
       explanation: Affiche la liste des réseaux créés par Docker Compose.
+      explanation_en: "Shows the list of networks created by Docker Compose."
 
     - id: docker_compose_network_inspect
       description: Inspecter un réseau spécifique
+      description_en: "Inspect a specific network"
       tags: [docker, compose, network, inspect, détails, réseau]
       command: "docker network inspect nom_du_réseau"
       explanation: Affiche des informations détaillées sur un réseau Docker.
+      explanation_en: "Shows detailed information about a Docker network."
       note: "Utilisez `docker-compose network ls` pour lister les réseaux."
 
   # ===== Volumes =====
   volumes:
     - id: docker_compose_volumes
       description: Lister les volumes créés par Docker Compose
+      description_en: "List volumes created by Docker Compose"
       tags: [docker, compose, volumes, lister]
       command: "docker-compose volume ls"
       explanation: Affiche la liste des volumes créés par Docker Compose.
+      explanation_en: "Shows the list of volumes created by Docker Compose."
 
     - id: docker_compose_volume_inspect
       description: Inspecter un volume spécifique
+      description_en: "Inspect a specific volume"
       tags: [docker, compose, volume, inspect, détails]
       command: "docker volume inspect nom_du_volume"
       explanation: Affiche des informations détaillées sur un volume Docker.
+      explanation_en: "Shows detailed information about a Docker volume."
 
   # ===== Fichier docker-compose.yml =====
   docker_compose_file:
     - id: docker_compose_version_key
       kind: reference
       description: Spécifier la version du schéma Docker Compose
+      description_en: "Specify Docker Compose schema version"
       tags: [docker, compose, version, schéma, yaml]
       explanation: |
         Spécifie la version du schéma Docker Compose.
@@ -203,6 +247,7 @@ docker_compose:
     - id: docker_compose_services
       kind: reference
       description: Définir les services dans docker-compose.yml
+      description_en: "Define services in docker-compose.yml"
       tags: [docker, compose, services, conteneurs, yaml]
       explanation: |
         Définit un ou plusieurs services (conteneurs) dans le fichier `docker-compose.yml`.
@@ -229,6 +274,7 @@ docker_compose:
     - id: docker_compose_build_key
       kind: reference
       description: Construire une image personnalisée
+      description_en: "Build a custom image"
       tags: [docker, compose, build, image, Dockerfile]
       explanation: |
         Utilise un `Dockerfile` pour construire une image personnalisée.
@@ -248,6 +294,7 @@ docker_compose:
     - id: docker_compose_ports
       kind: reference
       description: Configurer le mappage des ports
+      description_en: "Configure port mapping"
       tags: [docker, compose, ports, mappage, réseau]
       explanation: |
         Mappe les ports du conteneur vers l'hôte.
@@ -266,6 +313,7 @@ docker_compose:
     - id: docker_compose_volumes_key
       kind: reference
       description: Configurer les volumes
+      description_en: "Configure volumes"
       tags: [docker, compose, volumes, montage, stockage]
       explanation: |
         Monte des volumes pour persister les données ou partager des fichiers.
@@ -286,6 +334,7 @@ docker_compose:
     - id: docker_compose_environment
       kind: reference
       description: Définir des variables d'environnement
+      description_en: "Set environment variables"
       tags: [docker, compose, environment, variables, env]
       explanation: |
         Définit des variables d'environnement pour un service.
@@ -307,6 +356,7 @@ docker_compose:
     - id: docker_compose_depends_on
       kind: reference
       description: Définir des dépendances entre services
+      description_en: "Define dependencies between services"
       tags: [docker, compose, depends_on, dépendances, ordre]
       explanation: |
         Spécifie que le service `web` dépend des services `app` et `db`.
@@ -326,6 +376,7 @@ docker_compose:
     - id: docker_compose_networks_key
       kind: reference
       description: Configurer des réseaux personnalisés
+      description_en: "Configure custom networks"
       tags: [docker, compose, networks, réseau, personnalisé]
       explanation: |
         Définit des réseaux personnalisés pour isoler ou connecter des services.
@@ -350,6 +401,7 @@ docker_compose:
     - id: docker_compose_healthcheck
       kind: reference
       description: Ajouter un healthcheck à un service
+      description_en: "Add a healthcheck to a service"
       tags: [docker, compose, healthcheck, santé, service]
       explanation: |
         Définit un test de santé pour un service.
@@ -371,6 +423,7 @@ docker_compose:
     - id: docker_compose_restart_key
       kind: reference
       description: Configurer la politique de redémarrage
+      description_en: "Configure restart policy"
       tags: [docker, compose, restart, redémarrage, politique]
       explanation: |
         Définit la politique de redémarrage d'un conteneur.
@@ -388,6 +441,7 @@ docker_compose:
     - id: docker_compose_secrets
       kind: reference
       description: Utiliser des secrets pour les données sensibles
+      description_en: "Use secrets for sensitive data"
       tags: [docker, compose, secrets, données, sensibles]
       explanation: |
         Utilise des secrets pour stocker des données sensibles (ex: mots de passe).
@@ -407,6 +461,7 @@ docker_compose:
     - id: docker_compose_extends
       kind: reference
       description: Étendre un service existant
+      description_en: "Extend an existing service"
       tags: [docker, compose, extends, héritage, service]
       explanation: |
         Permet de réutiliser la configuration d'un service existant (dans le même fichier ou un fichier externe).
@@ -426,6 +481,7 @@ docker_compose:
     - id: docker_compose_profiles
       kind: reference
       description: Utiliser des profils pour activer/désactiver des services
+      description_en: "Use profiles to enable/disable services"
       tags: [docker, compose, profiles, service, conditionnel]
       explanation: |
         Permet de démarrer uniquement les services associés à un profil.
@@ -446,6 +502,7 @@ docker_compose:
     - id: docker_compose_env_file_key
       kind: reference
       description: Utiliser un fichier .env pour les variables
+      description_en: "Use an .env file for variables"
       tags: [docker, compose, env, variables, fichier]
       explanation: |
         Charge les variables depuis un fichier `.env` dans le même répertoire que `docker-compose.yml`.
@@ -467,6 +524,7 @@ docker_compose:
     - id: docker_compose_variable_substitution
       kind: reference
       description: Substitution de variables dans docker-compose.yml
+      description_en: "Overriding variables in docker-compose.yml"
       tags: [docker, compose, variables, substitution, "${VAR}"]
       explanation: |
         Utilise des variables définies dans le fichier `.env` ou passées en ligne de commande.
@@ -486,6 +544,7 @@ docker_compose:
     - id: docker_compose_example_web_app
       kind: reference
       description: "Exemple complet : Application web avec Nginx, Node.js et PostgreSQL"
+      description_en: "Complete example: Web application with Nginx, Node.js and PostgreSQL"
       tags: [docker, compose, exemple, web, nginx, nodejs, postgres]
       explanation: |
         Exemple complet d'une application web avec :
@@ -564,6 +623,7 @@ docker_compose:
     - id: docker_compose_example_wordpress
       kind: reference
       description: "Exemple complet : WordPress avec MySQL"
+      description_en: "Complete example: WordPress with MySQL"
       tags: [docker, compose, exemple, wordpress, mysql, php]
       explanation: |
         Exemple complet pour déployer WordPress avec MySQL :
@@ -617,6 +677,7 @@ docker_compose:
     - id: docker_compose_example_redis
       kind: reference
       description: "Exemple complet : Application avec Redis"
+      description_en: "Complete example: Application with Redis"
       tags: [docker, compose, exemple, redis, cache]
       explanation: |
         Exemple d'une application utilisant Redis comme cache :
@@ -662,6 +723,7 @@ docker_compose:
     - id: docker_compose_tip_1
       kind: tip
       description: "Utiliser des noms de services explicites"
+      description_en: "Use explicit service names"
       tags: [docker, compose, astuce, noms, services]
       content: |
         Donnez des noms **clairs et descriptifs** à vos services (ex: `web`, `db`, `redis`) pour faciliter la maintenance.
@@ -669,6 +731,7 @@ docker_compose:
     - id: docker_compose_tip_2
       kind: tip
       description: Toujours définir un volume pour les bases de données
+      description_en: "Always set a volume for databases"
       tags: [docker, compose, astuce, volumes, bases de données]
       content: |
         Pour les bases de données (PostgreSQL, MySQL, etc.), **toujours** définir un volume nommé pour éviter la perte de données.
@@ -680,6 +743,7 @@ docker_compose:
     - id: docker_compose_tip_3
       kind: tip
       description: "Utiliser des variables d'environnement pour les secrets"
+      description_en: "Use environment variables for secrets"
       tags: [docker, compose, astuce, variables, secrets]
       content: |
         Ne **jamais** stocker de mots de passe ou clés secrètes directement dans `docker-compose.yml`.
@@ -691,6 +755,7 @@ docker_compose:
     - id: docker_compose_tip_4
       kind: tip
       description: "Limiter les ressources des conteneurs"
+      description_en: "Limit container resources"
       tags: [docker, compose, astuce, ressources, limites]
       content: |
         Limitez les ressources (CPU, mémoire) pour éviter qu'un conteneur ne consomme toutes les ressources de la machine :
@@ -705,6 +770,7 @@ docker_compose:
     - id: docker_compose_tip_5
       kind: tip
       description: Utiliser des healthchecks pour les dépendances
+      description_en: "Use healthchecks for dependencies"
       tags: [docker, compose, astuce, healthcheck, dépendances]
       content: |
         Utilisez des `healthcheck` pour vous assurer qu'un service est prêt avant de démarrer un service dépendant :
@@ -718,11 +784,13 @@ docker_compose:
     - id: docker_compose_tip_6
       kind: tip
       description: "Éviter d'utiliser `latest` pour les images"
+      description_en: "Avoid using `latest` for images"
       tags: ["docker", "compose", "astuce", "images", "latest"]
       content: "Évitez d'utiliser le tag `latest` pour les images en production. Préférez des versions spécifiques : image: nginx:1.21.6"
     - id: docker_compose_tip_10
       kind: tip
       description: "Sauvegarder les volumes importants"
+      description_en: "Back up large volumes"
       tags: ["docker", "compose", "astuce", "sauvegarde", "volumes"]
       content: "Sauvegardez régulièrement les volumes : docker run --rm -v nom_volume:/volume -v $(pwd):/backup alpine tar cvf /backup/backup.tar /volume"
     - id: docker_compose_error_connection_refused
@@ -742,9 +810,11 @@ docker_compose:
         - "Vérifiez que le service cible n'a pas de `healthcheck` qui échoue."
 
       description: "Résoudre 'connection refused' entre conteneurs"
+      description_en: "Resolve 'connection refused' between containers"
     - id: docker_compose_tip_7
       kind: tip
       description: Utiliser des réseaux personnalisés pour l'isolation
+      description_en: "Use custom networks for isolation"
       tags: [docker, compose, astuce, réseaux, isolation]
       content: |
         Utilisez des réseaux personnalisés pour isoler les services et améliorer la sécurité :
@@ -756,6 +826,7 @@ docker_compose:
     - id: docker_compose_tip_8
       kind: tip
       description: Documenter votre docker-compose.yml
+      description_en: "Document your docker-compose.yml"
       tags: [docker, compose, astuce, documentation, commentaires]
       content: |
         Ajoutez des **commentaires** dans votre fichier `docker-compose.yml` pour expliquer la configuration :
@@ -770,6 +841,7 @@ docker_compose:
     - id: docker_compose_tip_9
       kind: tip
       description: Utiliser `depends_on` avec prudence
+      description_en: "Use `depends_on` with caution"
       tags: [docker, compose, astuce, depends_on, ordre]
       content: |
         `depends_on` ne garantit **pas** que le service dépendant soit prêt (ex: base de données initialisée).
@@ -778,6 +850,7 @@ docker_compose:
     - id: docker_compose_error_port_already_in_use
       kind: troubleshooting
       description: Résoudre "port already in use"
+      description_en: "Solve 'port already in use"
       tags: [docker, compose, erreur, port, déjà utilisé]
       causes:
         - Un autre conteneur ou service utilise déjà le port.
@@ -790,6 +863,7 @@ docker_compose:
     - id: docker_compose_error_volume_not_found
       kind: troubleshooting
       description: Résoudre "volume not found"
+      description_en: "Solve “volume not found"
       tags: [docker, compose, erreur, volume, introuvable]
       causes:
         - Le volume n'a pas été créé.
@@ -801,6 +875,7 @@ docker_compose:
     - id: docker_compose_error_network_not_found
       kind: troubleshooting
       description: Résoudre "network not found"
+      description_en: "Solve “network not found”"
       tags: [docker, compose, erreur, réseau, introuvable]
       causes:
         - Le réseau n'a pas été créé.
@@ -812,6 +887,7 @@ docker_compose:
     - id: docker_compose_error_image_not_found
       kind: troubleshooting
       description: Résoudre "image not found"
+      description_en: "Solve 'image not found'"
       tags: [docker, compose, erreur, image, introuvable]
       causes:
         - L'image n'existe pas sur Docker Hub ou le registry privé.
@@ -828,6 +904,7 @@ docker_compose:
     - id: docker_compose_error_container_exited
       kind: troubleshooting
       description: Résoudre "container exited"
+      description_en: "Solve 'container exited"
       tags: [docker, compose, erreur, conteneur, terminé]
       causes:
         - Le conteneur a planté (erreur dans l'application).
@@ -842,6 +919,7 @@ docker_compose:
     - id: docker_compose_error_permission_denied
       kind: troubleshooting
       description: Résoudre "permission denied" pour les volumes
+      description_en: "Resolve 'permission denied' for volumes"
       tags: [docker, compose, erreur, permission, refusée, volumes]
       causes:
         - Les permissions du répertoire local ne permettent pas à Docker d'y accéder.
@@ -857,6 +935,7 @@ docker_compose:
     - id: docker_compose_error_depends_on
       kind: troubleshooting
       description: Résoudre les problèmes avec `depends_on`
+      description_en: "Fix problems with `depends_on`"
       tags: [docker, compose, erreur, depends_on, dépendances]
       causes:
         - Le service dépendant n'est pas prêt (ex: base de données non initialisée).
@@ -872,6 +951,7 @@ docker_compose:
     - id: docker_compose_error_out_of_memory
       kind: troubleshooting
       description: Résoudre "out of memory" (OOM)
+      description_en: "Solve “out of memory” (OOM)"
       tags: [docker, compose, erreur, mémoire, OOM]
       causes:
         - Le conteneur utilise plus de mémoire que disponible.
@@ -886,6 +966,7 @@ docker_compose:
     - id: docker_compose_error_build_failed
       kind: troubleshooting
       description: Résoudre "build failed"
+      description_en: "Resolve “build failed"
       tags: [docker, compose, erreur, build, échoué]
       causes:
         - Erreur dans le `Dockerfile`.
@@ -903,9 +984,11 @@ docker_compose:
   swarm:
     - id: docker_compose_stack_deploy
       description: Déployer une stack avec Docker Swarm
+      description_en: "Deploy a stack with Docker Swarm"
       tags: [docker, compose, swarm, stack, deploy, déployer]
       command: "docker stack deploy -c docker-compose.yml nom_de_la_stack"
       explanation: Déploie une stack de services sur un cluster Docker Swarm.
+      explanation_en: "Deploys a service stack on a Docker Swarm cluster."
       options:
         - "-c docker-compose.yml": "Spécifie le fichier de configuration."
         - "--with-registry-auth": "Utilise les identifiants du registry Docker."
@@ -913,37 +996,47 @@ docker_compose:
 
     - id: docker_compose_stack_list
       description: Lister les stacks déployées
+      description_en: "List deployed stacks"
       tags: [docker, compose, swarm, stack, lister]
       command: "docker stack ls"
       explanation: Affiche la liste des stacks déployées sur le cluster Swarm.
+      explanation_en: "Displays the list of stacks deployed on the Swarm cluster."
 
     - id: docker_compose_stack_remove
       description: Supprimer une stack
+      description_en: "Delete a stack"
       tags: [docker, compose, swarm, stack, supprimer]
       command: "docker stack rm nom_de_la_stack"
       explanation: Supprime une stack et tous ses services, conteneurs, réseaux et volumes associés.
+      explanation_en: "Removes a stack and all its associated services, containers, networks, and volumes."
 
     - id: docker_compose_stack_ps
       description: Lister les services d'une stack
+      description_en: "List the services of a stack"
       tags: [docker, compose, swarm, stack, services, lister]
       command: "docker stack ps nom_de_la_stack"
       explanation: Affiche la liste des services et conteneurs d'une stack.
+      explanation_en: "Displays the list of services and containers in a stack."
 
     - id: docker_compose_stack_services
       description: Lister les services d'une stack
+      description_en: "List the services of a stack"
       tags: [docker, compose, swarm, stack, services]
       command: "docker stack services nom_de_la_stack"
       explanation: Affiche la liste des services d'une stack avec leur statut.
+      explanation_en: "Displays the list of services in a stack with their status."
 
   # ===== Outils Complémentaires =====
   tools:
     - id: docker_compose_override
       kind: reference
       description: Utiliser un fichier docker-compose.override.yml
+      description_en: "Use a docker-compose.override.yml file"
       tags: [docker, compose, override, fichier, développement]
       content: "Docker Compose charge automatiquement un fichier `docker-compose.override.yml` s'il existe dans le même répertoire que `docker-compose.yml`.\n**Utilisation** :\n- Placez les configurations spécifiques au développement dans `docker-compose.override.yml`.\n- Exemple : Montage de volumes supplémentaires pour le développement.\n\n**Exemple** :\n```yaml\n# docker-compose.override.yml\nversion: \"3.8\"\nservices:\n  app:\n    volumes:\n      - ./app:/app\n    environment:\n      - NODE_ENV=development\n\n```"
     - id: docker_compose_multiple_files
       description: Utiliser plusieurs fichiers de configuration
+      description_en: "Use multiple configuration files"
       tags: [docker, compose, fichiers, multiples, -f]
       command: "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d"
       explanation: |
@@ -963,12 +1056,15 @@ docker_compose:
 
     - id: docker_compose_env_file
       description: Spécifier un fichier .env personnalisé
+      description_en: "Specify a custom .env file"
       tags: [docker, compose, env, fichier, personnalisé]
       command: "docker-compose --env-file .env.prod up -d"
       explanation: Utilise un fichier `.env` personnalisé au lieu du fichier `.env` par défaut.
+      explanation_en: "Uses a custom `.env` file instead of the default `.env` file."
 
     - id: docker_compose_project_name
       description: Changer le nom du projet
+      description_en: "Change project name"
       tags: [docker, compose, projet, nom, -p]
       command: "docker-compose -p mon_projet up -d"
       explanation: |
@@ -979,6 +1075,7 @@ docker_compose:
 
     - id: docker_compose_dry_run
       description: Simuler une commande sans l'exécuter
+      description_en: "Simulate a command without executing it"
       tags: [docker, compose, dry run, simulation, --dry-run]
       command: "docker-compose config --services"
       explanation: |

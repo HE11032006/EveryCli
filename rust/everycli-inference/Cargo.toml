@@ -1,0 +1,19 @@
+[package]
+name = "everycli-inference"
+version = "0.1.0"
+edition = "2021"
+
+# Inférence sémantique 100% Rust (ONNX Runtime), remplace le daemon Python
+# (sentence-transformers) — voir HACKATHON_PLAN.md, Axe 1, pour le contexte
+# et les résultats de vélocité validés dans le crate onnx-bench voisin.
+
+[dependencies]
+ort = { version = "2.0.0-rc.13", features = ["ndarray", "load-dynamic"] }
+tokenizers = "0.20"
+ndarray = "0.17"
+anyhow = "1.0"
+
+[dev-dependencies]
+# Pour les tests d'intégration qui chargeront un vrai modèle depuis
+# tests/fixtures/ — à ajouter quand on portera les tests de régression contre
+# le corpus réel (voir HACKATHON_PLAN.md, Axe 1, case non cochée correspondante).

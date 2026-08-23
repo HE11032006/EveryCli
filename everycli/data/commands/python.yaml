@@ -2,94 +2,126 @@
 
 - id: python_version
   description: Voir la version de Python installée
+  description_en: "See the installed version of Python"
   tags: [python, version, interpreter, info, --version]
   command: "python --version"
   explanation: Affiche la version de l'interpréteur Python utilisé par le shell courant.
+  explanation_en: "Displays the version of the Python interpreter used by the current shell."
 
 - id: python_create_venv
   description: Créer un environnement virtuel Python
+  description_en: "Create a Python virtual environment"
   tags: [python, venv, virtualenv, environment, create, isolation]
   command: "python -m venv .venv"
   explanation: Crée un environnement Python isolé dans le dossier .venv du projet.
+  explanation_en: "Creates an isolated Python environment in the project's .venv folder."
 
 - id: python_activate_venv
   description: Activer un environnement virtuel Python sous Linux ou macOS
+  description_en: "Enable a Python virtual environment on Linux or macOS"
   tags: [python, venv, activate, source, linux, macos, virtual environment]
   command: "source .venv/bin/activate"
   explanation: Active l'environnement virtuel courant afin que python et pip utilisent ses paquets isolés.
+  explanation_en: "Enables the current virtual environment so that python and pip use its isolated packages."
 
 - id: python_activate_venv_windows
   description: Activer un environnement virtuel Python sous PowerShell
+  description_en: "Activate a Python virtual environment in PowerShell"
   tags: [python, venv, activate, windows, powershell, virtual environment]
   command: ".\\.venv\\Scripts\\Activate.ps1"
   explanation: Active l'environnement virtuel dans une session PowerShell Windows.
+  explanation_en: "Enables the virtual environment in a Windows PowerShell session."
 
 - id: pip_install_package
   description: Installer un paquet Python avec pip
+  description_en: "Install a Python package with pip"
   tags: [python, pip, install, package, dependency, package manager]
   command: "python -m pip install nom-du-paquet"
   explanation: Installe un paquet dans l'environnement Python associé à la commande python utilisée.
+  explanation_en: "Installs a package in the Python environment associated with the python command used."
   example: "python -m pip install requests"
 
 - id: pip_install_requirements
   description: Installer les dépendances depuis requirements.txt
+  description_en: "Install dependencies from requirements.txt"
   tags: [python, pip, requirements, dependencies, install, project]
   command: "python -m pip install -r requirements.txt"
   explanation: Installe les paquets et versions listés dans requirements.txt.
+  explanation_en: "Installs the packages and versions listed in requirements.txt."
 
 - id: pip_upgrade_package
   description: Mettre à jour un paquet Python
+  description_en: "Update a Python package"
   tags: [python, pip, upgrade, update, package, dependency]
   command: "python -m pip install --upgrade nom-du-paquet"
   explanation: Met à jour le paquet demandé vers la dernière version disponible compatible.
+  explanation_en: "Updates the requested package to the latest compatible available version."
   warning: "Relance les tests après une mise à jour de dépendance."
+  warning_en: "Rerun the tests after a dependency update."
 
 - id: pip_uninstall_package
   description: Désinstaller un paquet Python
+  description_en: "Uninstall a Python package"
   tags: [python, pip, uninstall, remove, package, dependency]
   command: "python -m pip uninstall nom-du-paquet"
   explanation: Supprime un paquet de l'environnement Python courant après confirmation.
+  explanation_en: "Removes a package from the current Python environment after confirmation."
 
 - id: pip_list
   description: Lister les paquets Python installés
+  description_en: "List installed Python packages"
   tags: [python, pip, list, packages, dependencies, environment]
   command: "python -m pip list"
   explanation: Affiche les paquets installés et leurs versions dans l'environnement actif.
+  explanation_en: "Shows installed packages and their versions in the active environment."
 
 - id: pip_freeze
   description: Exporter les dépendances Python installées
+  description_en: "Export installed Python dependencies"
   tags: [python, pip, freeze, requirements, export, dependencies]
   command: "python -m pip freeze > requirements.txt"
   explanation: Écrit les versions installées dans requirements.txt pour reproduire l'environnement.
+  explanation_en: "Writes installed versions to requirements.txt to reproduce the environment."
   warning: "Cette commande remplace le fichier requirements.txt existant. Vérifie le diff avant de le valider."
+  warning_en: "This command replaces the existing requirements.txt file. Check the diff before validating it."
 
 - id: pip_check
   description: Vérifier les dépendances Python incompatibles
+  description_en: "Check for incompatible Python dependencies"
   tags: [python, pip, check, dependencies, conflict, verify]
   command: "python -m pip check"
   explanation: Vérifie que les paquets installés ont des dépendances compatibles.
+  explanation_en: "Checks that installed packages have compatible dependencies."
 
 - id: pytest_run
   description: Lancer tous les tests pytest
+  description_en: "Run all pytest tests"
   tags: [python, pytest, test, tests, run, tdd]
   command: "python -m pytest"
   explanation: Exécute les tests pytest découverts dans le projet.
+  explanation_en: "Runs the pytest tests discovered in the project."
 
 - id: pytest_verbose
   description: Lancer pytest avec les noms de tests détaillés
+  description_en: "Run pytest with detailed test names"
   tags: [python, pytest, verbose, test, tests, debug, show, each, name, names]
   command: "python -m pytest -v"
   explanation: Exécute les tests en affichant chaque nom et son résultat.
+  explanation_en: "Runs the tests displaying each name and its result."
 
 - id: pytest_single_test
   description: Lancer un seul test pytest
+  description_en: "Run a single pytest test"
   tags: [python, pytest, single test, specific, nodeid, debug]
   command: "python -m pytest chemin/vers/test_fichier.py::nom_du_test"
   explanation: Exécute uniquement le test ciblé pour accélérer une boucle TDD.
+  explanation_en: "Runs only the targeted test to speed up a TDD loop."
   example: "python -m pytest tests/test_search_engine.py::test_search -v"
 
 - id: pytest_last_failed
   description: Relancer uniquement les derniers tests pytest en échec
+  description_en: "Rerun only the last failed pytest tests"
   tags: [python, pytest, last failed, failed, rerun, test]
   command: "python -m pytest --last-failed"
   explanation: Réexécute les tests qui ont échoué lors de la dernière exécution pytest.
+  explanation_en: "Reruns tests that failed during the last pytest run."

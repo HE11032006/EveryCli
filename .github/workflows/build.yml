@@ -2,180 +2,205 @@ name: Build and Release
 
 on:
   push:
-    branches: [ "main", "improve_daemon" ]
+    branches: [ "main", "reverie-hacks-2026" ]
     tags: [ 'v*' ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "reverie-hacks-2026" ]
   workflow_dispatch:
 
+env:
+  # Version CPU officielle et reproductible du runtime chargé dynamiquement.
+  ORT_VERSION: "1.20.1"
+  # Artefact ONNX validé et publié séparément du code EveryCli.
+  MODEL_REPO: "Michelhe/everycli-minilm-ft-boosted-onnx"
+  MODEL_REVISION: "4ffbae1c8588491e8a655384619a4c9c6e41d7f3"
+  MODEL_ONNX_SHA256: "eabe4c2f3c5fab578632a1eb7eb7ef21d7ffa5cff8a89a67f54619e02610a979"
+  MODEL_TOKENIZER_SHA256: "cad551d5600a84242d0973327029452a1e3672ba6313c2a3c3d69c4310e12719"
+
 jobs:
-  build:
-    name: Build on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.11"]
+  prepare-model:
+    name: Prepare shared ONNX model
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
+      - name: Download validated ONNX model assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          model_dir="rust/onnx-bench/models/everycli-minilm-ft"
+          mkdir -p "$model_dir"
+          model_url="https://huggingface.co/${MODEL_REPO}/resolve/${MODEL_REVISION}/model.onnx?download=true"
+          tokenizer_url="https://huggingface.co/${MODEL_REPO}/resolve/${MODEL_REVISION}/tokenizer.json?download=true"
+          curl --fail --location --retry 3 --proto '=https' --tlsv1.2 "$model_url" -o "$model_dir/model.onnx"
+          curl --fail --location --retry 3 --proto '=https' --tlsv1.2 "$tokenizer_url" -o "$model_dir/tokenizer.json"
+          printf '%s  %s\n' "$MODEL_ONNX_SHA256" "$model_dir/model.onnx" | sha256sum --check -
+          printf '%s  %s\n' "$MODEL_TOKENIZER_SHA256" "$model_dir/tokenizer.json" | sha256sum --check -
+          test -s "$model_dir/model.onnx"
+          test -s "$model_dir/tokenizer.json"
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pyinstaller
-
-    - name: Download Model
-      run: |
-        python -c "from sentence_transformers import SentenceTransformer; model = SentenceTransformer('Karmelkke/everycli-minilm-ft'); model.save('Karmelkke/everycli-minilm-ft')"
-
-    - name: Validate corpus and run tests
-      run: |
-        python tools/validate_corpus.py
-        python -m pytest -q --ignore=tests/test_semantic_matches.py
-
-    - name: Build Full Version
-      shell: bash
-      run: |
-        pyinstaller everycli-daemon.spec --clean
-        mkdir -p dist_full
-        cp -r dist/* dist_full/
-
-    - name: Build Lite Version
-      shell: bash
-      env:
-        EVERYCLI_LITE: "1"
-      run: |
-        pyinstaller everycli-daemon.spec --clean
-        mkdir -p dist_lite
-        cp -r dist/* dist_lite/
-
-    - name: Prepare Artifacts
-      shell: bash
-      run: |
-        mkdir -p final_dist
-        # Linux/macOS
-        if [ "${{ matrix.os }}" != "windows-latest" ]; then
-          cp dist_full/everycli-daemon final_dist/everycli-full
-          cp dist_lite/everycli-daemon final_dist/everycli-lite
-          cp bin/everycli final_dist/everycli
-        # Windows
-        else
-          cp dist_full/everycli-daemon.exe final_dist/everycli-full.exe
-          cp dist_lite/everycli-daemon.exe final_dist/everycli-lite.exe
-          cp everycli.ps1 final_dist/everycli.ps1
-        fi
-
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: everycli-${{ matrix.os }}
-        path: final_dist/
+      - name: Upload shared model assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: everycli-model-assets
+          path: rust/onnx-bench/models/everycli-minilm-ft/
+          if-no-files-found: error
+          compression-level: 0
 
   build-rust:
-    name: Build Rust client on ${{ matrix.os }}
+    name: Build Rust on ${{ matrix.os }}
+    needs: [prepare-model]
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Rust
-      uses: dtolnay/rust-toolchain@stable
+      - name: Download shared model assets
+        uses: actions/download-artifact@v4
+        with:
+          name: everycli-model-assets
+          path: rust/onnx-bench/models/everycli-minilm-ft
 
-    - name: Test
-      run: cargo test --manifest-path rust/Cargo.toml
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
 
-    - name: Build release binary
-      run: cargo build --release --manifest-path rust/Cargo.toml -p everycli-rs
+      - name: Run Tests
+        run: cargo test --manifest-path rust/Cargo.toml -p everycli-rs -p everycli-core -p everycli-daemon
 
-    - name: Prepare artifact
-      shell: bash
-      run: |
-        mkdir -p final_dist_rust/data/commands
-        cp -r everycli/data/commands/* final_dist_rust/data/commands/
-        if [ "${{ matrix.os }}" = "windows-latest" ]; then
-          cp rust/target/release/everycli-rs.exe final_dist_rust/everycli-rs.exe
-        else
-          cp rust/target/release/everycli-rs final_dist_rust/everycli-rs
-        fi
+      - name: Install cargo-audit
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo install cargo-audit --locked
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: everycli-rs-${{ matrix.os }}
-        path: final_dist_rust/
+      - name: Audit Rust dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo audit --manifest-path rust/Cargo.toml
+
+      - name: Build Release Binaries
+        run: cargo build --release --manifest-path rust/Cargo.toml -p everycli-rs -p everycli-daemon
+
+      - name: Download ONNX Runtime for Linux
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist_bundle/runtime
+          case "${{ matrix.os }}" in
+            ubuntu-latest)
+              archive="onnxruntime-linux-x64-${ORT_VERSION}.tgz"
+              library="libonnxruntime.so"
+              ;;
+            *)
+              echo "Unsupported Linux runner: ${{ matrix.os }}" >&2
+              exit 1
+              ;;
+          esac
+          url="https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/${archive}"
+          tmp_dir="$(mktemp -d)"
+          trap 'rm -rf "$tmp_dir"' EXIT
+          curl --fail --location --retry 3 --proto '=https' --tlsv1.2 "$url" -o "$tmp_dir/$archive"
+          tar -xzf "$tmp_dir/$archive" -C "$tmp_dir"
+          library_path="$(find "$tmp_dir" -type f -name "$library" -print -quit)"
+          test -n "$library_path"
+          cp -L "$library_path" "dist_bundle/runtime/$library"
+
+      - name: Download ONNX Runtime for Windows
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path 'dist_bundle/runtime' | Out-Null
+          $archive = "onnxruntime-win-x64-$env:ORT_VERSION.zip"
+          $url = "https://github.com/microsoft/onnxruntime/releases/download/v$env:ORT_VERSION/$archive"
+          $tmpDir = Join-Path $env:RUNNER_TEMP "everycli-ort"
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $tmpDir
+          New-Item -ItemType Directory -Force -Path $tmpDir | Out-Null
+          $archivePath = Join-Path $tmpDir $archive
+          Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $archivePath
+          Expand-Archive -LiteralPath $archivePath -DestinationPath $tmpDir -Force
+          $library = Get-ChildItem -LiteralPath $tmpDir -Recurse -File -Filter 'onnxruntime.dll' | Select-Object -First 1
+          if ($null -eq $library) { throw 'onnxruntime.dll introuvable dans l archive officielle' }
+          Copy-Item -LiteralPath $library.FullName -Destination 'dist_bundle/runtime/onnxruntime.dll'
+
+      - name: Prepare complete release bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist_bundle/bin dist_bundle/data/commands dist_bundle/model
+          cp -R everycli/data/commands/. dist_bundle/data/commands/
+          cp -R rust/onnx-bench/models/everycli-minilm-ft/. dist_bundle/model/
+          test -s dist_bundle/model/model.onnx
+          test -s dist_bundle/model/tokenizer.json
+
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cp rust/target/release/everycli-rs.exe dist_bundle/bin/everycli.exe
+            cp rust/target/release/everycli-daemon.exe dist_bundle/bin/everycli-daemon.exe
+            cp install.ps1 uninstall.ps1 dist_bundle/
+            test -s dist_bundle/runtime/onnxruntime.dll
+            (cd dist_bundle && 7z a -tzip "../everycli-windows-x86_64.zip" .)
+          elif [ "${{ matrix.os }}" = "macos-latest" ]; then
+            echo "macOS compile/test only : aucun bundle release n'est publie avant validation de l'installateur macOS."
+            exit 0
+          else
+            cp rust/target/release/everycli-rs dist_bundle/bin/everycli
+            cp rust/target/release/everycli-daemon dist_bundle/bin/everycli-daemon
+            cp install.sh uninstall.sh dist_bundle/
+            chmod +x dist_bundle/bin/* dist_bundle/install.sh dist_bundle/uninstall.sh
+            test -s dist_bundle/runtime/libonnxruntime.so
+            tar -czf everycli-linux-x86_64.tar.gz -C dist_bundle .
+          fi
+
+      - name: Upload artifact
+        if: matrix.os != 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: everycli-${{ matrix.os }}
+          path: everycli-*
+          if-no-files-found: error
 
   release:
-    name: Create Release
-    needs: [build, build-rust]
+    name: Create GitHub Release
+    needs: [build-rust]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
+
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Prepare assets
+      - name: Prepare release assets and checksums
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p release_assets
-          # Ubuntu
-          cp artifacts/everycli-ubuntu-latest/everycli-full release_assets/everycli-linux-full
-          cp artifacts/everycli-ubuntu-latest/everycli-lite release_assets/everycli-linux-lite
-          # macOS
-          cp artifacts/everycli-macos-latest/everycli-full release_assets/everycli-macos-full
-          cp artifacts/everycli-macos-latest/everycli-lite release_assets/everycli-macos-lite
-          # Windows
-          cp artifacts/everycli-windows-latest/everycli-full.exe release_assets/everycli-windows-full.exe
-          cp artifacts/everycli-windows-latest/everycli-lite.exe release_assets/everycli-windows-lite.exe
-          cp artifacts/everycli-windows-latest/everycli.ps1 release_assets/everycli.ps1
-          # Shell wrapper (common for Linux/macOS)
-          cp artifacts/everycli-ubuntu-latest/everycli release_assets/everycli
-          # Rust client (native, no Python required)
-          cp artifacts/everycli-rs-ubuntu-latest/everycli-rs release_assets/everycli-rs-linux
-          cp artifacts/everycli-rs-macos-latest/everycli-rs release_assets/everycli-rs-macos
-          cp artifacts/everycli-rs-windows-latest/everycli-rs.exe release_assets/everycli-rs-windows.exe
-          chmod +x release_assets/everycli-rs-linux release_assets/everycli-rs-macos
-          cd artifacts/everycli-rs-ubuntu-latest/data && zip -r ../../../release_assets/everycli-data.zip commands && cd -
+          find artifacts -type f \( -name 'everycli-*.zip' -o -name 'everycli-*.tar.gz' \) -exec cp {} release_assets/ \;
+          test "$(find release_assets -maxdepth 1 -type f | wc -l)" -eq 2
+          (cd release_assets && sha256sum everycli-* > SHA256SUMS)
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            release_assets/everycli-linux-full
-            release_assets/everycli-linux-lite
-            release_assets/everycli-macos-full
-            release_assets/everycli-macos-lite
-            release_assets/everycli-windows-full.exe
-            release_assets/everycli-windows-lite.exe
-            release_assets/everycli.ps1
-            release_assets/everycli
-            release_assets/everycli-rs-linux
-            release_assets/everycli-rs-macos
-            release_assets/everycli-rs-windows.exe
-            release_assets/everycli-data.zip
+          files: release_assets/*
           body: |
             🚀 **EveryCli ${{ github.ref_name }}**
 
-            Deux versions sont disponibles pour chaque système :
-            - **Full** (~300Mo) : Tout inclus, fonctionne instantanément hors-ligne, modèle sémantique fine-tuné sur le corpus EveryCli embarqué.
-            - **Lite** (~50Mo) : Télécharge le modèle IA au premier lancement (~400Mo).
-            - **Rust** (`everycli-rs-*` + `everycli-data.zip`) : binaire natif sans dépendance, recherche lexicale instantanée hors-ligne ; se connecte au daemon Python (Full/Lite) s'il tourne pour la recherche sémantique.
+            Archives Linux et Windows self-containedes : binaires Rust, modèle ONNX, tokenizer, runtime ONNX Runtime CPU natif et corpus de commandes.
 
-            *Note : La taille des versions Full a été réduite en excluant les bibliothèques GPU inutiles.*
+            Les utilisateurs finaux n'ont pas besoin d'installer Rust. Sous Linux x86_64, téléchargez `everycli-linux-x86_64.tar.gz`, extrayez-le, puis lancez `./install.sh`.
+
+            macOS est encore en compilation/test CI uniquement ; aucune archive macOS installable n'est publiée tant que son parcours n'est pas validé.
+
+            Les sommes SHA-256 sont publiées dans `SHA256SUMS`.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

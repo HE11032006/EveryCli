@@ -1,35 +1,44 @@
 - id: git_add_all
   description: Préparer tous les fichiers modifiés pour le commit
+  description_en: "Prepare all modified files for commit"
   tags: [git, add, ajouter, préparation, staging, index, tout, tous, modifications, fichiers]
   commands:
     linux: "git add ."
     windows: "git add ."
   explanation: Ajoute tous les fichiers modifiés et nouveaux au staging area.
+  explanation_en: "Adds all modified and new files to the staging area."
 
 - id: git_commit
   description: Enregistrer les modifications
+  description_en: "Save changes"
   tags: [git, commit, enregistrer, sauvegarder, valider, message, modifications, changements]
   commands:
     linux: "git commit -m 'message descriptif'"
     windows: "git commit -m 'message descriptif'"
   explanation: Crée un nouveau commit avec les fichiers qui sont en staging.
+  explanation_en: "Creates a new commit with the files that are in staging."
 
 - id: git_push
   description: Envoyer les modifications sur le serveur
+  description_en: "Push changes to server"
   tags: [git, push, envoyer, pousser, serveur, distant, remote, origin, publier, synchroniser]
   commands:
     linux: "git push origin nom-branche"
     windows: "git push origin nom-branche"
   explanation: Envoie tes commits locaux vers le dépôt distant.
+  explanation_en: "Send your local commits to the remote repository."
 
 - id: git_replace_in_commits
   description: Remplacer ou modifier un mot dans tous les messages de commits
+  description_en: "Replace or modify a word in all commit messages"
   tags: [git, commit, remplacer, modifier, historique, message, réécrire, mot, tous, tout, global, changer]
   commands:
     linux: "git filter-branch --msg-filter 'sed s/ancien/nouveau/g' -- --all"
     windows: "git filter-branch --msg-filter \"sed 's/ancien/nouveau/g'\" -- --all"
   explanation: Réécrit l'historique de tous tes commits. Un force push sera nécessaire.
+  explanation_en: "Rewrite the history of all your commits. A force push will be necessary."
   warning: Modifie l'historique partagé — préviens ton équipe avant.
+  warning_en: "Edit shared history — let your team know first."
   errors:
     - trigger: "fatal: bad revision"
       cause: Tu n'es pas dans un dépôt Git
@@ -37,12 +46,15 @@
 
 - id: git_amend_last_commit
   description: Modifier le message de mon dernier commit
+  description_en: "Edit the message of my last commit"
   tags: [git, commit, modifier, message, amend, dernier, changer, corriger, faute]
   commands:
     linux: "git commit --amend -m 'nouveau message'"
     windows: "git commit --amend -m 'nouveau message'"
   explanation: Remplace le message du dernier commit. Ne fonctionne que s'il n'a pas été pushé.
+  explanation_en: "Replaces the message from the last commit. Only works if it has not been pushed."
   warning: Si le commit a déjà été pushé, un force push sera nécessaire.
+  warning_en: "If the commit has already been pushed, a force push will be necessary."
   errors:
     - trigger: "nothing to commit"
       cause: Aucun fichier en staging
@@ -50,11 +62,13 @@
 
 - id: git_merge
   description: Fusionner une branche dans la branche courante
+  description_en: "Merge a branch into the current branch"
   tags: [git, fusionner, merger, merge, branche, intégrer, combiner, réunir, joindre, incorporer, mélanger]
   commands:
     linux: "git merge nom-branche"
     windows: "git merge nom-branche"
   explanation: Intègre les commits d'une branche dans la branche courante.
+  explanation_en: "Integrate commits from a branch into the current branch."
   warning: ""
   errors:
     - trigger: "already up to date"
@@ -63,11 +77,13 @@
 
 - id: git_undo_last_commit_keep_changes
   description: Annuler mon dernier commit sans perdre mes changements
+  description_en: "Undo my last commit without losing my changes"
   tags: [git, annuler, commit, reset, soft, garder, changements, défaire, retirer, préserver]
   commands:
     linux: "git reset --soft HEAD~1"
     windows: "git reset --soft HEAD~1"
   explanation: Retire le dernier commit mais garde tes fichiers modifiés en staging.
+  explanation_en: "Remove the last commit but keep your modified files in staging."
   errors:
     - trigger: "fatal: ambiguous argument"
       cause: Il n'y a pas de commit précédent dans l'historique
@@ -75,28 +91,35 @@
 
 - id: git_undo_last_commit_discard_changes
   description: Revenir au commit précédent en annulant complètement les changements
+  description_en: "Revert to the previous commit by reverting the changes completely"
   tags: [git, annuler, commit, reset, hard, supprimer, effacer, perdre, réinitialiser, nettoyer, revenir, précédent, retour, complètement, annuler, défaire]
   commands:
     linux: "git reset --hard HEAD~1"
     windows: "git reset --hard HEAD~1"
   explanation: Revient au commit précédent en supprimant complètement le dernier commit et tous les changements associés. Irréversible.
+  explanation_en: "Reverts to the previous commit completely removing the last commit and all associated changes. Irreversible."
   warning: Cette action est irréversible. Les changements non commités seront perdus.
+  warning_en: "This action is irreversible. Uncommitted changes will be lost."
 
 - id: git_stash_changes
   description: Sauvegarder mon travail sans commiter (mettre de côté)
+  description_en: "Save my work without committing (put aside)"
   tags: [git, stash, sauvegarder, temporaire, côté, mettre, suspendre, ranger, sans, commiter, cachette, planquer, uncommitted, changes, work, temporary]
   commands:
     linux: "git stash"
     windows: "git stash"
   explanation: Met tous tes changements non commités de côté. Tu peux les récupérer plus tard.
+  explanation_en: "Put all your uncommitted changes aside. You can get them back later."
 
 - id: git_stash_pop
   description: Récupérer mes changements mis de côté
+  description_en: "Recover my discarded changes"
   tags: [git, stash, récupérer, restaurer, pop, reprendre, appliquer, ressortir, dépiler]
   commands:
     linux: "git stash pop"
     windows: "git stash pop"
   explanation: Réapplique le dernier stash et le supprime de la liste.
+  explanation_en: "Reapplies the last stash and removes it from the list."
   errors:
     - trigger: "No stash entries found"
       cause: Tu n'as aucun stash sauvegardé
@@ -104,156 +127,195 @@
 
 - id: git_stash_list
   description: Voir la liste de mes stashs
+  description_en: "See the list of my stashes"
   tags: [git, stash, liste, voir, afficher, inventaire, cachettes]
   commands:
     linux: "git stash list"
     windows: "git stash list"
   explanation: Affiche tous les stashs sauvegardés avec leur index et message.
+  explanation_en: "Shows all saved stashes with their index and message."
 
 - id: git_stash_named
   description: Sauvegarder mes changements avec un nom
+  description_en: "Save my changes with a name"
   tags: [git, stash, nommer, sauvegarder, message, étiquette, titre, description]
   commands:
     linux: "git stash push -m 'mon message'"
     windows: "git stash push -m 'mon message'"
   explanation: Crée un stash avec un nom descriptif pour le retrouver facilement.
+  explanation_en: "Create a stash with a descriptive name to make it easy to find."
 
 - id: git_blame_line_range
   description: Voir qui a modifié une plage de lignes spécifique
+  description_en: "See who edited a specific row range"
   tags: [git, blame, lignes, plage, intervalle, qui, modifié, auteur, responsable, section]
   commands:
     linux: "git blame -L 10,20 <fichier>"
     windows: "git blame -L 10,20 <fichier>"
   explanation: Affiche les auteurs uniquement pour les lignes 10 à 20 d'un fichier.
+  explanation_en: "Shows authors only for lines 10-20 of a file."
 
 - id: git_blame_ignore_whitespace
   description: Ignorer les changements d'espacement dans le blame
+  description_en: "Ignore spacing changes in blame"
   tags: [git, blame, espaces, whitespace, ignorer, formatage, indentation, tabulations]
   commands:
     linux: "git blame -w <fichier>"
     windows: "git blame -w <fichier>"
   explanation: Ignore les commits qui ont seulement changé les espaces/indentations.
+  explanation_en: "Ignore commits that only changed spaces/indentations."
 
 - id: git_blame_show_commit_details
   description: Voir le détail du commit pour une ligne
+  description_en: "See commit detail for one line"
   tags: [git, blame, commit, détail, hash, information, identification, id]
   commands:
     linux: "git blame -s <fichier>"
     windows: "git blame -s <fichier>"
   explanation: Affiche seulement le hash du commit (format plus compact).
+  explanation_en: "Shows only the hash of the commit (more compact format)."
 
 - id: git_blame_previous_commit
   description: Voir qui a modifié la ligne avant un commit spécifique
+  description_en: "See who modified the line before a specific commit"
   tags: [git, blame, précédent, avant, historique, antérieur, passé, remonter]
   commands:
     linux: "git blame <hash>^ -- <fichier>"
     windows: "git blame <hash>^ -- <fichier>"
   explanation: Regarde l'état du fichier juste avant un commit particulier.
+  explanation_en: "Look at the state of the file just before a particular commit."
 
 - id: git_blame_follow_renames
   description: Suivre l'historique même après renommage du fichier
+  description_en: "Track history even after file renaming"
   tags: [git, blame, renommage, suivre, historique, déplacement, renommé, bougé]
   commands:
     linux: "git blame -C <fichier>"
     windows: "git blame -C <fichier>"
   explanation: Détecte les lignes déplacées ou copiées depuis d'autres fichiers.
+  explanation_en: "Detects lines moved or copied from other files."
 
 - id: git_blame_reverse
   description: Voir quand une ligne a été supprimée
+  description_en: "See when a row has been deleted"
   tags: [git, blame, inverse, suppression, quand, retiré, disparition, traquer]
   commands:
     linux: "git blame --reverse <ancien-hash>..<nouveau-hash> -- <fichier>"
     windows: "git blame --reverse <ancien-hash>..<nouveau-hash> -- <fichier>"
   explanation: Montre quand chaque ligne a été supprimée (blame inversé).
+  explanation_en: "Shows when each row was deleted (reverse blaming)."
 
 - id: git_blame_porcelain
   description: Obtenir les infos de blame en format parsable par machine
+  description_en: "Obtain blame information in machine-parsable format"
   tags: [git, blame, porcelain, format, machine, script, automatisation, brut, raw]
   commands:
     linux: "git blame --porcelain <fichier>"
     windows: "git blame --porcelain <fichier>"
   explanation: Sortie adaptée pour être traitée par des scripts (automatisation).
+  explanation_en: "Output suitable to be processed by scripts (automation)."
 
 - id: git_find_file_by_content
   description: Chercher dans quel commit un contenu est apparu
+  description_en: "Find in which commit content appeared"
   tags: [git, chercher, contenu, grep, historique, apparition, texte, trouver, mot]
   commands:
     linux: "git log -S 'mot' --oneline"
     windows: "git log -S 'mot' --oneline"
   explanation: Trouve les commits qui ont introduit ou supprimé le texte spécifique.
+  explanation_en: "Finds commits that introduced or removed specific text."
 
 - id: git_show_file_at_commit
   description: Voir un fichier comme il était dans un ancien commit
+  description_en: "View a file as it was in an old commit"
   tags: [git, fichier, ancien, commit, voir, restaurer, version, contenu, passé]
   commands:
     linux: "git show <hash>:<chemin/fichier>"
     windows: "git show <hash>:<chemin/fichier>"
   explanation: Affiche le contenu d'un fichier à un moment précis de l'historique.
+  explanation_en: "Shows the contents of a file at a specific point in history."
 
 - id: git_list_commits_by_date
   description: Voir les commits triés par date sur une branche
+  description_en: "View commits sorted by date on a branch"
   tags: [git, commit, date, trier, ordre, chronologique, temps, calendrier]
   commands:
     linux: "git log --oneline --date-order --graph"
     windows: "git log --oneline --date-order --graph"
   explanation: Affiche l'historique dans l'ordre chronologique réel (pas topologique).
+  explanation_en: "Shows history in actual chronological (not topological) order."
 
 - id: git_diff_between_branches
   description: Voir la différence entre deux branches
+  description_en: "See the difference between two branches"
   tags: [git, diff, branches, comparer, différence, entre, changement, écart]
   commands:
     linux: "git diff branche1..branche2"
     windows: "git diff branche1..branche2"
   explanation: Montre les changements entre l'état de deux branches.
+  explanation_en: "Shows changes between the state of two branches."
 
 - id: git_stats_by_author
   description: Voir les statistiques de commits par auteur
+  description_en: "View commit statistics by author"
   tags: [git, stats, auteur, statistiques, court, métriques, classement, qui]
   commands:
     linux: "git shortlog -sn"
     windows: "git shortlog -sn"
   explanation: Affiche le nombre de commits par auteur, trié par ordre décroissant.
+  explanation_en: "Shows the number of commits per author, sorted in descending order."
 
 - id: git_squash_commits
   description: Fusionner plusieurs commits en un seul
+  description_en: "Merge multiple commits into one"
   tags: [git, squash, fusionner, commits, rebase, nettoyer, historique, grouper, condenser]
   commands:
     linux: "git rebase -i HEAD~N"
     windows: "git rebase -i HEAD~N"
   explanation: Remplace N par le nombre de commits à fusionner. Dans l'éditeur, remplace 'pick' par 'squash' sur les commits à fusionner.
+  explanation_en: "Replace N with the number of commits to merge. In the editor, replace 'pick' with 'squash' on the commits to merge."
   warning: Modifie l'historique — ne pas faire sur une branche partagée.
+  warning_en: "Modify history — do not do this on a shared branch."
 
 - id: git_view_commit_history
   description: Voir l'historique des commits
+  description_en: "View commit history"
   tags: [git, historique, commits, log, voir, afficher, liste, journal, passé]
   commands:
     linux: "git log --oneline --graph --decorate"
     windows: "git log --oneline --graph --decorate"
   explanation: Affiche l'historique de façon compacte avec le graphe des branches.
+  explanation_en: "Displays history compactly with branch graph."
 
 - id: git_show_commit_details
   description: Voir le détail d'un commit spécifique
+  description_en: "View the details of a specific commit"
   tags: [git, commit, détail, voir, show, contenu, diff, changement, inspecter]
   commands:
     linux: "git show <hash>"
     windows: "git show <hash>"
   explanation: Affiche les changements introduits par un commit. Remplace <hash> par le hash du commit.
+  explanation_en: "Shows the changes introduced by a commit. Replace <hash> with the hash of the commit."
 
 - id: git_create_branch
   description: Créer une nouvelle branche
+  description_en: "Create a new branch"
   tags: [git, branche, créer, nouvelle, branch, nouveau, début, feature]
   commands:
     linux: "git checkout -b nom-de-la-branche"
     windows: "git checkout -b nom-de-la-branche"
   explanation: Crée une nouvelle branche et bascule dessus immédiatement.
+  explanation_en: "Create a new branch and switch to it immediately."
 
 - id: git_switch_branch
   description: Changer de branche
+  description_en: "Change branch"
   tags: [git, branche, changer, basculer, switch, aller, checkout, branche]
   commands:
     linux: "git switch nom-de-la-branche"
     windows: "git switch nom-de-la-branche"
   explanation: Bascule sur une branche existante.
+  explanation_en: "Switches to an existing branch."
   errors:
     - trigger: "error: pathspec"
       cause: La branche n'existe pas
@@ -261,69 +323,87 @@
 
 - id: git_delete_branch
   description: Supprimer une branche
+  description_en: "Delete a branch"
   tags: [git, branche, supprimer, effacer, delete, branch, enlever, retirer]
   commands:
     linux: "git branch -d nom-de-la-branche"
     windows: "git branch -d nom-de-la-branche"
   explanation: Supprime une branche locale déjà fusionnée. Utilise -D pour forcer la suppression.
+  explanation_en: "Deletes an already merged local branch. Use -D to force deletion."
   warning: Utilise -D à la place de -d pour forcer la suppression même si non fusionnée.
+  warning_en: "Use -D instead of -d to force deletion even if not merged."
 
 - id: git_list_branches
   description: Voir toutes les branches
+  description_en: "See all branches"
   tags: [git, branche, liste, voir, afficher, toutes, inventaire]
   commands:
     linux: "git branch -a"
     windows: "git branch -a"
   explanation: Affiche toutes les branches locales et distantes.
+  explanation_en: "Shows all local and remote branches."
 
 - id: git_rename_branch
   description: Renommer une branche
+  description_en: "Rename a branch"
   tags: [git, branche, renommer, changer, nom, titre, rectifier]
   commands:
     linux: "git branch -m ancien-nom nouveau-nom"
     windows: "git branch -m ancien-nom nouveau-nom"
   explanation: Renomme une branche locale. Si tu es déjà dessus, utilise juste git branch -m nouveau-nom.
+  explanation_en: "Renames a local branch. If you're already on it, just use git branch -m new-name."
 
 - id: git_push_new_branch
   description: Pousser une nouvelle branche sur le remote
+  description_en: "Push a new branch onto the remote"
   tags: [git, push, branche, remote, origin, pousser, publier, envoyer, synchro, first, upstream, tracking]
   commands:
     linux: "git push -u origin nom-de-la-branche"
     windows: "git push -u origin nom-de-la-branche"
   explanation: Pousse la branche et crée le lien de tracking avec le remote.
+  explanation_en: "Push the branch and create the tracking link with the remote."
 
 - id: git_pull_rebase
   description: Récupérer les changements du remote sans créer de commit de merge
+  description_en: "Retrieve changes from remote without creating a merge commit"
   tags: [git, pull, rebase, remote, récupérer, synchroniser, mettre à jour, synchro, propre]
   commands:
     linux: "git pull --rebase"
     windows: "git pull --rebase"
   explanation: Récupère les changements et rejoue tes commits par-dessus. Historique plus propre qu'un merge.
+  explanation_en: "Collect the changes and replay your commits over them. Cleaner history than a merge."
 
 - id: git_force_push
   description: Forcer le push après une réécriture d'historique
+  description_en: "Force push after history rewrite"
   tags: [git, push, force, forcer, historique, amend, rebase, écraser, envoyer]
   commands:
     linux: "git push --force-with-lease"
     windows: "git push --force-with-lease"
   explanation: Force le push mais vérifie que personne d'autre n'a pushé entre-temps. Plus sûr que --force.
+  explanation_en: "Force the push but check that no one else has pushed in the meantime. Safer than --force."
   warning: Ne jamais force push on main ou une branche partagée sans prévenir l'équipe.
+  warning_en: "Never force push on main or a shared branch without notifying the team."
 
 - id: git_clone_repo
   description: Cloner un dépôt distant
+  description_en: "Clone a remote repository"
   tags: [git, clone, télécharger, copier, dépôt, remote, récupérer, projet]
   commands:
     linux: "git clone <url>"
     windows: "git clone <url>"
   explanation: Crée une copie locale complète du dépôt distant.
+  explanation_en: "Creates a full local copy of the remote repository."
 
 - id: git_add_remote
   description: Ajouter un dépôt distant
+  description_en: "Add a remote repository"
   tags: [git, remote, ajouter, origin, distant, lier, connexion, serveur]
   commands:
     linux: "git remote add origin <url>"
     windows: "git remote add origin <url>"
   explanation: Associe ton dépôt local à un dépôt distant.
+  explanation_en: "Associate your local repository with a remote repository."
   errors:
     - trigger: "remote origin already exists"
       cause: Un remote origin est déjà configuré
@@ -331,80 +411,100 @@
 
 - id: git_resolve_conflict_abort
   description: Annuler un merge en cours à cause de conflits
+  description_en: "Cancel a merge in progress due to conflicts"
   tags: [git, conflit, annuler, merge, abort, arrêter, stop, abandonner]
   commands:
     linux: "git merge --abort"
     windows: "git merge --abort"
   explanation: Annule le merge en cours et revient à l'état avant le merge.
+  explanation_en: "Cancels the current merge and returns to the state before the merge."
 
 - id: git_list_conflicted_files
   description: Voir quels fichiers sont en conflit
+  description_en: "See which files are in conflict"
   tags: [git, conflit, fichiers, liste, voir, conflicté, problème, blocage]
   commands:
     linux: "git diff --name-only --diff-filter=U"
     windows: "git diff --name-only --diff-filter=U"
   explanation: Liste uniquement les fichiers qui ont des conflits non résolus.
+  explanation_en: "Lists only files that have unresolved conflicts."
 
 - id: git_accept_ours
   description: Résoudre un conflit en gardant ma version
+  description_en: "Resolve a conflict by keeping my version"
   tags: [git, conflit, résoudre, garder, notre, ours, version, mien, local, current, merge]
   commands:
     linux: "git checkout --ours <fichier>"
     windows: "git checkout --ours <fichier>"
   explanation: Résout le conflit en gardant la version de ta branche courante.
+  explanation_en: "Resolve the conflict by keeping the version of your current branch."
 
 - id: git_accept_theirs
   description: Résoudre un conflit en gardant la version distante
+  description_en: "Resolve a conflict by keeping the remote version"
   tags: [git, conflit, résoudre, garder, leur, theirs, version, remote, distant, incoming, merge, accept, conflicted, file]
   commands:
     linux: "git checkout --theirs <fichier>"
     windows: "git checkout --theirs <fichier>"
   explanation: Résout le conflit en gardant la version de la branche qu'on merge.
+  explanation_en: "Resolves the conflict by keeping the version of the branch being merged."
 
 - id: git_create_tag
   description: Créer un tag sur le commit actuel
+  description_en: "Create a tag on the current commit"
   tags: [git, tag, créer, version, release, étiquette, jalon, point]
   commands:
     linux: "git tag -a v1.0.0 -m 'Version 1.0.0'"
     windows: "git tag -a v1.0.0 -m 'Version 1.0.0'"
   explanation: Crée un tag annoté avec un message sur le commit courant.
+  explanation_en: "Creates an annotated tag with a message about the current commit."
 
 - id: git_push_tags
   description: Pousser les tags sur le remote
+  description_en: "Push the tags onto the remote"
   tags: [git, tag, push, pousser, remote, publier, envoyer, versions]
   commands:
     linux: "git push origin --tags"
     windows: "git push origin --tags"
   explanation: Envoie tous les tags locaux vers le dépôt distant.
+  explanation_en: "Sends all local tags to the remote repository."
 
 - id: git_delete_tag
   description: Supprimer un tag
+  description_en: "Delete a tag"
   tags: [git, tag, supprimer, effacer, delete, enlever, retirer]
   commands:
     linux: "git tag -d v1.0.0 && git push origin --delete v1.0.0"
     windows: "git tag -d v1.0.0 && git push origin --delete v1.0.0"
   explanation: Supprime le tag localement et sur le remote.
+  explanation_en: "Deletes the tag locally and on the remote."
 
 - id: git_diff_staged
   description: Voir les changements en staging avant de commiter
+  description_en: "See changes in staging before committing"
   tags: [git, diff, staging, voir, changements, staged, cached, index, vérifier, inclus, included, prochain, next, avant, commit]
   commands:
     linux: "git diff --cached"
     windows: "git diff --cached"
   explanation: Affiche les différences entre le staging area et le dernier commit.
+  explanation_en: "Shows the differences between the staging area and the latest commit."
 
 - id: git_find_commit_by_message
   description: Chercher un commit par son message
+  description_en: "Search for a commit by its message"
   tags: [git, chercher, trouver, commit, message, grep, recherche, texte, filtrer]
   commands:
     linux: "git log --oneline --grep='mot-clé'"
     windows: "git log --oneline --grep='mot-clé'"
   explanation: Filtre l'historique pour trouver les commits dont le message contient le mot-clé.
+  explanation_en: "Filters the history to find commits whose message contains the keyword."
 
 - id: git_who_changed_line
   description: Voir qui a modifié une ligne d'un fichier
+  description_en: "See who modified a line in a file"
   tags: [git, blame, qui, modifié, ligne, fichier, auteur, responsable, origine]
   commands:
     linux: "git blame <fichier>"
     windows: "git blame <fichier>"
   explanation: Affiche pour chaque ligne le commit et l'auteur qui l'a modifiée en dernier.
+  explanation_en: "Shows for each line the commit and the author who last modified it."

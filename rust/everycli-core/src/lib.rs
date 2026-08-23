@@ -63,9 +63,29 @@ pub struct Scenario {
     pub tags: Vec<String>,
     pub commands: Commands,
     pub explanation: String,
+    pub explanation_en: String,
     pub warning: String,
+    pub warning_en: String,
     pub error_hints: Vec<ErrorHint>,
     pub namespace: String,
+}
+
+impl Scenario {
+    pub fn explanation_for_lang(&self, is_en: bool) -> &str {
+        if is_en && !self.explanation_en.is_empty() {
+            &self.explanation_en
+        } else {
+            &self.explanation
+        }
+    }
+
+    pub fn warning_for_lang(&self, is_en: bool) -> &str {
+        if is_en && !self.warning_en.is_empty() {
+            &self.warning_en
+        } else {
+            &self.warning
+        }
+    }
 }
 
 /// Find the first hint whose trigger appears in `error_message`
@@ -120,19 +140,51 @@ struct ScenarioBuilder {
     windows: String,
     macos: String,
     explanation: String,
+    explanation_en: String,
     warning: String,
+    warning_en: String,
     error_hints: Vec<ErrorHint>,
     current_hint: Option<ErrorHint>,
     namespace: String,
     base_indent: usize,
     in_commands: bool,
     in_errors: bool,
+    block_field: Option<String>,
+    block_lines: Vec<String>,
 }
 
 impl ScenarioBuilder {
     fn flush_current_hint(&mut self) {
         if let Some(hint) = self.current_hint.take() {
             self.error_hints.push(hint);
+        }
+    }
+
+    fn set_text_field(&mut self, field: &str, value: String) {
+        match field {
+            "description" => self.description = value,
+            "explanation" => self.explanation = value,
+            "explanation_en" => self.explanation_en = value,
+            "warning" => self.warning = value,
+            "warning_en" => self.warning_en = value,
+            _ => {}
+        }
+    }
+
+    fn set_or_start_text_field(&mut self, field: &str, value: String) {
+        if value == "|" {
+            self.block_field = Some(field.to_owned());
+            self.block_lines.clear();
+        } else {
+            self.set_text_field(field, value);
+        }
+    }
+
+    fn flush_block(&mut self) {
+        if let Some(field) = self.block_field.take() {
+            let value = self.block_lines.join("\n");
+            self.block_lines.clear();
+            self.set_text_field(&field, value);
         }
     }
 }
@@ -148,6 +200,7 @@ impl ScenarioBuilder {
     }
 
     fn finish(mut self) -> Scenario {
+        self.flush_block();
         if self.windows.is_empty() {
             self.windows = self.linux.clone();
         }
@@ -162,7 +215,9 @@ impl ScenarioBuilder {
                 macos: self.macos,
             },
             explanation: self.explanation,
+            explanation_en: self.explanation_en,
             warning: self.warning,
+            warning_en: self.warning_en,
             error_hints: self.error_hints,
             namespace: self.namespace,
         }
@@ -196,6 +251,24 @@ pub fn load_corpus(data_dir: impl AsRef<Path>) -> Result<Vec<Scenario>, CoreErro
     Ok(scenarios)
 }
 
+/// Load the built-in corpus AND a user-defined corpus (e.g. `~/.everycli/commands`,
+/// written by `everycli add`), merged into one list. The user directory is
+/// OPTIONAL — missing or empty is not an error (a fresh install has none
+/// yet), unlike [`load_corpus`] on the built-in directory which does error
+/// on an empty/missing corpus.
+pub fn load_corpus_merged(
+    builtin_dir: impl AsRef<Path>,
+    user_dir: impl AsRef<Path>,
+) -> Result<Vec<Scenario>, CoreError> {
+    let mut scenarios = load_corpus(builtin_dir)?;
+    if user_dir.as_ref().is_dir()
+        && let Ok(user_scenarios) = load_corpus(user_dir)
+    {
+        scenarios.extend(user_scenarios);
+    }
+    Ok(scenarios)
+}
+
 fn parse_corpus_file(path: &Path) -> Result<Vec<Scenario>, CoreError> {
     let namespace = path
         .file_stem()
@@ -219,6 +292,16 @@ fn parse_corpus_file(path: &Path) -> Result<Vec<Scenario>, CoreError> {
         };
         let indent = raw_line.len() - raw_line.trim_start().len();
         let trimmed = raw_line.trim();
+
+        if builder.block_field.is_some() {
+            if indent > builder.base_indent + 2 {
+                let content_indent = (builder.base_indent + 4).min(indent);
+                builder.block_lines.push(raw_line[content_indent..].to_owned());
+                continue;
+            }
+            builder.flush_block();
+        }
+
         if trimmed.is_empty() || trimmed.starts_with('#') {
             continue;
         }
@@ -238,16 +321,20 @@ fn parse_corpus_file(path: &Path) -> Result<Vec<Scenario>, CoreError> {
                 continue;
             }
             if let Some(value) = yaml_value(trimmed, "description") {
-                builder.description = value;
+                builder.set_or_start_text_field("description", value);
             } else if let Some(value) = yaml_value(trimmed, "tags") {
                 builder.tags = parse_inline_list(&value);
             } else if let Some(value) = yaml_value(trimmed, "command") {
                 builder.linux = value.clone();
                 builder.windows = value;
+            } else if let Some(value) = yaml_value(trimmed, "explanation_en") {
+                builder.set_or_start_text_field("explanation_en", value);
             } else if let Some(value) = yaml_value(trimmed, "explanation") {
-                builder.explanation = value;
+                builder.set_or_start_text_field("explanation", value);
+            } else if let Some(value) = yaml_value(trimmed, "warning_en") {
+                builder.set_or_start_text_field("warning_en", value);
             } else if let Some(value) = yaml_value(trimmed, "warning") {
-                builder.warning = value;
+                builder.set_or_start_text_field("warning", value);
             }
             continue;
         }
@@ -326,6 +413,60 @@ fn parse_inline_list(value: &str) -> Vec<String> {
         .collect()
 }
 
+/// Filter the corpus down to scenarios eligible for `query`/`platform`
+/// (explicit namespace routing + platform command availability), *without*
+/// requiring a positive lexical score. Exposed so a semantic reranking layer
+/// (see `everycli-daemon`) can score candidates that a pure lexical match
+/// would otherwise drop entirely — e.g. a paraphrase with zero token
+/// overlap with the corpus, which is exactly the case semantic search is
+/// meant to catch. [`search`] uses this internally too.
+///
+/// This is a HARD filter — scenarios outside the detected namespace are
+/// excluded entirely, with no way for a later scoring stage to reconsider
+/// them. That's appropriate for [`search`] (pure lexical, no semantic
+/// signal to safely relax the filter), but NOT for a hybrid lexical+semantic
+/// daemon: it would permanently hide any scenario whose namespace doesn't
+/// match a detected keyword — including user-added scenarios filed under a
+/// generic namespace (e.g. `everycli add`). For that case, use
+/// [`candidates_for_platform`] plus [`explicit_namespace`] as a soft scoring
+/// bonus instead of a hard filter.
+pub fn filter_candidates<'a>(
+    corpus: &'a [Scenario],
+    query: &str,
+    platform: Platform,
+) -> Vec<&'a Scenario> {
+    let namespace = explicit_namespace(query);
+    corpus
+        .iter()
+        .filter(|scenario| {
+            namespace
+                .as_deref()
+                .is_none_or(|scope| scenario.namespace == scope)
+        })
+        .filter(|scenario| !scenario.commands.for_platform(platform).is_empty())
+        .collect()
+}
+
+/// Same as [`filter_candidates`] but WITHOUT namespace routing — only
+/// platform command availability. Meant for callers (like `everycli-daemon`)
+/// that want to score the full corpus and use [`explicit_namespace`] as a
+/// soft bonus rather than a hard exclusion, so scenarios in unexpected or
+/// user-defined namespaces (e.g. `everycli add`) stay reachable.
+pub fn candidates_for_platform<'a>(corpus: &'a [Scenario], platform: Platform) -> Vec<&'a Scenario> {
+    corpus
+        .iter()
+        .filter(|scenario| !scenario.commands.for_platform(platform).is_empty())
+        .collect()
+}
+
+/// Lexical score for a single scenario against `query` (0.0 when there is no
+/// overlap at all). Exposed alongside [`filter_candidates`] for the same
+/// reason — a semantic reranking layer needs the raw lexical component to
+/// build a hybrid score, not just the truncated top-k from [`search`].
+pub fn score(scenario: &Scenario, query: &str) -> f32 {
+    lexical_score(scenario, &tokens(query), query)
+}
+
 /// Retrieve the most relevant commands using a deterministic lexical score.
 /// A namespace explicitly mentioned in the query is a hard route, matching the
 /// Python engine's protection against cross-ecosystem confusion.
@@ -340,15 +481,8 @@ pub fn search(
         return Vec::new();
     }
 
-    let namespace = explicit_namespace(query);
-    let mut hits = corpus
-        .iter()
-        .filter(|scenario| {
-            namespace
-                .as_deref()
-                .is_none_or(|scope| scenario.namespace == scope)
-        })
-        .filter(|scenario| !scenario.commands.for_platform(platform).is_empty())
+    let mut hits = filter_candidates(corpus, query, platform)
+        .into_iter()
         .filter_map(|scenario| {
             let score = lexical_score(scenario, &query_tokens, query);
             (score > 0.0).then(|| SearchHit {
@@ -407,20 +541,29 @@ fn lexical_score(scenario: &Scenario, query_tokens: &HashSet<String>, query: &st
     raw_score / (raw_score + query_tokens.len() as f32 * 10.0)
 }
 
-fn explicit_namespace(query: &str) -> Option<String> {
+/// Detect an explicit ecosystem keyword in `query` (e.g. "docker", "git",
+/// "npm") as a hard-route hint. Exposed as a public, standalone signal —
+/// callers decide whether to use it as a hard filter ([`filter_candidates`])
+/// or a soft scoring bonus (recommended for any hybrid lexical+semantic
+/// search, see `everycli-daemon`).
+pub fn explicit_namespace(query: &str) -> Option<String> {
+    // Volontairement : seuls les alias fixes explicites font office de route
+    // stricte. Un fallback par tags (retiré ici) filtrait des candidats
+    // AVANT le scoring hybride, empêchant le reranking sémantique de voir
+    // des scénarios pertinents pour des paraphrases sans mot-clé explicite
+    // (ex: "annuler mon dernier commit" sans le mot "git") — exactement le
+    // cas d'usage que le sémantique est censé couvrir. Le laisser au
+    // sémantique plutôt qu'à une heuristique de sous-chaîne bruitée.
     const ALIASES: &[(&str, &[&str])] = &[
-        (
-            "docker_compose",
-            &["docker compose", "docker-compose", "compose"],
-        ),
-        ("bash_command", &["bash", "shell script", "shell"]),
         ("composer", &["composer", "php"]),
-        ("docker", &["docker"]),
+        ("docker_compose", &["docker compose", "docker-compose", "compose"]),
+        ("docker", &["docker", "container", "containers", "image", "images"]),
+        ("python", &["python", "pip", "pytest", "virtualenv", "venv", "powershell", "py"]),
+        ("npm", &["npm", "nodejs", "node", "package.json"]),
+        ("ssh", &["ssh", "scp", "sftp", "remote", "forward"]),
         ("git", &["git"]),
+        ("bash_command", &["bash", "shell script", "shell"]),
         ("linux", &["linux", "systemctl", "systemd"]),
-        ("npm", &["npm", "nodejs", "node"]),
-        ("python", &["python", "pip", "pytest", "virtualenv", "venv"]),
-        ("ssh", &["ssh", "scp", "sftp"]),
     ];
 
     let normalized = scope_text(query);
@@ -433,6 +576,9 @@ fn explicit_namespace(query: &str) -> Option<String> {
         })
         .map(|(namespace, _)| (*namespace).to_owned())
 }
+
+
+
 
 fn scope_text(value: &str) -> String {
     value
@@ -505,6 +651,17 @@ mod tests {
         let results = search(&corpus(), "pip install package", 1, Platform::Windows);
         assert_eq!(results[0].scenario.namespace, "python");
         assert!(!results[0].command.is_empty());
+    }
+
+    #[test]
+    fn parses_block_scalar_explanation_from_the_real_corpus() {
+        let scenario = corpus()
+            .into_iter()
+            .find(|scenario| scenario.id == "bash_pushd_popd")
+            .expect("fixture scenario must exist in the checked-in corpus");
+        assert!(scenario.explanation.contains("pushd"));
+        assert!(scenario.explanation.contains("popd"));
+        assert_ne!(scenario.explanation, "|");
     }
 
     #[test]

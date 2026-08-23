@@ -2,11 +2,13 @@
 
 - id: docker_build_image
   description: Construire une image Docker depuis un Dockerfile
+  description_en: "Build a Docker image from a Dockerfile"
   tags: [docker, build, image, construire, créer, dockerfile, compilation, fabrication]
   commands:
     linux: "docker build -t nom-image:tag ."
     windows: "docker build -t nom-image:tag ."
   explanation: Construit une image depuis le Dockerfile du dossier courant. Remplace nom-image et tag.
+  explanation_en: "Builds an image from the current folder's Dockerfile. Replaces image-name and tag."
   errors:
     - trigger: "Cannot connect to the Docker daemon"
       cause: Docker n'est pas démarré
@@ -14,19 +16,23 @@
 
 - id: docker_list_images
   description: Voir toutes mes images Docker
+  description_en: "View all my Docker images"
   tags: [docker, images, liste, voir, afficher, toutes, inventaire, stockage]
   commands:
     linux: "docker images"
     windows: "docker images"
   explanation: Affiche toutes les images locales avec leur taille et leur date de création.
+  explanation_en: "Shows all local images with their size and creation date."
 
 - id: docker_remove_image
   description: Supprimer une image Docker
+  description_en: "Delete a Docker image"
   tags: [docker, image, supprimer, effacer, delete, remove, rmi, enlever, détruire]
   commands:
     linux: "docker rmi nom-image:tag"
     windows: "docker rmi nom-image:tag"
   explanation: Supprime une image locale. L'image ne doit pas être utilisée par un conteneur actif.
+  explanation_en: "Deletes a local image. The image should not be used by an active container."
   errors:
     - trigger: "image is being used by stopped container"
       cause: Un conteneur arrêté utilise encore cette image
@@ -34,28 +40,35 @@
 
 - id: docker_remove_unused_images
   description: Supprimer toutes les images non utilisées
+  description_en: "Delete all unused images"
   tags: [docker, image, nettoyer, supprimer, inutilisées, prune, espace, vider, disque]
   commands:
     linux: "docker image prune -a"
     windows: "docker image prune -a"
   explanation: Supprime toutes les images qui ne sont associées à aucun conteneur.
+  explanation_en: "Removes all images that are not associated with any container."
   warning: Toutes les images non utilisées seront supprimées, y compris les images de cache.
+  warning_en: "All unused images will be deleted, including cache images."
 
 - id: docker_pull_image
   description: Télécharger une image depuis Docker Hub
+  description_en: "Download an image from Docker Hub"
   tags: [docker, pull, télécharger, hub, image, récupérer, chercher, download]
   commands:
     linux: "docker pull nom-image:tag"
     windows: "docker pull nom-image:tag"
   explanation: Télécharge une image depuis Docker Hub. Sans tag, prend latest par défaut.
+  explanation_en: "Download an image from Docker Hub. Without tag, takes latest by default."
 
 - id: docker_push_image
   description: Pousser une image sur Docker Hub
+  description_en: "Push an image to Docker Hub"
   tags: [docker, push, pousser, hub, image, publier, registry, envoyer, synchro]
   commands:
     linux: "docker push nom-utilisateur/nom-image:tag"
     windows: "docker push nom-utilisateur/nom-image:tag"
   explanation: Publie ton image sur Docker Hub. Tu dois être connecté avec docker login.
+  explanation_en: "Publish your image to Docker Hub. You must be logged in with docker login."
   errors:
     - trigger: "denied: requested access to the resource is denied"
       cause: Tu n'es pas connecté à Docker Hub
@@ -63,61 +76,75 @@
 
 - id: docker_tag_image
   description: Renommer ou taguer une image Docker
+  description_en: "Rename or tag a Docker image"
   tags: [docker, tag, renommer, image, tagger, étiquette, versionner, nom]
   commands:
     linux: "docker tag image-source:tag nom-utilisateur/image-cible:tag"
     windows: "docker tag image-source:tag nom-utilisateur/image-cible:tag"
   explanation: Crée un alias pour une image existante. Utile avant un push sur un registry.
+  explanation_en: "Creates an alias for an existing image. Useful before a push on a registry."
 
 # ── Conteneurs ────────────────────────────────────────────────────────────────
 
 - id: docker_run_container
   description: Lancer un conteneur depuis une image
+  description_en: "Launch a container from an image"
   tags: [docker, run, lancer, conteneur, démarrer, créer, container, exécution]
   commands:
     linux: "docker run -d --name mon-conteneur -p 8080:80 nom-image"
     windows: "docker run -d --name mon-conteneur -p 8080:80 nom-image"
   explanation: Lance un conteneur en arrière-plan (-d), lui donne un nom et mappe le port 8080 vers le port 80 du conteneur.
+  explanation_en: "Launches a container in the background (-d), gives it a name, and maps port 8080 to port 80 of the container."
 
 - id: docker_run_interactive
   description: Lancer un conteneur en mode interactif
+  description_en: "Launch a container in interactive mode"
   tags: [docker, run, interactif, interactive, terminal, bash, shell, it, entrer, console, open, inside, new]
   commands:
     linux: "docker run -it --rm nom-image bash"
     windows: "docker run -it --rm nom-image bash"
   explanation: Lance un conteneur avec un terminal interactif. --rm le supprime automatiquement à la sortie.
+  explanation_en: "Launches a container with an interactive terminal. --rm automatically removes it on exit."
 
 - id: docker_list_containers
   description: Voir tous les conteneurs en cours d'exécution
+  description_en: "View all running containers"
   tags: [docker, conteneurs, liste, voir, afficher, running, ps, actifs, marche]
   commands:
     linux: "docker ps"
     windows: "docker ps"
   explanation: Affiche les conteneurs actifs. Ajoute -a pour voir aussi les conteneurs arrêtés.
+  explanation_en: "Shows active containers. Add -a to also see stopped containers."
 
 - id: docker_list_all_containers
   description: Voir tous les conteneurs même arrêtés
+  description_en: "See all containers even stopped"
   tags: [docker, conteneurs, liste, tous, arrêtés, voir, ps, historiques, morts]
   commands:
     linux: "docker ps -a"
     windows: "docker ps -a"
   explanation: Affiche tous les conteneurs, actifs et arrêtés.
+  explanation_en: "Shows all containers, active and stopped."
 
 - id: docker_stop_container
   description: Arrêter un conteneur en cours d'exécution
+  description_en: "Stop a running container"
   tags: [docker, arrêter, stop, conteneur, stopper, quitter, couper]
   commands:
     linux: "docker stop nom-conteneur"
     windows: "docker stop nom-conteneur"
   explanation: Envoie un signal d'arrêt propre au conteneur. Il a 10 secondes pour s'arrêter avant d'être tué.
+  explanation_en: "Sends a container-specific shutdown signal. He has 10 seconds to stop before being killed."
 
 - id: docker_remove_container
   description: Supprimer un conteneur arrêté
+  description_en: "Delete a stopped container"
   tags: [docker, supprimer, effacer, conteneur, remove, rm, delete, détruire, enlever]
   commands:
     linux: "docker rm nom-conteneur"
     windows: "docker rm nom-conteneur"
   explanation: Supprime un conteneur arrêté. Utilise -f pour forcer la suppression d'un conteneur actif.
+  explanation_en: "Deletes a stopped container. Use -f to force deletion of an active container."
   errors:
     - trigger: "cannot remove a running container"
       cause: Le conteneur est encore actif
@@ -125,35 +152,43 @@
 
 - id: docker_remove_all_stopped_containers
   description: Supprimer tous les conteneurs arrêtés
+  description_en: "Delete all stopped containers"
   tags: [docker, supprimer, nettoyer, conteneurs, arrêtés, prune, tous, vider, espace]
   commands:
     linux: "docker container prune"
     windows: "docker container prune"
   explanation: Supprime tous les conteneurs arrêtés en une seule commande.
+  explanation_en: "Removes all stopped containers in a single command."
 
 - id: docker_restart_container
   description: Redémarrer un conteneur
+  description_en: "Restart a container"
   tags: [docker, redémarrer, restart, conteneur, relancer, reboot]
   commands:
     linux: "docker restart nom-conteneur"
     windows: "docker restart nom-conteneur"
   explanation: Arrête et redémarre un conteneur. Utile après un changement de configuration.
+  explanation_en: "Stops and restarts a container. Useful after a configuration change."
 
 - id: docker_logs_container
   description: Voir les logs d'un conteneur
+  description_en: "View container logs"
   tags: [docker, logs, voir, afficher, conteneur, erreur, sortie, journal, journalisation]
   commands:
     linux: "docker logs -f nom-conteneur"
     windows: "docker logs -f nom-conteneur"
   explanation: Affiche les logs en temps réel (-f pour follow). Retire -f pour voir les logs statiques.
+  explanation_en: "Displays logs in real time (-f for follow). Remove -f to see static logs."
 
 - id: docker_exec_container
   description: Exécuter une commande dans un conteneur actif
+  description_en: "Run a command in an active container"
   tags: [docker, exec, exécuter, execute, commande, command, conteneur, container, actif, active, running, existing, already, entrer, terminal, bash, console]
   commands:
     linux: "docker exec -it nom-conteneur bash"
     windows: "docker exec -it nom-conteneur bash"
   explanation: Ouvre un terminal bash dans un conteneur actif. Remplace bash par sh si bash n'est pas disponible.
+  explanation_en: "Opens a bash terminal in an active container. Replace bash with sh if bash is not available."
   errors:
     - trigger: "OCI runtime exec failed"
       cause: bash n'est pas disponible dans ce conteneur
@@ -161,54 +196,67 @@
 
 - id: docker_inspect_container
   description: Voir les détails complets d'un conteneur
+  description_en: "View full details of a container"
   tags: [docker, inspect, détails, voir, configuration, conteneur, info, ip, réseau]
   commands:
     linux: "docker inspect nom-conteneur"
     windows: "docker inspect nom-conteneur"
   explanation: Affiche toute la configuration du conteneur en JSON — réseau, volumes, variables d'environnement.
+  explanation_en: "Shows all container configuration in JSON — network, volumes, environment variables."
 
 - id: docker_copy_file_to_container
   description: Copier un fichier vers un conteneur
+  description_en: "Copy a file to a container"
   tags: [docker, copier, copy, fichier, file, conteneur, container, cp, envoyer, transférer, upload, local, dans, into, to]
   commands:
     linux: "docker cp fichier.txt nom-conteneur:/chemin/destination"
     windows: "docker cp fichier.txt nom-conteneur:/chemin/destination"
   explanation: Copie un fichier depuis ta machine vers un conteneur actif ou arrêté.
+  explanation_en: "Copies a file from your machine to an active or stopped container."
 
 - id: docker_copy_file_from_container
   description: Copier un fichier depuis un conteneur vers ma machine
+  description_en: "Copy a file from a container to my machine"
   tags: [docker, copier, copy, fichier, file, conteneur, container, cp, récupérer, extraire, download, from, local, machine, computer]
   commands:
     linux: "docker cp nom-conteneur:/chemin/fichier.txt ./destination"
     windows: "docker cp nom-conteneur:/chemin/fichier.txt ./destination"
   explanation: Récupère un fichier depuis un conteneur vers ton système local.
+  explanation_en: "Retrieves a file from a container to your local system."
 
 # ── Volumes ───────────────────────────────────────────────────────────────────
 
 - id: docker_list_volumes
   description: Voir tous les volumes Docker
+  description_en: "View all Docker volumes"
   tags: [docker, volumes, liste, voir, afficher, inventaire, stockage]
   commands:
     linux: "docker volume ls"
     windows: "docker volume ls"
   explanation: Affiche tous les volumes Docker disponibles sur ta machine.
+  explanation_en: "Shows all Docker volumes available on your machine."
 
 - id: docker_create_volume
   description: Créer un volume Docker
+  description_en: "Create a Docker volume"
   tags: [docker, volume, créer, nouveau, persistance, données, stockage]
   commands:
     linux: "docker volume create nom-volume"
     windows: "docker volume create nom-volume"
   explanation: Crée un volume nommé pour persister des données entre les redémarrages de conteneurs.
+  explanation_en: "Creates a named volume to persist data between container restarts."
 
 - id: docker_remove_volume
   description: Supprimer un volume Docker
+  description_en: "Delete a Docker volume"
   tags: [docker, volume, supprimer, effacer, delete, remove, enlever, détruire]
   commands:
     linux: "docker volume rm nom-volume"
     windows: "docker volume rm nom-volume"
   explanation: Supprime un volume. Les données qu'il contient seront perdues définitivement.
+  explanation_en: "Deletes a volume. The data it contains will be lost permanently."
   warning: Les données dans le volume seront perdues définitivement.
+  warning_en: "The data in the volume will be lost permanently."
   errors:
     - trigger: "volume is in use"
       cause: Un conteneur utilise encore ce volume
@@ -216,54 +264,68 @@
 
 - id: docker_remove_unused_volumes
   description: Nettoyer tous les volumes non utilisés
+  description_en: "Clean up all unused volumes"
   tags: [docker, volumes, nettoyer, supprimer, inutilisés, prune, espace, vider]
   commands:
     linux: "docker volume prune"
     windows: "docker volume prune"
   explanation: Supprime tous les volumes qui ne sont plus associés à aucun conteneur.
+  explanation_en: "Removes all volumes that are no longer associated with any container."
   warning: Toutes les données dans les volumes non utilisés seront perdues.
+  warning_en: "All data in unused volumes will be lost."
 
 # ── Réseau ────────────────────────────────────────────────────────────────────
 
 - id: docker_list_networks
   description: Voir tous les réseaux Docker
+  description_en: "See all Docker networks"
   tags: [docker, réseau, network, liste, voir, afficher, connexions]
   commands:
     linux: "docker network ls"
     windows: "docker network ls"
   explanation: Affiche tous les réseaux Docker disponibles sur ta machine.
+  explanation_en: "Shows all Docker networks available on your machine."
 
 - id: docker_create_network
   description: Créer un réseau Docker
+  description_en: "Create a Docker network"
   tags: [docker, réseau, network, créer, nouveau, bridge, connexion]
   commands:
     linux: "docker network create nom-réseau"
     windows: "docker network create nom-réseau"
   explanation: Crée un réseau bridge personnalisé pour connecter des conteneurs entre eux.
+  explanation_en: "Creates a custom bridge network to connect containers together."
 
 - id: docker_connect_container_to_network
   description: Connecter un conteneur à un réseau
+  description_en: "Connect a container to a network"
   tags: [docker, réseau, network, connecter, connect, attacher, attach, conteneur, container, existing, existant, rejoindre, lier]
   commands:
     linux: "docker network connect nom-réseau nom-conteneur"
     windows: "docker network connect nom-réseau nom-conteneur"
   explanation: Ajoute un conteneur à un réseau existant sans le redémarrer.
+  explanation_en: "Adds a container to an existing network without restarting it."
 
 # ── Nettoyage global ──────────────────────────────────────────────────────────
 
 - id: docker_system_prune
   description: Nettoyer tout ce qui est inutilisé dans Docker
+  description_en: "Clean up everything unused in Docker"
   tags: [docker, nettoyer, prune, system, espace, tout, inutilisé, inutilisées, unused, resources, ressources, disque, vider]
   commands:
     linux: "docker system prune -a"
     windows: "docker system prune -a"
   explanation: Supprime conteneurs arrêtés, images inutilisées, réseaux orphelins et cache de build.
+  explanation_en: "Removes stopped containers, unused images, orphaned networks and build cache."
   warning: Action irréversible — tout ce qui n'est pas utilisé sera supprimé.
+  warning_en: "Irreversible action — anything not used will be deleted."
 
 - id: docker_system_df
   description: Voir l'espace disque utilisé par Docker
+  description_en: "See disk space used by Docker"
   tags: [docker, espace, disque, df, taille, utilisation, stockage, poids]
   commands:
     linux: "docker system df"
     windows: "docker system df"
   explanation: Affiche l'espace disque utilisé par les images, conteneurs et volumes.
+  explanation_en: "Shows disk space used by images, containers, and volumes."

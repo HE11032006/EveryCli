@@ -38,7 +38,7 @@ from everycli.core.interfaces import Matcher as MatcherProtocol
 # Fine-tuned on the EveryCli corpus from the paraphrase-multilingual-MiniLM-L12-v2
 # base model (see training/) — validated against eval/confusion_set.yaml before
 # adoption (66/66 top-1, 66/66 top-3, no regression from the base model).
-MODEL_NAME = "Karmelkke/everycli-minilm-ft"
+MODEL_NAME = "Michelhe/everycli-minilm-ft-boosted"
 CACHE_DIR = Path.home() / ".everycli" / "cache"
 
 

@@ -1,0 +1,20 @@
+# Dependances pour l'export ONNX du modele (outillage ponctuel pour l'Axe 1,
+# PAS une dependance runtime de l'app/daemon -- utilise le .venv normal du
+# projet, pas besoin d'un venv separe).
+#
+# Usage :
+#   pip install -r training/requirements-onnx-export.txt --break-system-packages
+#   optimum-cli export onnx --model <repo-ou-dossier-local> --task feature-extraction --library-name transformers <dossier-sortie>
+#
+# Pieges connus (voir HACKATHON_PLAN.md, Axe 1) :
+# - tokenizer_config.json de certains checkpoints declare
+#   "tokenizer_class": "TokenizersBackend" (abstraction transformers v5 non
+#   reconnue par les versions stables) -- patcher localement ce champ en
+#   "XLMRobertaTokenizerFast" (base MiniLM multilingue = BertModel + tokenizer
+#   SentencePiece de XLM-R) avant l'export/le chargement.
+# - Toujours passer --library-name transformers explicitement (le defaut
+#   sentence_transformers declenche le meme bug via un autre chemin de code).
+
+optimum-onnx[onnxruntime]
+sentencepiece
+accelerate
