@@ -372,16 +372,30 @@ mod tests {
     }
 
     fn tempdir() -> std::path::PathBuf {
-        let dir = std::env::temp_dir().join(format!(
-            "everycli-daemon-candidates-{}-{}",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
-        std::fs::create_dir_all(&dir).expect("create tempdir");
-        dir
+        let base = std::env::temp_dir();
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+
+        // `create_dir` is intentionally atomic here. On macOS, the clock can
+        // return the same timestamp to tests started in parallel; a plain
+        // create_dir_all would then let two tests share one directory and
+        // make the "nothing exists" test observe another test's fixture.
+        for attempt in 0..100 {
+            let dir = base.join(format!(
+                "everycli-daemon-candidates-{}-{}-{}",
+                std::process::id(),
+                timestamp,
+                attempt
+            ));
+            match std::fs::create_dir(&dir) {
+                Ok(()) => return dir,
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(error) => panic!("create tempdir: {error}"),
+            }
+        }
+        panic!("could not create a unique tempdir after 100 attempts");
     }
 
     #[test]
