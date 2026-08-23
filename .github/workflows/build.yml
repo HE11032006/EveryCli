@@ -57,6 +57,7 @@ jobs:
     permissions:
       contents: read
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
@@ -81,7 +82,8 @@ jobs:
 
       - name: Audit Rust dependencies
         if: matrix.os == 'ubuntu-latest'
-        run: cargo audit --manifest-path rust/Cargo.toml
+        working-directory: rust
+        run: cargo audit
 
       - name: Build Release Binaries
         run: cargo build --release --manifest-path rust/Cargo.toml -p everycli-rs -p everycli-daemon
