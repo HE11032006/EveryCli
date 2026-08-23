@@ -109,9 +109,17 @@ jobs:
           trap 'rm -rf "$tmp_dir"' EXIT
           curl --fail --location --retry 3 --proto '=https' --tlsv1.2 "$url" -o "$tmp_dir/$archive"
           tar -xzf "$tmp_dir/$archive" -C "$tmp_dir"
-          library_path="$(find "$tmp_dir" -type f -name "$library" -print -quit)"
-          test -n "$library_path"
+          # L’archive officielle contient libonnxruntime.so comme lien symbolique
+          # vers libonnxruntime.so.1, lui-même lié au fichier versionné réel.
+          # find -type f -name libonnxruntime.so ne le trouve donc pas.
+          library_path="$(find "$tmp_dir" -type f -name 'libonnxruntime.so.*' -print -quit)"
+          if [ -z "$library_path" ]; then
+            echo "libonnxruntime.so versionnée introuvable dans l’archive" >&2
+            find "$tmp_dir" -type f -o -type l >&2
+            exit 1
+          fi
           cp -L "$library_path" "dist_bundle/runtime/$library"
+          test -s "dist_bundle/runtime/$library"
 
       - name: Download ONNX Runtime for Windows
         if: matrix.os == 'windows-latest'
