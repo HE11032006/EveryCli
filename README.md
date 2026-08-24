@@ -135,7 +135,7 @@ The most useful everyday workflow is the interactive path:
 everycli search "how to undo my last commit" --top 2 -i
 ```
 
-> ⭐ **Recommended workflow.** `--top 2` limits the display to the two most relevant candidates and `-i` opens the interactive picker. After choosing, you can retrieve and copy the selected command instead of scanning a longer result list that may not activate this flow.
+> ⭐ **Recommended workflow.** `--top 2` limits the display to the two most relevant candidates and `-i` opens the interactive picker. After choosing, EveryCli shows the selected command instead of making you scan a longer result list. On **Windows**, the selected command is copied automatically to the clipboard, so you can paste it immediately with `Ctrl+V`. On **Linux**, automatic copying from the interactive workflow is not implemented yet; it is planned for a future update.
 
 The simple form remains available:
 

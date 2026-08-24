@@ -135,7 +135,7 @@ La commande la plus utile au quotidien est le parcours interactif suivant :
 everycli search "annuler mon dernier commit" --top 2 -i
 ```
 
-> ⭐ **Parcours recommandé.** `--top 2` limite l'affichage aux deux candidats les plus pertinents et `-i` ouvre le choix interactif. Après ta sélection, tu peux récupérer la commande choisie et la copier, au lieu de devoir parcourir une liste de résultats qui peut en afficher deux ou trois sans activer ce parcours.
+> ⭐ **Parcours recommandé.** `--top 2` limite l'affichage aux deux candidats les plus pertinents et `-i` ouvre le choix interactif. Après ta sélection, EveryCli affiche la commande retenue au lieu de te laisser parcourir une longue liste de résultats. Sous **Windows**, la commande choisie est copiée automatiquement dans le presse-papiers : tu peux immédiatement la coller avec `Ctrl+V`. Sous **Linux**, cette copie automatique depuis le parcours interactif n'est pas encore implémentée ; elle sera ajoutée prochainement.
 
 La forme simple reste disponible :
 
