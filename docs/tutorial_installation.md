@@ -2,49 +2,47 @@
 
 Ce tutoriel s’adresse aux utilisateurs et aux testeurs de release. Une release précompilée contient déjà le client Rust, le daemon, `model.onnx`, `tokenizer.json`, le runtime ONNX Runtime propre à la plateforme et le corpus intégré. **Rust, Cargo et Python ne sont pas nécessaires sur la machine de l’utilisateur.**
 
+> ⚠️ Pour une installation sémantique fonctionnelle, utilise la release corrigée **v1.2.1 ou ultérieure**. La release publique `v1.2.0` contient une bibliothèque ONNX Runtime trop ancienne pour la version du crate `ort` utilisée par le daemon.
+
 ## Choisir une source
 
-Il existe deux parcours utilisateur :
+Le parcours recommandé est l’installation en une commande. Le script télécharge la dernière release, vérifie son intégrité et configure automatiquement le bundle complet. L’installation depuis une archive reste disponible lorsque tu veux inspecter les fichiers avant de les installer.
 
 | Source | Quand l’utiliser | Téléchargement supplémentaire |
 |---|---|---:|
-| Archive extraite | Tu as déjà téléchargé un bundle complet | Non |
-| Script seul | Tu veux laisser l’installeur télécharger une release GitHub | Oui, depuis GitHub Releases |
+| Script seul | Installation utilisateur la plus simple | Oui, depuis GitHub Releases |
+| Archive extraite | Inspection manuelle d’un bundle complet | Non |
 | `--local-source` | Test développeur d’un staging local | Non |
 
 Un bundle extrait doit contenir `bin/`, `model/`, `runtime/`, `data/` et l’installeur correspondant. L’installeur détecte ce bundle à côté de lui et l’utilise directement.
 
 ## Installer sous Linux x86_64
 
+### Parcours recommandé en une commande
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/HE11032006/EveryCli/main/install.sh | bash
+```
+
+Le script demande la langue, télécharge la dernière release, vérifie `SHA256SUMS`, puis installe EveryCli dans `~/.local/share/everycli`. Il crée les liens `~/.local/bin/everycli` et `~/.local/bin/everycli-daemon`, puis active `everycli-daemon.service` avec `systemd --user`.
+
+Après l’installation, recharge le profil ou ouvre un nouveau terminal :
+
+```bash
+source ~/.profile
+hash -r
+everycli search "comment annuler mon dernier commit" --top 2 -i
+```
+
 ### Depuis une archive de release
 
-Depuis la page [GitHub Releases](https://github.com/HE11032006/EveryCli/releases), télécharge `everycli-linux-x86_64.tar.gz`, puis exécute :
+Depuis la page [GitHub Releases](https://github.com/HE11032006/EveryCli/releases), télécharge `everycli-linux-x86_64.tar.gz`, extrais-le, puis exécute l’installeur sans argument :
 
 ```bash
 tar -xzf everycli-linux-x86_64.tar.gz
 cd everycli-linux-x86_64
-./install.sh --language fr
-```
-
-L’installeur installe EveryCli dans `~/.local/share/everycli`, crée les liens `~/.local/bin/everycli` et `~/.local/bin/everycli-daemon`, puis active `everycli-daemon.service` avec `systemd --user`.
-
-### Depuis le script seul
-
-Pour télécharger explicitement une version précise, récupère le script correspondant au même tag que la release :
-
-```bash
-VERSION=v1.2.0
-curl --fail --location --proto '=https' --tlsv1.2 \
-  -o install.sh \
-  "https://raw.githubusercontent.com/HE11032006/EveryCli/${VERSION}/install.sh"
-chmod +x install.sh
-./install.sh --version "$VERSION" --language fr
-```
-
-Sans `--version`, l’installeur utilise la release GitHub marquée `Latest` :
-
-```bash
-./install.sh --language fr
+./install.sh
+source ~/.profile
 ```
 
 Le téléchargement de l’archive et de `SHA256SUMS` se fait en HTTPS. L’installeur vérifie le hash avant d’extraire et refuse un bundle incomplet.
@@ -61,51 +59,47 @@ Le premier démarrage peut prendre plus de temps : le daemon charge le modèle e
 
 ## Installer sous Windows x86_64
 
+### Parcours recommandé en une commande
+
+Dans PowerShell :
+
+```powershell
+irm https://raw.githubusercontent.com/HE11032006/EveryCli/main/install.ps1 | iex
+```
+
+Le script demande la langue, télécharge la dernière release, vérifie `SHA256SUMS` et installe EveryCli dans `%LOCALAPPDATA%\EveryCli`. En mode `irm | iex`, il utilise le parcours utilisateur sans élévation et configure le dossier de démarrage Windows. Ouvre ensuite un nouveau terminal si `everycli` n’est pas encore reconnu.
+
 ### Depuis une archive extraite
 
-Télécharge `everycli-windows-x86_64.zip`, extrais-le, ouvre PowerShell dans le dossier extrait et lance :
+Télécharge `everycli-windows-x86_64.zip`, extrais-le, ouvre PowerShell dans le dossier extrait et lance l’installeur sans argument :
 
 ```powershell
-.\install.ps1 -Language fr
+Expand-Archive .\everycli-windows-x86_64.zip .\everycli-windows-x86_64
+cd .\everycli-windows-x86_64
+.\install.ps1
 ```
 
-`install.ps1` détecte le bundle voisin et n’effectue pas de téléchargement redondant.
-
-### Depuis le script seul
-
-```powershell
-$Version = "v1.2.0"
-Invoke-WebRequest `
-  -Uri "https://raw.githubusercontent.com/HE11032006/EveryCli/$Version/install.ps1" `
-  -OutFile .\install.ps1
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\install.ps1 -Version $Version -Language fr
-```
-
-L’installeur place EveryCli dans `%LOCALAPPDATA%\EveryCli`, ajoute son dossier `bin` au PATH utilisateur, vérifie `SHA256SUMS` et installe le daemon. Utilise `-NoService` pour éviter l’élévation et utiliser le dossier de démarrage Windows :
-
-```powershell
-.\install.ps1 -NoService -Language fr
-```
-
-Le mode service Windows peut demander une élévation. L’installeur arrête une ancienne instance avant de changer de mode afin d’éviter deux daemons qui se disputeraient le port `51821`.
+`install.ps1` détecte le bundle voisin et n’effectue pas de téléchargement redondant. Le mode service Windows peut demander une élévation ; utilise alors `-NoService` pour rester en installation utilisateur et utiliser le dossier de démarrage Windows. L’installeur arrête une ancienne instance avant de changer de mode afin d’éviter deux daemons qui se disputeraient le port `51821`.
 
 ## Utiliser EveryCli
+
+Le parcours recommandé au quotidien est :
+
+```bash
+everycli search "comment annuler mon dernier commit" --top 2 -i
+```
+
+`--top 2` limite les candidats affichés et `-i` permet de sélectionner le résultat voulu ; après la sélection, tu peux copier la commande. Le mode interactif accepte aussi `--interactive`.
+
+La forme simple et les autres options restent disponibles :
 
 ```bash
 everycli search "décris ton intention"
 everycli search "requête" --top 3
-everycli search "requête" --interactive
 everycli search "requête" --copy
 everycli search "requête" --run
 everycli search "requête" --json
 everycli search "requête" --no-daemon
-```
-
-Le mode interactif accepte `-i` ou `--interactive`. Les options doivent être séparées :
-
-```bash
-everycli search "requête" --top 3 -i
 ```
 
 `--copy` copie la commande sélectionnée, tandis que `--run` demande une confirmation avant d’exécuter quoi que ce soit. Les commandes personnelles sont gérées avec :

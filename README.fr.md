@@ -12,13 +12,13 @@
 
 ## 🌱 Genèse & objectif
 
-EveryCli est né d'une petite friction quotidienne. Chaque fois qu'une commande CLI m'échappait, je la demandais à un LLM en ligne — et chaque recherche imposait deux ou trois secondes d'attente. Dans cet intervalle, l'attention dérive : on bascule vers un autre onglet, une autre tâche, et le fil de ce qu'on faisait est perdu.
+EveryCli est né d'une petite friction quotidienne. Chaque fois qu'une commande CLI m'échappait, je la demandais à un LLM en ligne — et chaque recherche ajoutait souvent deux ou trois secondes d'attente. Ce délai paraît court, mais il suffit parfois à sortir du contexte : on change d'onglet, on commence une autre tâche, puis il faut reconstruire mentalement ce qu'on était en train de faire. Dans les interfaces numériques, l'attention ne se partage pas sans coût ; le changement rapide de tâche augmente la charge de reprise et le risque de perdre le fil [1].
 
-L'idée était de garder cette boucle **dans le terminal** — décrire l'intention, obtenir la commande instantanément depuis un corpus *local*, et enrichir petit à petit son **propre** jeu de commandes avec `add` / `list` / `remove`. Pas d'aller-retour, pas de changement de contexte, pas de réseau, et tu gardes toujours le contrôle de ce qui s'exécute vraiment.
+L'idée était donc de garder cette boucle **dans le terminal** — décrire l'intention, obtenir rapidement une commande depuis un corpus *local*, puis enrichir progressivement son **propre** jeu de commandes avec `add` / `list` / `remove`. Le choix n'est pas de remplacer un grand modèle distant par un modèle local prétendument supérieur : c'est d'accepter un modèle plus compact et un périmètre maîtrisé pour réduire la latence, préserver le contexte et éviter un détour vers un autre onglet. Quand la couverture locale ne suffit pas, `everycli ask` reste disponible comme aide LLM optionnelle. L'objectif est simple : moins d'attente, moins de changement de contexte et toujours le contrôle de ce qui s'exécute réellement [1].
 
-EveryCli est par ailleurs antérieur au **hackathon Reverie** : il a été entamé avant le début de l'événement et avait déjà été développé lors de hackathons précédents, mais n'avait jamais été publié — faute de temps pour le finaliser.
+> **Un modèle suffisamment rapide et disponible localement peut être plus utile, dans ce contexte, qu'un modèle plus lourd qui impose un aller-retour et une rupture d'attention.**
 
-> 🕰️ **Historique du projet.** Les changements majeurs avant → après et leur impact sont consignés dans **[CHANGELOG.md](CHANGELOG.md)**.
+[1]: https://www.nngroup.com/articles/serial-task-switching/ "Nielsen Norman Group — Serial Task Switching"
 
 ## 🪧 Public cible
 
@@ -30,65 +30,114 @@ EveryCli est par ailleurs antérieur au **hackathon Reverie** : il a été entam
 | **Testeurs de release** | Un runbook reproductible d'installation, recherche et désinstallation |
 | **Contributeurs & intégrateurs** | Un workspace Rust documenté, un protocole daemon et un contrat shell |
 
+## 🧬 Architecture avant tout
+
+EveryCli sépare l'interface utilisateur du calcul sémantique plus coûteux. Le client Rust reçoit ton intention et communique avec un daemon local, qui garde le modèle en mémoire et répond rapidement aux recherches. Cette séparation évite de recharger le modèle à chaque commande et permet de rester dans le terminal, aussi bien sous Ubuntu/Linux que sous Windows.
+
+```text
+Utilisateur
+    │
+    ▼
+everycli-rs  ── JSON/TCP localhost ──▶  everycli-daemon
+    │                                      ├── corpus YAML
+    │                                      ├── model.onnx
+    │                                      ├── tokenizer.json
+    │                                      └── ONNX Runtime natif
+    └── repli lexical local si le daemon est indisponible
+```
+
+Le daemon écoute uniquement sur `127.0.0.1:51821` : ce n'est pas une API réseau publique. Il combine le corpus YAML, le modèle ONNX et le runtime natif de la plateforme. Le client conserve également un repli lexical local afin que la recherche reste utile même si le daemon n'est pas disponible.
+
+📖 **Architecture détaillée :** composants, rôle du daemon, protocole, modèle, runtime, corpus et cycle de vie → **[docs/explanation_architecture.md](docs/explanation_architecture.md)**.
+
 ## 🗝️ Fonctionnalités principales
 
-- 🔎 **Recherche en langage naturel** dans un corpus de commandes soigné et rangé par namespace (Git, Docker, Compose, npm, SSH, Python, Linux…).
-- 🧬 **Classement hybride local** — correspondance lexicale **+** reranking sémantique (modèle ONNX) fusionnés en un seul score, calculé sur la machine.
-- 🌍 **Bilingue** — fonctionne en **français** et en **anglais**, y compris pour des requêtes mixtes.
-- 🛰️ **Daemon local** qui garde le modèle en mémoire sur `127.0.0.1:51821` pour des recherches répétées rapides, avec **repli lexical** automatique s'il est indisponible.
-- ✍️ **Tes propres commandes** — `add`, `list`, `remove` ; stockées séparément du corpus intégré et conservées à travers les mises à jour.
-- 🤝 **Assistance IA optionnelle** — `everycli ask` appelle une API compatible OpenAI pour synthétiser une commande quand le corpus n'a pas de correspondance.
-- 🛡️ **Revue avant exécution** — Sentinel (`everycli plan`) propose une revue de sécurité d'une commande récupérée.
-- 🐚 **Intégré au shell** — sélecteur interactif, `--json`, `--copy` et un protocole `--shell` déterministe pour les wrappers.
-- 📦 **Installation sans dépendances** pour l'utilisateur final — Rust, Cargo et Python ne sont **pas** requis pour une release précompilée.
+- 🔎 **Recherche en langage naturel** — décris ce que tu veux faire au lieu de mémoriser la syntaxe, dans un corpus organisé par namespace (Git, Docker, Compose, npm, SSH, Python, Linux…).
+- 🧬 **Classement hybride local** — la correspondance lexicale et le reranking sémantique ONNX sont fusionnés sur ta machine pour rapprocher les commandes réellement pertinentes, sans envoyer ta requête dans le cloud.
+- 🌍 **Recherche bilingue** — formule ta demande en français, en anglais ou dans une requête mixte, ce qui évite de devoir traduire mentalement une commande ou sa description.
+- 🛰️ **Daemon local rapide** — le modèle reste chargé sur `127.0.0.1:51821`, ce qui permet aux recherches répétées de répondre en quelques centaines de millisecondes après le premier chargement ; cet ordre de grandeur a été observé sur le matériel testé et le même daemon natif est prévu pour Ubuntu/Linux comme pour Windows, afin de rester dans le rythme de travail au lieu d'attendre une requête distante.
+- ✍️ **Possibilité d'ajouter tes propres commandes** — avec `add`, `list` et `remove`, tu construis progressivement ton corpus personnel ; tes fichiers restent séparés du corpus intégré et sont conservés lors des mises à jour.
+- 🤝 **Assistance IA optionnelle** — si aucune commande locale ne correspond suffisamment, `everycli ask` permet de demander une proposition à une API compatible OpenAI, puis de l'ajouter à ton corpus pour éviter de refaire plus tard une requête distante pour le même besoin.
+- 🛡️ **Revue avant exécution** — Sentinel (`everycli plan`) peut relire une commande récupérée et signaler les risques avant que tu décides de l'exécuter.
+- 🐚 **Intégration au shell** — le sélecteur interactif, `--json`, `--copy` et le protocole `--shell` permettent de passer d'une recherche humaine à un usage scriptable, sans exécution automatique.
+- 📦 **Installation sans dépendances de développement** — une release précompilée contient les binaires, le modèle, le tokenizer, le runtime et le corpus ; l'utilisateur final n'a besoin ni de Rust, ni de Cargo, ni de Python.
 
 ---
 
 ## 🧰 Installation
 
-Les utilisateurs finaux téléchargent une archive de plateforme depuis **[GitHub Releases](https://github.com/HE11032006/EveryCli/releases)**. Aucune toolchain nécessaire.
+Le moyen le plus simple est d'utiliser l'installeur directement depuis la branche `main`. Il télécharge la dernière release, vérifie son intégrité et configure automatiquement le client, le daemon, le modèle, le runtime, le corpus et le démarrage en arrière-plan. Rust, Cargo et Python ne sont pas nécessaires.
 
-### 🐧 Linux x86_64
+> ⚠️ Utilise la prochaine release corrigée **v1.2.1 ou ultérieure**. La release publique `v1.2.0` a été publiée avec une bibliothèque ONNX Runtime trop ancienne pour la version du crate `ort` utilisée par le daemon ; elle ne doit pas être présentée comme une installation sémantique fonctionnelle.
 
-Télécharge `everycli-linux-x86_64.tar.gz`, puis :
+### 🐧 Ubuntu/Linux x86_64 — installation rapide
 
 ```bash
-mkdir everycli-linux-x86_64
-tar -xzf everycli-linux-x86_64.tar.gz -C everycli-linux-x86_64
-cd everycli-linux-x86_64
-./install.sh --language fr
+curl -fsSL https://raw.githubusercontent.com/HE11032006/EveryCli/main/install.sh | bash
 ```
 
-L'installeur installe le bundle dans `~/.local/share/everycli`, crée les liens dans `~/.local/bin` et active un service `systemd --user`. Recharge ensuite le profil :
+L'installeur demande la langue, installe EveryCli dans `~/.local/share/everycli`, crée les liens dans `~/.local/bin` et configure le service `systemd --user`. À la fin, recharge ton profil :
 
 ```bash
 source ~/.profile
 everycli search "comment annuler mon dernier commit"
 ```
 
-> ⏳ Le **premier** démarrage est plus lent : le daemon charge le modèle et calcule les embeddings du corpus (jusqu'à ~3 minutes sur une machine lente ou sous WSL). Les démarrages suivants utilisent un cache disque.
+Si `everycli` n'est pas encore reconnu, ouvre simplement un nouveau terminal. Le premier démarrage peut être plus lent : le daemon charge le modèle et calcule les embeddings du corpus. Les recherches suivantes profitent du daemon déjà chargé et du cache disque.
 
-### 🪟 Windows x86_64
+### 🪟 Windows x86_64 — installation rapide
 
-Télécharge `everycli-windows-x86_64.zip`, extrais-le, ouvre **PowerShell** dans le dossier et exécute :
+Dans **PowerShell**, exécute :
 
 ```powershell
-.\install.ps1 -Language fr
+irm https://raw.githubusercontent.com/HE11032006/EveryCli/main/install.ps1 | iex
 ```
 
-L'archive fournit le client, le daemon, `model.onnx`, le tokenizer, `onnxruntime.dll` et le corpus. Utilise `-Version vX.Y.Z` pour laisser le script télécharger une release précise, ou `-NoService` pour éviter l'élévation et utiliser le dossier de démarrage Windows au lieu d'un service.
+L'installeur demande la langue, télécharge la release, vérifie son intégrité et configure EveryCli dans ton profil utilisateur. Ce premier parcours peut être un peu lent, notamment pendant le téléchargement et le premier chargement du modèle. Un nouveau terminal peut être nécessaire pour que la commande `everycli` soit disponible.
+
+### 📦 Installation depuis une archive téléchargée
+
+Pour inspecter les fichiers avant installation, télécharge l'archive correspondante depuis **[GitHub Releases](https://github.com/HE11032006/EveryCli/releases)**, puis lance l'installeur sans argument depuis le dossier extrait.
+
+Sous Ubuntu/Linux :
+
+```bash
+mkdir everycli-linux-x86_64
+tar -xzf everycli-linux-x86_64.tar.gz -C everycli-linux-x86_64
+cd everycli-linux-x86_64
+./install.sh
+source ~/.profile
+```
+
+Sous Windows PowerShell :
+
+```powershell
+Expand-Archive .\everycli-windows-x86_64.zip .\everycli-windows-x86_64
+cd .\everycli-windows-x86_64
+.\install.ps1
+```
+
+L'archive complète contient le client, le daemon, `model.onnx`, `tokenizer.json`, la bibliothèque ONNX Runtime native et le corpus. Pour la désinstallation, utilise `./uninstall.sh` sous Linux ou `./uninstall.ps1` sous Windows ; les données personnelles sont conservées par défaut.
 
 ### 🍎 macOS
 
 macOS est **compilé et testé par la CI**, mais aucune archive macOS installable n'est publiée pour le moment — le runtime natif et l'installeur doivent encore être validés de bout en bout.
 
-📖 **Guide complet :** parcours depuis un bundle, téléchargement par script seul, vérification des checksums, désinstallation et dépannage → **[docs/tutorial_installation.md](docs/tutorial_installation.md)**.
+📖 **Guide complet :** prérequis, installation en une commande, installation depuis une archive, vérification des checksums, désinstallation et dépannage → **[docs/tutorial_installation.md](docs/tutorial_installation.md)**.
 
 ---
 
 ## ⌨️ Utilisation quotidienne
 
-La forme générale :
+La commande la plus utile au quotidien est le parcours interactif suivant :
+
+```bash
+everycli search "annuler mon dernier commit" --top 2 -i
+```
+
+> ⭐ **Parcours recommandé.** `--top 2` limite l'affichage aux deux candidats les plus pertinents et `-i` ouvre le choix interactif. Après ta sélection, tu peux récupérer la commande choisie et la copier, au lieu de devoir parcourir une liste de résultats qui peut en afficher deux ou trois sans activer ce parcours.
+
+La forme simple reste disponible :
 
 ```bash
 everycli search "décris ton intention"
@@ -97,17 +146,17 @@ everycli search "décris ton intention"
 Options courantes :
 
 ```bash
-everycli search "requête" --top 3        # nombre de candidats
-everycli search "requête" --interactive  # choisir au clavier (-i)
+everycli search "requête" --top 3        # nombre maximal de candidats
+everycli search "requête" -i             # choisir au clavier
 everycli search "requête" --copy         # copier le résultat choisi
-everycli search "requête" --run          # exécuter — demande confirmation
+everycli search "requête" --run          # exécuter après confirmation
 everycli search "requête" --json         # sortie exploitable par une machine
 everycli search "requête" --no-daemon    # forcer le repli lexical local
 ```
 
-Le mode interactif affiche les candidats proches et te laisse choisir ; `--copy` et `--run` ciblent un résultat explicite, et `--run` confirme avant d'exécuter.
+Le mode interactif te laisse relire les candidats avant de choisir. EveryCli ne lance jamais une commande sans confirmation explicite.
 
-**Gérer tes propres commandes :**
+**Ajouter et entretenir tes propres commandes :**
 
 ```bash
 everycli add
@@ -115,7 +164,7 @@ everycli list
 everycli remove
 ```
 
-Les commandes personnelles vivent dans `~/.everycli/commands` (Linux) ou `%USERPROFILE%\.everycli\commands` (Windows). Elles sont séparées du corpus intégré et survivent à une mise à jour ou une désinstallation normale.
+Tu peux ainsi transformer une commande trouvée une seule fois en raccourci local réutilisable. Les commandes personnelles vivent dans `~/.everycli/commands` (Linux) ou `%USERPROFILE%\.everycli\commands` (Windows), séparées du corpus intégré et conservées lors d'une mise à jour ou d'une désinstallation normale.
 
 ---
 
@@ -154,24 +203,6 @@ Les installeurs remplacent les défauts de dev par des chemins absolus. Une entr
 📖 **Référence complète :** toutes les variables, les chemins de données, le schéma du corpus et le protocole JSON du daemon → **[docs/reference_config.md](docs/reference_config.md)**.
 
 ---
-
-## 🧬 Architecture en bref
-
-```text
-Utilisateur
-    │
-    ▼
-everycli-rs  ── JSON/TCP localhost ──▶  everycli-daemon
-    │                                      ├── corpus YAML
-    │                                      ├── model.onnx
-    │                                      ├── tokenizer.json
-    │                                      └── ONNX Runtime natif
-    └── repli lexical local si le daemon est indisponible
-```
-
-Le daemon garde le modèle en mémoire et répond à `ping`, `search` et `reload` sur `127.0.0.1:51821` — ce n'est **pas** une API réseau publique. Le score hybride est calibré empiriquement : **lexical `0.45`**, **sémantique `0.55`**, **bonus de namespace `+0.2`** (une route douce, pas un filtre dur), avec un **seuil minimal de pertinence de `0.50`** pour rejeter les requêtes hors sujet. Le chemin de recherche rapide est natif Rust ; Sentinel reste un composant Python séparé.
-
-📖 **Plongée détaillée :** composants, pourquoi un daemon, protocole, modèle & runtime, corpus → **[docs/explanation_architecture.md](docs/explanation_architecture.md)**.
 
 ## 🐚 Intégration shell
 
@@ -263,6 +294,13 @@ EveryCli/
 ├── uninstall.sh / uninstall.ps1
 └── .github/workflows/build.yml # Tests, builds et bundles CI
 ```
+
+## 📬 Contact & support
+
+| Ressource | Lien |
+|---|---|
+| **Website** |  |
+| **Support** |  |
 
 ## 📜 Licence
 
