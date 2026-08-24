@@ -82,7 +82,13 @@ if [[ -z "$LANGUAGE" ]]; then
     echo "Select language / Choisissez votre langue :"
     echo "  [1] English (default / defaut)"
     echo "  [2] Francais"
-    read -rp "Choice / Choix [1-2]: " choice || choice=""
+    # Avec `curl ... | bash`, stdin contient le script lui-même : lire la
+    # réponse depuis /dev/tty évite de consommer les lignes suivantes du script.
+    if [[ -r /dev/tty ]]; then
+        read -rp "Choice / Choix [1-2]: " choice </dev/tty || choice=""
+    else
+        choice=""
+    fi
     if [[ "$choice" == "2" || "$choice" == "fr" || "$choice" == "Français" ]]; then
         LANGUAGE="fr"
     else

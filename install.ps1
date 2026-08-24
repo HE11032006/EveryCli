@@ -35,6 +35,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 $tempRoot = $null
+$scriptPathAvailable = -not [string]::IsNullOrWhiteSpace($PSCommandPath)
+$scriptRoot = if ($scriptPathAvailable) { $PSScriptRoot } else { $null }
 
 function Test-Elevated {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -102,6 +104,15 @@ function Wait-ForDaemon {
 
 $useService = -not $NoService
 $transcriptStarted = $false
+
+# Avec `irm ... | iex`, PowerShell n’exécute pas un fichier :
+# $PSCommandPath et $PSScriptRoot sont vides. L’auto-élévation et la
+# détection d’un bundle voisin sont alors impossibles ; on utilise directement
+# l’installation utilisateur et le téléchargement de la release.
+if ($useService -and -not $scriptPathAvailable) {
+    Write-Host "Script lance via irm|iex : installation utilisateur sans elevation admin." -ForegroundColor Yellow
+    $useService = $false
+}
 
 if ($useService -and (Test-Elevated)) {
     # On est le processus elevee (relance depuis le bloc ci-dessous) --
@@ -189,8 +200,8 @@ if ($LocalSource -ne "") {
     }
     Write-Host "Source locale : $LocalSource"
     $Source = $LocalSource
-} elseif (Test-Path (Join-Path $PSScriptRoot "bin")) {
-    $Source = $PSScriptRoot
+} elseif ($scriptRoot -and (Test-Path (Join-Path $scriptRoot "bin"))) {
+    $Source = $scriptRoot
     Write-Host "Bundle local detecte a cote de l'installeur : $Source"
 } else {
     # L'archive release est autonome : binaires, modele, tokenizer, runtime et corpus.
@@ -341,11 +352,11 @@ if ($useService) {
     Write-Host "Demarrage du service..."
     sc.exe start EveryCliDaemon | Out-Null
 
-    Write-Host "Attente que le daemon soit pret (calcul des embeddings du corpus, jusqu'a ~30s au premier demarrage)..."
-    if (Wait-ForDaemon -TimeoutSeconds 30) {
+    Write-Host "Attente que le daemon soit pret (calcul des embeddings du corpus, jusqu'a ~3 min au premier demarrage)..."
+    if (Wait-ForDaemon -TimeoutSeconds 180) {
         Write-Host "Service EveryCliDaemon installe, demarre, cache d'embeddings ecrit sur disque." -ForegroundColor Green
     } else {
-        Write-Host "Le daemon ne repond pas encore apres 30s -- verifie : sc.exe query EveryCliDaemon" -ForegroundColor Yellow
+        Write-Host "Le daemon ne repond pas encore apres 3 min -- verifie : sc.exe query EveryCliDaemon" -ForegroundColor Yellow
         Write-Host "et les logs : $InstallDir\logs\daemon.log"
     }
 } else {
@@ -372,11 +383,11 @@ objShell.Run """$LauncherPath""", 0, False
     Write-Host "Demarrage du daemon..."
     Start-Process -FilePath $LauncherPath -WindowStyle Hidden
 
-    Write-Host "Attente que le daemon soit pret (calcul des embeddings du corpus, jusqu'a ~30s au premier demarrage)..."
-    if (Wait-ForDaemon -TimeoutSeconds 30) {
+    Write-Host "Attente que le daemon soit pret (calcul des embeddings du corpus, jusqu'a ~3 min au premier demarrage)..."
+    if (Wait-ForDaemon -TimeoutSeconds 180) {
         Write-Host "Daemon pret, cache d'embeddings calcule et ecrit sur disque." -ForegroundColor Green
     } else {
-        Write-Host "Le daemon ne repond pas encore apres 30s -- verifie les logs : $InstallDir\logs\daemon.log" -ForegroundColor Yellow
+        Write-Host "Le daemon ne repond pas encore apres 3 min -- verifie les logs : $InstallDir\logs\daemon.log" -ForegroundColor Yellow
         Write-Host "everycli fonctionnera quand meme en mode recherche locale en attendant."
     }
 }

@@ -1,51 +1,121 @@
-# Référence technique
+# Référence de configuration
 
-Ce document détaille les paramètres de configuration, la structure des données et le fonctionnement interne d'EveryCli.
+Cette page décrit les variables d’environnement, les chemins de données, le schéma du corpus et le protocole du daemon. Elle s’adresse aux développeurs et intégrateurs ; le parcours d’installation utilisateur est décrit dans [`tutorial_installation.md`](tutorial_installation.md).
 
-> Architecture actuelle (branche `reverie-hacks-2026`) : daemon et client 100% Rust + ONNX Runtime. Voir [CHANGELOG.md](../CHANGELOG.md).
+## Variables d’environnement
 
-## Variables d'environnement
+Les variables doivent être cohérentes entre le client et le daemon lorsque les deux processus doivent utiliser les mêmes fichiers.
 
-Utilisées par le client (`everycli-rs`) ET le daemon (`everycli-daemon`) — les deux doivent voir les mêmes valeurs pour fonctionner ensemble correctement.
+| Variable | Rôle | Défaut de développement |
+|---|---|---|
+| `EVERYCLI_PORT` | Port TCP local du daemon | `51821` |
+| `EVERYCLI_TIMEOUT` | Timeout réseau du client, en secondes | `1` |
+| `EVERYCLI_DATA_DIR` | Corpus YAML intégré | `../everycli/data/commands` selon le dossier de lancement |
+| `EVERYCLI_USER_DATA_DIR` | Corpus YAML personnel | `~/.everycli/commands` |
+| `EVERYCLI_MODEL_DIR` | Dossier de `model.onnx` et `tokenizer.json` | `onnx-bench/models/everycli-minilm-ft` |
+| `EVERYCLI_ONNXRUNTIME_DYLIB` | Bibliothèque ONNX Runtime dynamique | `onnx-bench/runtime/onnxruntime.dll` ou `.so` selon l’OS |
+| `EVERYCLI_LANG` | Langue d’affichage lorsqu’elle est définie | Détection ou français selon le client |
+| `EVERYCLI_OFFLINE` | Favorise le fonctionnement sans téléchargement réseau | Non défini |
+| `EVERYCLI_API_KEY` | Clé API de `everycli ask` lorsqu’elle n’est pas enregistrée dans la configuration | Non défini |
 
-| Variable | Description | Valeur par défaut |
-| :--- | :--- | :--- |
-| `EVERYCLI_PORT` | Port TCP de communication client/daemon. | `51821` |
-| `EVERYCLI_DATA_DIR` | Dossier du corpus intégré (YAML). | `../everycli/data/commands` (relatif au dossier de lancement du daemon) |
-| `EVERYCLI_USER_DATA_DIR` | Dossier des commandes personnalisées (`everycli add`). | `~/.everycli/commands` (`%USERPROFILE%\.everycli\commands` sous Windows) |
-| `EVERYCLI_MODEL_DIR` | Dossier contenant `model.onnx` + `tokenizer.json`. | `onnx-bench/models/everycli-minilm-ft` |
-| `EVERYCLI_ONNXRUNTIME_DYLIB` | Chemin vers `onnxruntime.dll`/`.so`. | `onnx-bench/runtime/onnxruntime.dll` (ou `.so` selon l'OS) |
+`everycli ask` utilise aussi les valeurs `api_key`, `api_url`, `api_model` et `provider` du fichier `~/.everycli/config.toml`. Les clés connues peuvent être auto-détectées par leur préfixe ; un fournisseur compatible OpenAI peut être configuré explicitement. Cette configuration concerne le client Rust et ne modifie pas le chemin local de `search`.
 
-Ces valeurs par défaut sont pensées pour un lancement en développement depuis `rust/`. Une installation via `install.ps1`/`install.sh` les définit explicitement (variables d'environnement persistantes côté client, `Environment=` dans l'unit systemd ou clé de Registre côté service Windows).
+Les installeurs remplacent les défauts de développement par des chemins absolus. Sous Linux, les données de l’application se trouvent normalement dans `~/.local/share/everycli`. Sous Windows, elles se trouvent normalement dans `%LOCALAPPDATA%\EveryCli`.
 
-## Structure des fichiers de données (YAML)
+## Fichiers de données
 
-Les commandes sont stockées dans `everycli/data/commands/*.yaml` (corpus intégré) ou `~/.everycli/commands/*.yaml` (commandes personnalisées, écrites par `everycli add`). Le **nom du fichier détermine le namespace** de chaque scénario qu'il contient. Chaque commande suit ce schéma :
+Le corpus intégré est organisé ainsi :
+
+```text
+everycli/data/commands/*.yaml
+```
+
+Les commandes personnelles sont stockées séparément :
+
+```text
+Linux   : ~/.everycli/commands/*.yaml
+Windows : %USERPROFILE%\.everycli\commands\*.yaml
+```
+
+Le nom du fichier YAML fournit le namespace. Une entrée suit cette forme générale :
 
 ```yaml
 - id: identifiant_unique
-  description: Ce que fait la commande (utilisé pour la recherche lexicale + sémantique)
-  tags: [liste, de, mots, cles]
+  description: Intention décrite en langage naturel
+  tags: [mot-cle, autre-mot]
   commands:
     linux: "commande bash"
-    windows: "commande powershell"
-    macos: "commande zsh" # optionnel
-  explanation: Détails supplémentaires sur le fonctionnement.
-  warning: (Optionnel) Alertes de sécurité ou risques.
+    windows: "commande PowerShell"
+    macos: "commande shell"
+  explanation: Explication affichée avec le résultat
+  warning: Avertissement optionnel
 ```
 
-## Fonctionnement du daemon
+Le champ `commands` peut contenir une commande spécifique à chaque système. Les explications multi-lignes peuvent utiliser un bloc YAML `|`. Le parseur valide les champs nécessaires et la résolution choisit la commande correspondant à la plateforme courante.
 
-Le daemon (`everycli-daemon`) est un serveur TCP.
-- **Socket** : écoute sur `127.0.0.1` (localhost), thread par connexion.
-- **Protocole** : une ligne de JSON par requête/réponse (`\n`-terminated). Actions supportées : `search`, `ping`, `reload`.
-- **Cycle de vie** :
-  - Au démarrage : charge le runtime ONNX, le modèle sémantique, puis le corpus (avec cache disque des embeddings, invalidé par hash de contenu du modèle + du corpus, pas par date de fichier).
-  - Reste actif jusqu'à un arrêt explicite — pas de fichier PID : sur Windows, géré via le Service Control Manager (`sc.exe query/stop`) ou en tuant le processus (`Get-Process everycli-daemon`) ; sur Linux, via `systemctl --user stop everycli-daemon`.
-  - `reload` recalcule le corpus + les embeddings à chaud, sans redémarrer le process (utilisé par `everycli add`/`remove`).
+## `everycli ask` et Sentinel
 
-## Localisation des fichiers (binaires Rust)
+`everycli search` effectue une recherche locale dans le corpus et le daemon Rust ; il ne nécessite aucune clé API. `everycli ask` appelle une API compatible OpenAI avec une requête structurée, puis affiche une commande, une explication, un avertissement éventuel et des tags. Il demande ensuite à l’utilisateur s’il veut enregistrer la proposition dans son corpus personnel.
 
-Le daemon et le client sont des exécutables natifs — pas de répertoire temporaire d'extraction (contrairement à l'ancien flux PyInstaller). Les chemins du modèle/runtime/corpus sont résolus via les variables d'environnement ci-dessus, généralement pointées vers le dossier d'installation (`%LOCALAPPDATA%\EveryCli` sous Windows, `~/.local/share/everycli` sous Linux).
+La clé peut être stockée dans `~/.everycli/config.toml` avec :
 
-Le client cherche aussi le daemon **à côté de son propre exécutable** (même dossier `bin/`) pour l'auto-découverte/auto-lancement — voir `rust/everycli-core/src/daemon.rs`, `SIBLING_DAEMON_NAMES`.
+```bash
+everycli config set api_key "ta-cle-api"
+everycli config set provider openai
+everycli config set api_url "https://api.openai.com/v1"
+everycli config set api_model "gpt-4o-mini"
+```
+
+Elle peut aussi être fournie ponctuellement par `EVERYCLI_API_KEY`. Le fichier de configuration est écrit avec des permissions `0600` sous Unix. Ne publie jamais sa valeur dans une issue, un log ou un commit.
+
+Sentinel (`everycli plan`) est un composant Python séparé. Selon son chemin d’exécution, il utilise `OPENAI_API_KEY` et produit une revue de sécurité d’une commande déjà récupérée ; il ne doit pas être confondu avec `everycli ask`.
+
+## Modèle et cache
+
+`EVERYCLI_MODEL_DIR` doit contenir au minimum :
+
+```text
+model.onnx
+tokenizer.json
+```
+
+Le daemon peut générer un cache d’embeddings du corpus dans ce dossier. Ce cache est un artefact local et ne constitue pas une dépendance distribuée obligatoire. Il est invalidé lorsque le contenu pertinent du modèle ou du corpus change.
+
+L’artefact ONNX de production est versionné dans [`Michelhe/everycli-minilm-ft-boosted-onnx`](https://huggingface.co/Michelhe/everycli-minilm-ft-boosted-onnx). La CI fige une révision et vérifie les hashes avant l’assemblage des releases.
+
+## Runtime ONNX
+
+Le nom du runtime dépend du système :
+
+```text
+Windows : onnxruntime.dll
+Linux   : libonnxruntime.so
+```
+
+`EVERYCLI_ONNXRUNTIME_DYLIB` doit pointer vers le fichier réellement présent sur la machine. Le runtime Windows ne peut pas être utilisé par un binaire Linux, et inversement.
+
+## Protocole daemon
+
+Le daemon écoute localement sur `127.0.0.1:${EVERYCLI_PORT}`. Chaque requête et chaque réponse est une ligne JSON terminée par `\n`.
+
+Exemples de requêtes :
+
+```json
+{"action":"ping"}
+{"action":"search","query":"comment annuler mon dernier commit","top_k":3,"context":null}
+{"action":"reload"}
+```
+
+Les actions principales sont `ping`, `search` et `reload`. Le client ne doit pas exposer le port sur une interface réseau publique.
+
+## Cycle de vie
+
+Le daemon charge le runtime, le modèle, le tokenizer et le corpus, puis reste en écoute. Le premier chargement peut être long. Sous Linux, `systemd --user` démarre le service à l’ouverture de session. Sous Windows, `install.ps1` configure le service ou le dossier de démarrage selon l’option choisie.
+
+`reload` permet de relire le corpus personnel après `everycli add` ou `everycli remove` sans redémarrer le processus. Le client retombe sur la recherche locale lorsque le daemon est indisponible.
+
+## Résolution du daemon par le client
+
+Le client cherche d’abord le daemon configuré explicitement, puis les noms conventionnels à côté de son propre exécutable. Les binaires installés dans un bundle doivent rester dans le même dossier `bin/` afin de permettre l’auto-détection.
+
+Cette résolution ne remplace pas la configuration du modèle : le daemon doit toujours recevoir les bons chemins `EVERYCLI_MODEL_DIR`, `EVERYCLI_ONNXRUNTIME_DYLIB` et `EVERYCLI_DATA_DIR`.
