@@ -22,6 +22,11 @@ target/
 *.log
 *.tmp
 arborescence.txt
+.agents/
+.claude/
+skills-lock.json
+sortie_test.md
+
 temp_tree.txt
 fichier_regle.md
 fix_yaml.py
