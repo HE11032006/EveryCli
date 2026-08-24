@@ -6,22 +6,27 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'EveryCli — Describe the task. Get the command.',
-  description: 'EveryCli is an AI-powered command-line assistant that turns plain-language intent into commands for Git, Docker, and Linux.',
+  description: 'EveryCli is a local, privacy-first command-line assistant powered by a native Rust daemon and on-device semantic search.',
   keywords: ['everycli', 'natural language cli', 'git assistant', 'docker assistant', 'developer documentation'],
   authors: [{ name: 'EveryCli' }],
   creator: 'EveryCli',
   publisher: 'EveryCli',
+  icons: {
+    icon: '/icon.png',
+    shortcut: '/icon.png',
+    apple: '/icon.png',
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
     title: 'EveryCli — Describe the task. Get the command.',
-    description: 'An AI-powered command-line assistant for Git, Docker, and Linux.',
+    description: 'A local, privacy-first command-line assistant with native Rust and on-device semantic search.',
     siteName: 'EveryCli',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'EveryCli — Describe the task. Get the command.',
-    description: 'An AI-powered command-line assistant for Git, Docker, and Linux.',
+    description: 'A local, privacy-first command-line assistant with native Rust and on-device semantic search.',
   },
 }
 

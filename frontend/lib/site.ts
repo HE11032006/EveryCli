@@ -3,10 +3,10 @@ export const site = {
   command: "everycli",
   tagline: "DESCRIBE. DON'T SEARCH.",
   description:
-    "EveryCli is an AI-powered command-line assistant that instantly finds the exact command you need — just describe it in plain language. Works with Git, Docker, and Linux, without ever leaving your terminal.",
-  version: "1.0.0",
+    "EveryCli is a local, privacy-first command-line assistant that turns plain-language intent into commands with a native Rust daemon and on-device semantic search.",
+  version: "1.2.1",
   demo: 'everycli search "how to undo my last commit"',
-  install: ".\\install.ps1",
+  install: "curl -fsSL https://raw.githubusercontent.com/HE11032006/EveryCli/main/install.sh | bash",
   github: "https://github.com/HE11032006/EveryCli",
   releases: "https://github.com/HE11032006/EveryCli/releases",
 }

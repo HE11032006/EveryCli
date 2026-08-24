@@ -7,7 +7,7 @@ export default function BuildFromSourcePage() {
     <DocPage
       eyebrow="002 // GUIDES"
       title="BUILD FROM SOURCE"
-      description="Set up a development environment, compile the Rust binaries, and install EveryCli locally."
+      description="Set up a development environment, compile the Rust binaries, and stage a local bundle. End users should follow the release installation guide instead."
       href="/docs/guides/deploying"
     >
       <DocH2>Prerequisites</DocH2>
@@ -28,14 +28,19 @@ export default function BuildFromSourcePage() {
         shell
       />
 
-      <DocH2>Install locally (Windows)</DocH2>
+      <DocH2>Stage and install a local bundle (Windows)</DocH2>
       <DocP>
-        The installer script copies the compiled binaries, registers the daemon as a Windows
-        service, and sets up the PowerShell wrapper automatically:
+        From the repository root, assemble a release-shaped bundle, then pass it explicitly to the
+        installer. This developer path is different from the one-line release command in the user
+        installation guide:
       </DocP>
-      <CodeBlock code={".\\install.ps1"} label="powershell" shell />
+      <CodeBlock
+        code={".\\scripts\\windows\\stage-release.ps1\n.\\install.ps1 -LocalSource .\\dist\\windows"}
+        label="powershell"
+        shell
+      />
 
-      <DocH2>Uninstall</DocH2>
+      <DocH2>Uninstall the local bundle</DocH2>
       <CodeBlock code={".\\uninstall.ps1"} label="powershell" shell />
 
       <DocNote>

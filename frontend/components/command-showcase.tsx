@@ -9,13 +9,13 @@ const STEPS = [
   {
     n: "01",
     title: "Install",
-    desc: "Register the daemon as a Windows service with one script. Auto-elevation handles UAC.",
-    code: ".\\install.ps1",
+    desc: "Install a self-contained release in one command. No Rust, Python, or compiler required.",
+    code: "curl -fsSL https://raw.githubusercontent.com/HE11032006/EveryCli/main/install.sh | bash",
   },
   {
     n: "02",
     title: "Search",
-    desc: "Describe the task in plain language. The hybrid engine surfaces the right command in under 50 ms.",
+    desc: "Describe the task in plain language. The hybrid local engine keeps the search inside your terminal.",
     code: 'everycli search "git: squash last 3 commits"',
   },
   {

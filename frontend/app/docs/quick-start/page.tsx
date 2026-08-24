@@ -1,4 +1,5 @@
 import { DocPage } from "@/components/docs/doc-page"
+
 import { DocH2, DocP, DocNote, DocCode } from "@/components/docs/doc-content"
 import { CodeBlock } from "@/components/code-block"
 
@@ -44,14 +45,14 @@ export default function QuickStartPage() {
         shell
       />
 
-      <DocH2>Manage the daemon</DocH2>
+      <DocH2>5. Add a personal command</DocH2>
       <DocP>
-        The daemon is installed as a Windows service by <DocCode>install.ps1</DocCode>. To start
-        or stop it manually, use the standard Windows service manager:
+        Extend the local corpus with a command you use often. Your personal entries stay separate
+        from the built-in corpus and survive normal updates and uninstall:
       </DocP>
       <CodeBlock
-        code={"# Start the service\nsc.exe start EveryCliDaemon\n\n# Stop the service\nsc.exe stop EveryCliDaemon\n\n# Check status\nsc.exe query EveryCliDaemon"}
-        label="powershell"
+        code={"everycli add\neverycli list\neverycli remove"}
+        label="bash / powershell"
         shell
       />
 

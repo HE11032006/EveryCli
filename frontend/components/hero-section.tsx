@@ -8,8 +8,8 @@ import { Terminal } from "@/components/ui/terminal"
 import { site } from "@/lib/site"
 
 const installMethods = [
-  { label: "Windows", command: ".\\install.ps1" },
-  { label: "Source", command: "git clone https://github.com/HE11032006/EveryCli.git" },
+  { label: "Linux", command: "curl -fsSL https://raw.githubusercontent.com/HE11032006/EveryCli/main/install.sh | bash" },
+  { label: "Windows", command: "irm https://raw.githubusercontent.com/HE11032006/EveryCli/main/install.ps1 | iex" },
   { label: "Try it", command: 'everycli search "undo my last commit"' },
 ]
 
@@ -47,7 +47,6 @@ export function HeroSection() {
       <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(460px,1.08fr)] lg:gap-14">
         <div className="max-w-2xl">
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="mb-7 flex items-center gap-3 text-[10px] font-mono uppercase tracking-[0.24em] text-[#f05243]">
-            <span className="h-px w-8 bg-[#f05243]/70" />
             Natural language for your terminal
           </motion.div>
           <motion.h1 initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.08 }} className="max-w-3xl font-pixel text-5xl leading-[0.98] tracking-tight text-white sm:text-7xl lg:text-[5.7rem]">
@@ -55,7 +54,7 @@ export function HeroSection() {
             <span className="block text-white/45">Get the command.</span>
           </motion.h1>
           <motion.p initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.24 }} className="mt-7 max-w-xl text-sm leading-7 text-white/60 sm:text-base">
-            {site.description} EveryCli turns intent into a command you can understand, review, and run.
+            {site.description} Describe an intent, review the result, and stay in control of what runs.
           </motion.p>
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.34 }} className="mt-9 max-w-xl">
             <div className="flex gap-1 border-b border-white/10" role="tablist" aria-label="Installation methods">
@@ -71,14 +70,14 @@ export function HeroSection() {
                 {copied ? <Check size={15} /> : <Copy size={15} />}
               </button>
             </div>
-            <p className="mt-3 text-[10px] font-mono uppercase tracking-[0.12em] text-white/30">Installation details live in the docs - public package coming soon</p>
+            <p className="mt-3 text-[10px] font-mono uppercase tracking-[0.12em] text-white/30">Self-contained releases · no Rust or Python required</p>
           </motion.div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.48 }} className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs font-mono uppercase tracking-[0.15em]">
             <Link href="/docs" className="group flex min-h-11 items-center gap-2 text-white transition-colors hover:text-[#ff7566]">Read the docs <ArrowUpRight size={14} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" /></Link>
             <span className="text-white/20">{`v${site.version}`}</span>
           </motion.div>
         </div>
-        <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, delay: 0.18 }} className="relative">
+        <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, delay: 0.18 }} className="relative lg:-translate-y-8">
           <div className="relative border border-white/10 bg-[#171314]/90 p-2 sm:p-3">
             <Terminal commands={terminalCommands} outputs={terminalOutputs} username="everycli" typingSpeed={38} delayBetweenCommands={900} initialDelay={700} enableSound={false} className="max-w-none px-0 text-[11px] sm:text-xs" />
           </div>

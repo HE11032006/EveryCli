@@ -8,13 +8,9 @@ export default function ShellIntegrationPage() {
       <DocH2>Safe shell mode</DocH2>
       <DocP><DocCode>--shell</DocCode> sends only the raw resolved command to standard output, with no trailing newline -- everything else (namespace/id, command, explanation, score) goes to <DocCode>stderr</DocCode>. There is no confirmation prompt in <DocCode>--shell</DocCode> mode itself; a wrapper script decides whether to ask before running it. It cannot be combined with interactive selection, copy, run, error diagnosis, or a result count other than one.</DocP>
 
-      <DocH2>PowerShell</DocH2>
-      <DocP>During local development, load the PowerShell integration once in the terminal:</DocP>
-      <CodeBlock code={". D:\\EveryCli\\everycli.ps1\nevc \"annuler mon dernier commit sans perdre mes changements\""} label="powershell" shell />
-
-      <DocH2>Editable, never automatic</DocH2>
-      <DocP>The <DocCode>evc</DocCode> helper asks PSReadLine to place the selected result into the editable command buffer. You can change it, or choose whether to press Enter yourself.</DocP>
-      <DocNote>For a packaged executable, set <DocCode>EVERYCLI_BIN</DocCode> to its full path before loading the wrapper.</DocNote>
+<DocH2>Editable, never automatic</DocH2>
+      <DocP>A shell integration may place the selected result into an editable command buffer, but it must never execute the command automatically. Review the command and decide yourself whether to press Enter.</DocP>
+      <DocNote>Custom integrations can set <DocCode>EVERYCLI_BIN</DocCode> to the full path of the installed executable. The repository does not guarantee an official shell wrapper until each supported shell path has been tested end to end.</DocNote>
     </DocPage>
   )
 }

@@ -1,4 +1,5 @@
 import { DocPage } from "@/components/docs/doc-page"
+
 import { DocH2, DocP, DocList } from "@/components/docs/doc-content"
 import { CodeBlock } from "@/components/code-block"
 
@@ -27,13 +28,13 @@ export default function IntroductionPage() {
       />
 
       <DocH2>Try a search</DocH2>
-      <DocP>Run EveryCli after installing the daemon service (see Installation):</DocP>
+      <DocP>Install the self-contained release first (see Installation), then run a local search:</DocP>
       <CodeBlock code={'everycli search "undo my last commit"'} label="bash" shell />
 
       <DocH2>Where to next</DocH2>
       <DocList
         items={[
-          "Installation — current local setup options.",
+          "Installation — one-line release setup for Linux and Windows.",
           "Quick Start — search and inspect a command in minutes.",
           "CLI Commands — the full command reference.",
         ]}
