@@ -103,7 +103,10 @@ esac
 echo "=== Installation d'EveryCli / EveryCli Setup ==="
 
 # --- 1. Obtenir et vérifier les fichiers (bundle local ou release GitHub) ---
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR=""
+if [[ -n "${BASH_SOURCE[0]:-}" && -f "${BASH_SOURCE[0]}" ]]; then
+    SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+fi
 if [[ -n "$LOCAL_SOURCE" ]]; then
     if [[ ! -d "$LOCAL_SOURCE" ]]; then
         echo "Dossier source introuvable : $LOCAL_SOURCE" >&2
@@ -111,7 +114,7 @@ if [[ -n "$LOCAL_SOURCE" ]]; then
     fi
     SOURCE="$LOCAL_SOURCE"
     echo "Source locale : $SOURCE"
-elif [[ -d "$SCRIPT_DIR/bin" ]]; then
+elif [[ -n "$SCRIPT_DIR" && -d "$SCRIPT_DIR/bin" ]]; then
     SOURCE="$SCRIPT_DIR"
     echo "Bundle local détecté à côté de l'installeur : $SOURCE"
 else
