@@ -1,43 +1,103 @@
-# Architecture : pourquoi un daemon et un moteur hybride ?
+# Architecture d’EveryCli
 
-> Ce document décrit l'architecture actuelle (branche `reverie-hacks-2026`, 100% Rust + ONNX Runtime). Voir [CHANGELOG.md](../CHANGELOG.md) pour le détail de la migration depuis l'ancienne architecture Python/PyInstaller.
+Ce document décrit les composants permanents du projet et leurs frontières. Il explique pourquoi EveryCli utilise un daemon local, comment le ranking combine plusieurs signaux et où se trouvent les données distribuées.
 
-EveryCli n'est pas un simple moteur de recherche de texte. Ce document explique les choix architecturaux qui permettent d'allier intelligence sémantique et performance instantanée.
+## Vue d’ensemble
 
-## 1. Le défi de l'IA sur un outil CLI
+EveryCli sépare l’interface CLI du calcul sémantique coûteux :
 
-Un modèle d'embeddings sémantiques a un coût au démarrage : charger le modèle et initialiser le runtime d'inférence prend un temps non négligeable — mesuré à ~1.6s pour le chargement du modèle ONNX sur cette machine. Le refaire à chaque recherche serait inacceptable pour un outil censé répondre instantanément.
+```text
+Utilisateur
+    │
+    ▼
+everycli-rs  ── JSON/TCP localhost ──>  everycli-daemon
+    │                                      │
+    │                                      ├── corpus YAML
+    │                                      ├── model.onnx
+    │                                      ├── tokenizer.json
+    │                                      └── ONNX Runtime natif
+    │
+    └── repli local si le daemon est indisponible
+```
 
-## 2. La solution : un daemon en arrière-plan
+| Composant | Responsabilité | Technologie |
+|---|---|---|
+| `everycli-rs` | Parsing des options, affichage, actions utilisateur et repli local | Rust |
+| `everycli-core` | Corpus, parsing YAML, recherche lexicale et résolution de daemon | Rust |
+| `everycli-inference` | Tokenisation, chargement ONNX et embeddings | Rust + ONNX Runtime |
+| `everycli-daemon` | Serveur local, cache et recherche hybride | Rust, TCP localhost |
+| Sentinel | Planification et revue de commandes avec un LLM | Python |
+| Corpus intégré | Scénarios de commandes par domaine | YAML |
 
-EveryCli utilise une architecture **client/serveur locale** :
-- **Le daemon** (`everycli-daemon`, Rust) tourne en arrière-plan (service Windows natif ou `systemd --user` sur Linux), garde le modèle chargé en mémoire, et répond aux requêtes via un protocole JSON simple sur TCP (`127.0.0.1:51821`).
-- **Le client** (`everycli-rs`, Rust) envoie la requête au daemon et affiche le résultat. S'il ne peut pas joindre le daemon, il retombe automatiquement sur une recherche lexicale locale — pas d'échec sec.
-- **Résultat mesuré** : une fois le daemon prêt, latence d'inférence sémantique ~12ms, temps de réponse client complet ~130-210ms.
+## Pourquoi un daemon local ?
 
-## 3. Le moteur hybride (lexical + sémantique)
+Le modèle sémantique doit être chargé et initialisé avant de produire des embeddings. Refaire cette opération pour chaque commande rendrait l’outil interactif inutilisable. Le daemon garde donc le modèle et le cache en mémoire, puis répond aux recherches du client.
 
-EveryCli combine deux signaux pour classer les résultats :
+Le daemon écoute uniquement sur `127.0.0.1:51821`. Il n’est pas conçu comme une API réseau publique ou un service multi-utilisateur. Sous Linux, son cycle de vie est géré par `systemd --user`. Sous Windows, l’installeur peut configurer le service Windows ou le dossier de démarrage selon les permissions et l’option choisie.
 
-### Score lexical
-Correspondance de mots-clés entre la requête et la description/les tags d'un scénario — rapide, précis quand l'utilisateur utilise le vocabulaire exact (ex : "git").
+Le premier chargement peut être long, en particulier sur une machine modeste ou sous WSL. Une fois le corpus encodé, un cache disque est utilisé lorsque le modèle et les données correspondent.
 
-### Score sémantique
-Similarité cosinus entre l'embedding de la requête et celui de chaque scénario, via un modèle de similarité de phrases (`paraphrase-multilingual-MiniLM-L12-v2`, fine-tuné sur le corpus EveryCli), exécuté localement via ONNX Runtime. Il comprend l'intention derrière les mots — "annuler mon dernier commit" retrouve `git reset --soft HEAD~1` même sans le mot "git".
+## Protocole client-daemon
 
-### Bonus de namespace (pas un filtre)
-Un mot-clé explicite d'écosystème dans la requête (ex : "docker") donne un bonus au score des scénarios de ce namespace — mais ne **filtre** jamais les autres. C'est une décision délibérée : un filtrage dur exclurait à tort des paraphrases sans mot-clé, ou des commandes personnalisées ajoutées via `everycli add` dans un namespace différent. Voir [CHANGELOG.md](../CHANGELOG.md) pour le bug concret que cette décision a corrigé.
+Le protocole est une ligne JSON par requête et par réponse. Les actions principales sont :
 
-Les poids actuels (lexical 0.45 / sémantique 0.55 / bonus namespace +0.2) sont calibrés empiriquement contre `eval/confusion_set.yaml` (87.9% de précision sur 66 requêtes bilingues), pas figés définitivement.
+| Action | Objet |
+|---|---|
+| `ping` | Vérifier que le daemon répond |
+| `search` | Rechercher des commandes et renvoyer les scores et métadonnées |
+| `reload` | Recharger le corpus et recalculer les embeddings nécessaires |
 
-## 4. Distribution sans dépendance
+Le client tente de joindre le daemon. Si celui-ci n’est pas disponible, le client peut rechercher localement avec le matcher lexical et peut tenter de relancer le daemon selon le contexte. Les erreurs de reload indiquent désormais la cause connue plutôt qu’un simple message générique.
 
-Le daemon et le client sont des binaires Rust natifs — aucune dépendance à un interpréteur Python ou à une bibliothèque externe au runtime. Le modèle (`model.onnx`) et le runtime d'inférence (`onnxruntime.dll`/`.so`) sont distribués à côté des binaires, chargés dynamiquement au démarrage. Voir `install.ps1`/`install.sh` pour le flux d'installation complet.
+## Recherche hybride
 
-## 5. Commandes personnalisées
+EveryCli calcule plusieurs signaux :
 
-`everycli add` écrit dans un dossier séparé du corpus intégré (`~/.everycli/commands`), fusionné à la recherche côté client ET daemon — jamais écrasé par une mise à jour de l'application.
+1. Le score lexical mesure les recouvrements entre la requête, la description, les tags et les métadonnées du scénario.
+2. Le score sémantique compare l’embedding de la requête avec les embeddings des scénarios grâce à `model.onnx`.
+3. Le bonus de namespace favorise un domaine explicite comme Git ou Docker, sans exclure les autres namespaces.
 
-## Composant Python restant : Sentinel
+Le score hybride actuellement utilisé est calibré empiriquement : score lexical `0.45`, score sémantique `0.55`, bonus de namespace `+0.2` lorsque la route du domaine s’applique. Un seuil minimal de pertinence de `0.50` permet de rejeter les requêtes manifestement hors sujet.
 
-Le planificateur Sentinel (`everycli plan`, LLM-based, voir `everycli/infra/`) reste un composant Python séparé — il n'a pas été concerné par cette migration, et continue de fonctionner indépendamment du chemin de recherche rapide en Rust.
+Le benchmark `eval/confusion_set.yaml` sert à comparer les évolutions. Le résultat enregistré pendant le travail de release est de 58 requêtes réussies sur 66, soit 87,9 %. Cette mesure ne constitue pas une garantie pour toutes les requêtes possibles.
+
+## Modèle et runtime
+
+`model.onnx` contient le graphe et les poids du modèle exporté. Il n’est pas compilé en Rust. Rust fournit le code qui charge le graphe et appelle ONNX Runtime.
+
+Le dépôt de distribution du modèle est [`Michelhe/everycli-minilm-ft-boosted-onnx`](https://huggingface.co/Michelhe/everycli-minilm-ft-boosted-onnx). Le workflow CI verrouille une révision et vérifie les SHA-256 de `model.onnx` et `tokenizer.json`.
+
+Le runtime est natif et dépend de la plateforme :
+
+```text
+Windows : onnxruntime.dll
+Linux   : libonnxruntime.so
+```
+
+Ces bibliothèques sont placées à côté des binaires dans l’archive release. Elles ne doivent pas être mélangées entre plateformes.
+
+## Corpus et commandes personnelles
+
+Le corpus intégré se trouve dans `everycli/data/commands/`. Le nom du fichier YAML détermine le namespace. Les entrées fournissent notamment une description, des tags, une commande par plateforme, une explication et éventuellement un avertissement.
+
+Les commandes créées avec `everycli add` sont stockées dans `~/.everycli/commands` sous Linux et `%USERPROFILE%\.everycli\commands` sous Windows. Elles sont chargées en plus du corpus intégré et ne sont pas écrasées par une mise à jour.
+
+L’action `reload` permet au daemon de prendre en compte ces changements sans redémarrage complet.
+
+## Sentinel
+
+Sentinel, accessible dans le flux Python du projet, est séparé du chemin de recherche Rust. Il peut utiliser un LLM pour formuler une revue de commande, mais il ne remplace pas le corpus local et n’exécute pas la commande à la place de l’utilisateur.
+
+## Distribution
+
+Une archive complète contient les éléments suivants :
+
+```text
+bin/       client et daemon compilés pour la plateforme
+model/     model.onnx et tokenizer.json
+runtime/   bibliothèque ONNX Runtime native
+data/     corpus intégré
+scripts    installateur et désinstalleur de la plateforme
+```
+
+L’utilisateur final reçoit des binaires déjà compilés. Rust et Python sont nécessaires pour le développement ou la CI, pas pour installer une release.
