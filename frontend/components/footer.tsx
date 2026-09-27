@@ -15,8 +15,8 @@ export function Footer() {
         <nav aria-label="Footer navigation" className="flex flex-wrap items-center gap-x-7 gap-y-3 text-sm">
           <a href={site.github} target="_blank" rel="noreferrer" className="transition-colors hover:text-white">GitHub</a>
           <a href={licenseUrl} target="_blank" rel="noreferrer" className="transition-colors hover:text-white">MIT License</a>
-          <span title="Privacy policy coming soon" className="cursor-default text-white/30">Privacy</span>
-          <span title="Terms coming soon" className="cursor-default text-white/30">Terms</span>
+          <span title="Privacy policy coming soon" className="cursor-default text-white/60">Privacy</span>
+          <span title="Terms coming soon" className="cursor-default text-white/60">Terms</span>
         </nav>
       </div>
     </footer>
